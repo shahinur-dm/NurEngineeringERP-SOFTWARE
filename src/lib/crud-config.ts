@@ -1,0 +1,535 @@
+export type CrudFieldType = "text" | "number" | "email" | "date" | "textarea" | "select";
+
+export type CrudField = {
+  key: string;
+  labelBn: string;
+  labelEn: string;
+  type?: CrudFieldType;
+  required?: boolean;
+  options?: { value: string; labelBn: string; labelEn: string }[];
+};
+
+export type CrudConfig = {
+  resource: string;
+  listPath: string;
+  itemPath: string;
+  canCreate: boolean;
+  canUpdate: boolean;
+  canDelete: boolean;
+  fields: CrudField[];
+  createDefaults?: Record<string, unknown>;
+};
+
+const READ_ONLY = new Set([
+  "report-profit-loss",
+  "report-purchase-sell",
+  "report-tax",
+  "report-customer-supplier",
+  "report-customer-groups",
+  "report-stock",
+  "report-stock-adjustment",
+  "report-trending",
+  "report-items",
+  "report-product-purchase",
+  "report-product-sell",
+  "report-purchase-payment",
+  "report-sell-payment",
+  "report-expense",
+  "report-register",
+  "report-sales-rep",
+  "report-activity-log",
+  "mfg-report",
+  "balance-sheet",
+  "trial-balance",
+  "cash-flow",
+  "account-report",
+  "crm-reports",
+  "crm-dashboard",
+  "calendar",
+  "profile",
+  "settings-locations",
+  "settings-invoices",
+  "settings-barcodes",
+  "settings-printers",
+  "settings-tax",
+  "settings-subscription",
+  "settings-business",
+  "mfg-settings",
+  "pos-list",
+  "import-contacts",
+  "products-import",
+  "import-sales",
+  "products-labels",
+  "products-price",
+  "opening-stock",
+  "price-groups",
+  "variations",
+  "warranties",
+]);
+
+export const CRUD_CONFIG: Record<string, CrudConfig> = {
+  users: {
+    resource: "users",
+    listPath: "/api/modules/users",
+    itemPath: "/api/modules/users",
+    canCreate: true,
+    canUpdate: true,
+    canDelete: true,
+    fields: [
+      { key: "name", labelBn: "নাম", labelEn: "Name", required: true },
+      { key: "email", labelBn: "ইমেইল", labelEn: "Email", type: "email", required: true },
+      { key: "password", labelBn: "পাসওয়ার্ড", labelEn: "Password", required: true },
+      { key: "phone", labelBn: "ফোন", labelEn: "Phone" },
+      { key: "role", labelBn: "ভূমিকা", labelEn: "Role", type: "select", options: [
+        { value: "admin", labelBn: "অ্যাডমিন", labelEn: "Admin" },
+        { value: "manager", labelBn: "ম্যানেজার", labelEn: "Manager" },
+        { value: "cashier", labelBn: "ক্যাশিয়ার", labelEn: "Cashier" },
+      ]},
+    ],
+  },
+  roles: {
+    resource: "roles",
+    listPath: "/api/modules/roles",
+    itemPath: "/api/modules/roles",
+    canCreate: true,
+    canUpdate: true,
+    canDelete: true,
+    fields: [{ key: "name", labelBn: "নাম", labelEn: "Name", required: true }],
+  },
+  "commission-agents": {
+    resource: "commission-agents",
+    listPath: "/api/modules/commission-agents",
+    itemPath: "/api/modules/commission-agents",
+    canCreate: true,
+    canUpdate: true,
+    canDelete: true,
+    fields: [
+      { key: "name", labelBn: "নাম", labelEn: "Name", required: true },
+      { key: "mobile", labelBn: "মোবাইল", labelEn: "Mobile" },
+      { key: "commissionPercent", labelBn: "কমিশন %", labelEn: "Commission %", type: "number" },
+    ],
+  },
+  customers: {
+    resource: "contacts",
+    listPath: "/api/contacts?type=customer",
+    itemPath: "/api/contacts",
+    canCreate: true,
+    canUpdate: true,
+    canDelete: true,
+    createDefaults: { type: "customer" },
+    fields: [
+      { key: "name", labelBn: "নাম", labelEn: "Name", required: true },
+      { key: "nameBn", labelBn: "নাম (বাংলা)", labelEn: "Name (Bangla)" },
+      { key: "mobile", labelBn: "মোবাইল", labelEn: "Mobile", required: true },
+      { key: "email", labelBn: "ইমেইল", labelEn: "Email", type: "email" },
+      { key: "address", labelBn: "ঠিকানা", labelEn: "Address", type: "textarea" },
+      { key: "creditLimit", labelBn: "ক্রেডিট সীমা", labelEn: "Credit Limit", type: "number" },
+      { key: "openingBalance", labelBn: "প্রারম্ভিক ব্যালেন্স", labelEn: "Opening Balance", type: "number" },
+    ],
+  },
+  suppliers: {
+    resource: "contacts",
+    listPath: "/api/contacts?type=supplier",
+    itemPath: "/api/contacts",
+    canCreate: true,
+    canUpdate: true,
+    canDelete: true,
+    createDefaults: { type: "supplier" },
+    fields: [
+      { key: "name", labelBn: "নাম", labelEn: "Name", required: true },
+      { key: "nameBn", labelBn: "নাম (বাংলা)", labelEn: "Name (Bangla)" },
+      { key: "mobile", labelBn: "মোবাইল", labelEn: "Mobile", required: true },
+      { key: "address", labelBn: "ঠিকানা", labelEn: "Address", type: "textarea" },
+      { key: "openingBalance", labelBn: "প্রারম্ভিক ব্যালেন্স", labelEn: "Opening Balance", type: "number" },
+    ],
+  },
+  "customer-groups": {
+    resource: "customer-groups",
+    listPath: "/api/modules/customer-groups",
+    itemPath: "/api/modules/customer-groups",
+    canCreate: true,
+    canUpdate: true,
+    canDelete: true,
+    fields: [
+      { key: "name", labelBn: "নাম", labelEn: "Name", required: true },
+      { key: "discountPercent", labelBn: "ছাড় %", labelEn: "Discount %", type: "number" },
+    ],
+  },
+  products: {
+    resource: "products",
+    listPath: "/api/products",
+    itemPath: "/api/products",
+    canCreate: true,
+    canUpdate: true,
+    canDelete: true,
+    fields: [
+      { key: "name", labelBn: "পণ্যের নাম", labelEn: "Product Name", required: true },
+      { key: "nameBn", labelBn: "নাম (বাংলা)", labelEn: "Name (Bangla)" },
+      { key: "sku", labelBn: "এসকেইউ", labelEn: "SKU", required: true },
+      { key: "brand", labelBn: "ব্র্যান্ড", labelEn: "Brand" },
+      { key: "purchasePrice", labelBn: "ক্রয় মূল্য", labelEn: "Purchase Price", type: "number" },
+      { key: "sellPrice", labelBn: "বিক্রয় মূল্য", labelEn: "Sell Price", type: "number" },
+      { key: "alertQty", labelBn: "সতর্কতা পরিমাণ", labelEn: "Alert Qty", type: "number" },
+    ],
+  },
+  categories: {
+    resource: "categories",
+    listPath: "/api/modules/categories",
+    itemPath: "/api/modules/categories",
+    canCreate: true,
+    canUpdate: true,
+    canDelete: true,
+    fields: [
+      { key: "name", labelBn: "নাম", labelEn: "Name", required: true },
+      { key: "nameBn", labelBn: "নাম (বাংলা)", labelEn: "Name (Bangla)" },
+    ],
+  },
+  brands: {
+    resource: "brands",
+    listPath: "/api/modules/brands",
+    itemPath: "/api/modules/brands",
+    canCreate: true,
+    canUpdate: true,
+    canDelete: true,
+    fields: [{ key: "name", labelBn: "নাম", labelEn: "Name", required: true }],
+  },
+  units: {
+    resource: "units",
+    listPath: "/api/modules/units",
+    itemPath: "/api/modules/units",
+    canCreate: true,
+    canUpdate: true,
+    canDelete: true,
+    fields: [
+      { key: "name", labelBn: "নাম", labelEn: "Name", required: true },
+      { key: "shortName", labelBn: "সংক্ষিপ্ত", labelEn: "Short Name" },
+    ],
+  },
+  expenses: {
+    resource: "expenses",
+    listPath: "/api/expenses",
+    itemPath: "/api/expenses",
+    canCreate: true,
+    canUpdate: true,
+    canDelete: true,
+    fields: [
+      { key: "category", labelBn: "ক্যাটাগরি", labelEn: "Category", required: true },
+      { key: "title", labelBn: "বিবরণ", labelEn: "Title", required: true },
+      { key: "amount", labelBn: "পরিমাণ", labelEn: "Amount", type: "number", required: true },
+      { key: "paymentMethod", labelBn: "পেমেন্ট", labelEn: "Payment", type: "select", options: [
+        { value: "cash", labelBn: "নগদ", labelEn: "Cash" },
+        { value: "bkash", labelBn: "বিকাশ", labelEn: "bKash" },
+        { value: "bank", labelBn: "ব্যাংক", labelEn: "Bank" },
+      ]},
+      { key: "note", labelBn: "নোট", labelEn: "Note", type: "textarea" },
+    ],
+  },
+  "expense-categories": {
+    resource: "expense-categories",
+    listPath: "/api/modules/expense-categories",
+    itemPath: "/api/modules/expense-categories",
+    canCreate: true,
+    canUpdate: true,
+    canDelete: true,
+    fields: [{ key: "name", labelBn: "নাম", labelEn: "Name", required: true }],
+  },
+  accounts: {
+    resource: "accounts",
+    listPath: "/api/modules/accounts",
+    itemPath: "/api/modules/accounts",
+    canCreate: true,
+    canUpdate: true,
+    canDelete: true,
+    fields: [
+      { key: "name", labelBn: "নাম", labelEn: "Name", required: true },
+      { key: "type", labelBn: "ধরন", labelEn: "Type", type: "select", options: [
+        { value: "cash", labelBn: "নগদ", labelEn: "Cash" },
+        { value: "bank", labelBn: "ব্যাংক", labelEn: "Bank" },
+        { value: "bkash", labelBn: "বিকাশ", labelEn: "bKash" },
+        { value: "nagad", labelBn: "নগদ", labelEn: "Nagad" },
+      ]},
+      { key: "accountNo", labelBn: "অ্যাকাউন্ট নং", labelEn: "Account No" },
+      { key: "openingBalance", labelBn: "প্রারম্ভিক ব্যালেন্স", labelEn: "Opening Balance", type: "number" },
+    ],
+  },
+  discounts: {
+    resource: "discounts",
+    listPath: "/api/modules/discounts",
+    itemPath: "/api/modules/discounts",
+    canCreate: true,
+    canUpdate: true,
+    canDelete: true,
+    fields: [
+      { key: "name", labelBn: "নাম", labelEn: "Name", required: true },
+      { key: "discountType", labelBn: "ধরন", labelEn: "Type", type: "select", options: [
+        { value: "percentage", labelBn: "শতাংশ", labelEn: "Percentage" },
+        { value: "fixed", labelBn: "নির্দিষ্ট", labelEn: "Fixed" },
+      ]},
+      { key: "value", labelBn: "মান", labelEn: "Value", type: "number" },
+    ],
+  },
+  "purchase-requisition": {
+    resource: "purchase-requisitions",
+    listPath: "/api/modules/purchase-requisitions",
+    itemPath: "/api/modules/purchase-requisitions",
+    canCreate: true,
+    canUpdate: true,
+    canDelete: true,
+    fields: [
+      { key: "reqNo", labelBn: "চাহিদা নং", labelEn: "Req No", required: true },
+      { key: "locationName", labelBn: "লোকেশন", labelEn: "Location" },
+      { key: "status", labelBn: "স্ট্যাটাস", labelEn: "Status", type: "select", options: [
+        { value: "pending", labelBn: "অপেক্ষমাণ", labelEn: "Pending" },
+        { value: "approved", labelBn: "অনুমোদিত", labelEn: "Approved" },
+        { value: "rejected", labelBn: "প্রত্যাখ্যাত", labelEn: "Rejected" },
+      ]},
+      { key: "note", labelBn: "নোট", labelEn: "Note", type: "textarea" },
+    ],
+  },
+  "stock-transfers": {
+    resource: "stock-transfers",
+    listPath: "/api/modules/stock-transfers",
+    itemPath: "/api/modules/stock-transfers",
+    canCreate: true,
+    canUpdate: true,
+    canDelete: true,
+    fields: [
+      { key: "transferNo", labelBn: "ট্রান্সফার নং", labelEn: "Transfer No", required: true },
+      { key: "status", labelBn: "স্ট্যাটাস", labelEn: "Status", type: "select", options: [
+        { value: "pending", labelBn: "অপেক্ষমাণ", labelEn: "Pending" },
+        { value: "completed", labelBn: "সম্পন্ন", labelEn: "Completed" },
+      ]},
+      { key: "note", labelBn: "নোট", labelEn: "Note", type: "textarea" },
+    ],
+  },
+  "stock-adjustments": {
+    resource: "stock-adjustments",
+    listPath: "/api/modules/stock-adjustments",
+    itemPath: "/api/modules/stock-adjustments",
+    canCreate: true,
+    canUpdate: true,
+    canDelete: true,
+    fields: [
+      { key: "adjustmentNo", labelBn: "সমন্বয় নং", labelEn: "Adjustment No", required: true },
+      { key: "note", labelBn: "নোট", labelEn: "Note", type: "textarea" },
+    ],
+  },
+  "sell-returns": {
+    resource: "sell-returns",
+    listPath: "/api/modules/sell-returns",
+    itemPath: "/api/modules/sell-returns",
+    canCreate: true,
+    canUpdate: true,
+    canDelete: true,
+    fields: [
+      { key: "returnNo", labelBn: "রিটার্ন নং", labelEn: "Return No", required: true },
+      { key: "customerName", labelBn: "গ্রাহক", labelEn: "Customer" },
+      { key: "grandTotal", labelBn: "মোট", labelEn: "Total", type: "number" },
+    ],
+  },
+  "purchase-returns": {
+    resource: "purchase-returns",
+    listPath: "/api/modules/purchase-returns",
+    itemPath: "/api/modules/purchase-returns",
+    canCreate: true,
+    canUpdate: true,
+    canDelete: true,
+    fields: [
+      { key: "returnNo", labelBn: "রিটার্ন নং", labelEn: "Return No", required: true },
+      { key: "supplierName", labelBn: "সরবরাহকারী", labelEn: "Supplier" },
+      { key: "grandTotal", labelBn: "মোট", labelEn: "Total", type: "number" },
+    ],
+  },
+  shipments: {
+    resource: "shipments",
+    listPath: "/api/modules/shipments",
+    itemPath: "/api/modules/shipments",
+    canCreate: true,
+    canUpdate: true,
+    canDelete: true,
+    fields: [
+      { key: "shipmentNo", labelBn: "শিপমেন্ট নং", labelEn: "Shipment No", required: true },
+      { key: "customerName", labelBn: "গ্রাহক", labelEn: "Customer" },
+      { key: "status", labelBn: "স্ট্যাটাস", labelEn: "Status", type: "select", options: [
+        { value: "pending", labelBn: "অপেক্ষমাণ", labelEn: "Pending" },
+        { value: "shipped", labelBn: "পাঠানো", labelEn: "Shipped" },
+        { value: "delivered", labelBn: "ডেলিভার্ড", labelEn: "Delivered" },
+      ]},
+      { key: "shippingAddress", labelBn: "ঠিকানা", labelEn: "Address", type: "textarea" },
+    ],
+  },
+  "mfg-recipes": {
+    resource: "recipes",
+    listPath: "/api/modules/recipes",
+    itemPath: "/api/modules/recipes",
+    canCreate: true,
+    canUpdate: true,
+    canDelete: true,
+    fields: [
+      { key: "finishedProductName", labelBn: "পণ্য", labelEn: "Product", required: true },
+      { key: "outputQty", labelBn: "আউটপুট", labelEn: "Output Qty", type: "number" },
+    ],
+  },
+  "mfg-production": {
+    resource: "productions",
+    listPath: "/api/modules/productions",
+    itemPath: "/api/modules/productions",
+    canCreate: true,
+    canUpdate: true,
+    canDelete: true,
+    fields: [
+      { key: "productionNo", labelBn: "প্রোডাকশন নং", labelEn: "Production No", required: true },
+      { key: "productName", labelBn: "পণ্য", labelEn: "Product" },
+      { key: "qty", labelBn: "পরিমাণ", labelEn: "Qty", type: "number" },
+    ],
+  },
+  "crm-leads": {
+    resource: "leads",
+    listPath: "/api/modules/leads",
+    itemPath: "/api/modules/leads",
+    canCreate: true,
+    canUpdate: true,
+    canDelete: true,
+    fields: [
+      { key: "name", labelBn: "নাম", labelEn: "Name", required: true },
+      { key: "mobile", labelBn: "মোবাইল", labelEn: "Mobile" },
+      { key: "source", labelBn: "উৎস", labelEn: "Source" },
+      { key: "status", labelBn: "স্ট্যাটাস", labelEn: "Status", type: "select", options: [
+        { value: "open", labelBn: "খোলা", labelEn: "Open" },
+        { value: "won", labelBn: "জিতেছে", labelEn: "Won" },
+        { value: "lost", labelBn: "হারিয়েছে", labelEn: "Lost" },
+      ]},
+      { key: "notes", labelBn: "নোট", labelEn: "Notes", type: "textarea" },
+    ],
+  },
+  "crm-followups": {
+    resource: "leads",
+    listPath: "/api/modules/leads",
+    itemPath: "/api/modules/leads",
+    canCreate: true,
+    canUpdate: true,
+    canDelete: true,
+    fields: [
+      { key: "name", labelBn: "নাম", labelEn: "Name", required: true },
+      { key: "mobile", labelBn: "মোবাইল", labelEn: "Mobile" },
+      { key: "nextFollowUp", labelBn: "পরবর্তী ফলো-আপ", labelEn: "Next Follow-up", type: "date" },
+      { key: "notes", labelBn: "নোট", labelEn: "Notes", type: "textarea" },
+    ],
+  },
+  "crm-campaigns": {
+    resource: "leads",
+    listPath: "/api/modules/leads",
+    itemPath: "/api/modules/leads",
+    canCreate: true,
+    canUpdate: true,
+    canDelete: true,
+    fields: [
+      { key: "name", labelBn: "ক্যাম্পেইন", labelEn: "Campaign", required: true },
+      { key: "source", labelBn: "উৎস", labelEn: "Source" },
+      { key: "notes", labelBn: "নোট", labelEn: "Notes", type: "textarea" },
+    ],
+  },
+  "crm-proposals": {
+    resource: "leads",
+    listPath: "/api/modules/leads",
+    itemPath: "/api/modules/leads",
+    canCreate: true,
+    canUpdate: true,
+    canDelete: true,
+    fields: [
+      { key: "name", labelBn: "প্রস্তাবনা", labelEn: "Proposal", required: true },
+      { key: "mobile", labelBn: "মোবাইল", labelEn: "Mobile" },
+      { key: "notes", labelBn: "বিবরণ", labelEn: "Description", type: "textarea" },
+    ],
+  },
+  project: {
+    resource: "projects",
+    listPath: "/api/modules/projects",
+    itemPath: "/api/modules/projects",
+    canCreate: true,
+    canUpdate: true,
+    canDelete: true,
+    fields: [
+      { key: "name", labelBn: "নাম", labelEn: "Name", required: true },
+      { key: "status", labelBn: "স্ট্যাটাস", labelEn: "Status", type: "select", options: [
+        { value: "open", labelBn: "খোলা", labelEn: "Open" },
+        { value: "completed", labelBn: "সম্পন্ন", labelEn: "Completed" },
+        { value: "on_hold", labelBn: "অপেক্ষমাণ", labelEn: "On Hold" },
+      ]},
+    ],
+  },
+  "notification-templates": {
+    resource: "notification-templates",
+    listPath: "/api/modules/notification-templates",
+    itemPath: "/api/modules/notification-templates",
+    canCreate: true,
+    canUpdate: true,
+    canDelete: true,
+    fields: [
+      { key: "name", labelBn: "নাম", labelEn: "Name", required: true },
+      { key: "type", labelBn: "ধরন", labelEn: "Type" },
+      { key: "body", labelBn: "বিষয়বস্তু", labelEn: "Body", type: "textarea" },
+    ],
+  },
+  purchases: {
+    resource: "purchases",
+    listPath: "/api/purchases",
+    itemPath: "/api/purchases",
+    canCreate: false,
+    canUpdate: true,
+    canDelete: true,
+    fields: [
+      { key: "referenceNo", labelBn: "রেফারেন্স", labelEn: "Reference" },
+      { key: "supplierName", labelBn: "সরবরাহকারী", labelEn: "Supplier" },
+      { key: "note", labelBn: "নোট", labelEn: "Note", type: "textarea" },
+    ],
+  },
+  sales: {
+    resource: "sales",
+    listPath: "/api/sales",
+    itemPath: "/api/sales",
+    canCreate: false,
+    canUpdate: true,
+    canDelete: true,
+    fields: [
+      { key: "invoiceNo", labelBn: "ইনভয়েস", labelEn: "Invoice" },
+      { key: "customerName", labelBn: "গ্রাহক", labelEn: "Customer" },
+      { key: "note", labelBn: "নোট", labelEn: "Note", type: "textarea" },
+    ],
+  },
+  "sales-drafts": {
+    resource: "sales",
+    listPath: "/api/sales?status=draft",
+    itemPath: "/api/sales",
+    canCreate: false,
+    canUpdate: true,
+    canDelete: true,
+    fields: [
+      { key: "invoiceNo", labelBn: "ইনভয়েস", labelEn: "Invoice" },
+      { key: "customerName", labelBn: "গ্রাহক", labelEn: "Customer" },
+      { key: "note", labelBn: "নোট", labelEn: "Note", type: "textarea" },
+    ],
+  },
+  "sales-quotes": {
+    resource: "sales",
+    listPath: "/api/sales?status=quotation",
+    itemPath: "/api/sales",
+    canCreate: false,
+    canUpdate: true,
+    canDelete: true,
+    fields: [
+      { key: "invoiceNo", labelBn: "ইনভয়েস", labelEn: "Invoice" },
+      { key: "customerName", labelBn: "গ্রাহক", labelEn: "Customer" },
+      { key: "note", labelBn: "নোট", labelEn: "Note", type: "textarea" },
+    ],
+  },
+};
+
+export function getCrudConfig(moduleId: string): CrudConfig | null {
+  if (READ_ONLY.has(moduleId)) return null;
+  return CRUD_CONFIG[moduleId] || null;
+}
+
+export function isReadOnlyModule(moduleId: string) {
+  return READ_ONLY.has(moduleId);
+}
