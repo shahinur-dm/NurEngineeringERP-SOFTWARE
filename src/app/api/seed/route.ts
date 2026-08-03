@@ -536,15 +536,18 @@ export async function POST(req: NextRequest) {
       EXPENSE_CATEGORIES.map((name) => ({ name, kind: "expense" })),
     );
     await Expense.insertMany(
-      EXPENSE_CATEGORIES.map((category, i) => ({
-        category,
-        title: `${category} — ${pick(["Monthly", "Routine", "Urgent"])} #${i + 1}`,
-        amount: rand(800, 45000),
-        locationId: pick(locations)._id,
-        paymentMethod: pick(["cash", "bank", "bkash", "nagad"] as const),
-        expenseDate: daysAgo(rand(0, 60)),
-        createdBy: admin._id,
-      })),
+      Array.from({ length: 120 }, (_, i) => {
+        const category = pick(EXPENSE_CATEGORIES);
+        return {
+          category,
+          title: `${category} — ${pick(["Monthly", "Routine", "Urgent", "Maintenance", "Office"])} #${i + 1}`,
+          amount: rand(500, 50000),
+          locationId: pick(locations)._id,
+          paymentMethod: pick(["cash", "bank", "bkash", "nagad"] as const),
+          expenseDate: daysAgo(rand(0, 45)),
+          createdBy: admin._id,
+        };
+      })
     );
 
     // ─── Purchases (only via ProductSupplier-linked pairs) ────────
@@ -562,7 +565,7 @@ export async function POST(req: NextRequest) {
     for (const supplier of allSuppliers) {
       const links = linksBySupplier.get(String(supplier._id)) || [];
       if (!links.length) continue;
-      for (let n = 0; n < 3; n++) {
+      for (let n = 0; n < 8; n++) {
         const chosen = links.slice(0, Math.min(3, links.length));
         const items = chosen.map((link) => {
           const p = productDocs.find((x) => String(x._id) === String(link.productId))!;
@@ -601,7 +604,7 @@ export async function POST(req: NextRequest) {
     await Purchase.insertMany(purchaseRows);
 
     // ─── Sales ───────────────────────────────────────────────────
-    const saleRows = Array.from({ length: 40 }, (_, i) => {
+    const saleRows = Array.from({ length: 250 }, (_, i) => {
       const cust = pick(customerDocs);
       const items = Array.from({ length: rand(1, 4) }, () => {
         const p = pick(productDocs);
@@ -651,7 +654,7 @@ export async function POST(req: NextRequest) {
 
     // ─── Returns / shipments / stock ─────────────────────────────
     await SellReturn.insertMany(
-      Array.from({ length: 12 }, (_, i) => {
+      Array.from({ length: 45 }, (_, i) => {
         const sale = pick(finalSales.length ? finalSales : createdSales);
         const p = pick(productDocs);
         const qty = rand(1, 3);
@@ -675,7 +678,7 @@ export async function POST(req: NextRequest) {
     );
 
     await PurchaseReturn.insertMany(
-      Array.from({ length: 10 }, (_, i) => {
+      Array.from({ length: 30 }, (_, i) => {
         const supplier = pick(catalogSuppliers);
         const p = pick(productDocs);
         const qty = rand(1, 5);
@@ -698,7 +701,7 @@ export async function POST(req: NextRequest) {
     );
 
     await Shipment.insertMany(
-      Array.from({ length: 15 }, (_, i) => {
+      Array.from({ length: 65 }, (_, i) => {
         const sale = pick(createdSales);
         return {
           shipmentNo: `SH-${800 + i}`,
@@ -712,7 +715,7 @@ export async function POST(req: NextRequest) {
     );
 
     await PurchaseRequisition.insertMany(
-      Array.from({ length: 10 }, (_, i) => {
+      Array.from({ length: 40 }, (_, i) => {
         const loc = pick(locations);
         return {
           reqNo: `REQ-${600 + i}`,
@@ -899,7 +902,7 @@ export async function POST(req: NextRequest) {
       { name: "Jashim", mobile: "01750000013", speciality: "General Repair" },
     ]);
 
-    const serviceJobRows = Array.from({ length: 35 }, (_, i) => {
+    const serviceJobRows = Array.from({ length: 90 }, (_, i) => {
       const cust = pick(customerDocs);
       const machine = pick(machinesDocs);
       const tech = pick(techsDocs);

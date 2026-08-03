@@ -121,7 +121,7 @@ export async function GET(req: NextRequest) {
           .reduce((a: number, s: { qty?: number }) => a + (s.qty || 0), 0);
         return { ...p, qty };
       })
-      .filter((p) => p.qty <= (p.alertQty || 0))
+      .filter((p) => p.qty <= (p.alertQty || 10))
       .sort((a, b) => a.qty - b.qty);
     return NextResponse.json({ rows });
   }
@@ -157,6 +157,8 @@ export async function GET(req: NextRequest) {
     duePurchasesList,
     requisitions,
     pendingShipments,
+    salesByStatusAgg,
+    expensesByCategoryAgg,
   ] = await Promise.all([
     Sale.aggregate([
       { $match: { ...saleMatch, saleDate: { $gte: startOfToday } } },
@@ -274,6 +276,18 @@ export async function GET(req: NextRequest) {
       .lean(),
     PurchaseRequisition.find({ status: "pending" }).limit(10).lean(),
     Shipment.find({ status: "pending" }).limit(10).lean(),
+    Sale.aggregate([
+      { $match: monthSaleMatch },
+      { $group: { _id: "$status", total: { $sum: "$grandTotal" } } },
+    ]),
+    Expense.aggregate([
+      {
+        $match: Object.keys(dateFilter).length
+          ? expenseMatch
+          : { expenseDate: { $gte: startOfMonth } },
+      },
+      { $group: { _id: "$category", total: { $sum: "$amount" } } },
+    ]),
   ]);
 
   const lowStock = products
@@ -293,7 +307,7 @@ export async function GET(req: NextRequest) {
         alertQty: p.alertQty,
       };
     })
-    .filter((p) => p.qty <= (p.alertQty || 0))
+    .filter((p) => p.qty <= (p.alertQty || 10))
     .slice(0, 10);
 
   const monthTotal = monthAgg[0]?.total || 0;
@@ -318,6 +332,10 @@ export async function GET(req: NextRequest) {
     recentSales,
     lowStock,
     locations,
+    charts: {
+      salesByStatus: salesByStatusAgg,
+      expensesByCategory: expensesByCategoryAgg,
+    },
     widgets: {
       salesPaymentDue: dueSalesList,
       purchasePaymentDue: duePurchasesList,
