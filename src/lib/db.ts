@@ -31,9 +31,9 @@ async function resolveMongoUri() {
 
   const { MongoMemoryServer } = await import("mongodb-memory-server");
   const mongod = await MongoMemoryServer.create({
-    instance: { dbName: "dit_pos" },
+    instance: { dbName: "nur_engineering_erp" },
   });
-  cached.memoryUri = mongod.getUri("dit_pos");
+  cached.memoryUri = mongod.getUri("nur_engineering_erp");
   console.info("[db] Using in-memory MongoDB (no Docker required)");
   return cached.memoryUri;
 }
@@ -46,7 +46,7 @@ export async function connectDB() {
       const uri = await resolveMongoUri();
       return mongoose.connect(uri, {
         bufferCommands: false,
-        dbName: "dit_pos",
+        dbName: "nur_engineering_erp",
       });
     })();
   }
@@ -60,7 +60,7 @@ export async function connectDB() {
   return cached.conn;
 }
 
-/** Drop collections in dit_pos that are not registered Mongoose models. */
+/** Drop collections in nur_engineering_erp that are not registered Mongoose models. */
 export async function pruneOrphanCollections() {
   const conn = await connectDB();
   const db = conn.connection.db;

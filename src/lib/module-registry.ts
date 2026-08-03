@@ -351,6 +351,42 @@ export const MODULE_REGISTRY: Record<string, ModuleDef> = {
       { key: "status", labelBn: "স্ট্যাটাস", labelEn: "Status" },
     ],
   },
+  services: {
+    id: "services",
+    titleBn: "সার্ভিস জব",
+    titleEn: "Service Jobs",
+    apiPath: "/api/services",
+    canAdd: true,
+    columns: [
+      { key: "jobNo", labelBn: "জব নং", labelEn: "Job No" },
+      { key: "issueDescription", labelBn: "সমস্যা", labelEn: "Issue" },
+      { key: "status", labelBn: "স্ট্যাটাস", labelEn: "Status" },
+      { key: "grandTotal", labelBn: "মোট", labelEn: "Total", format: "money" },
+    ],
+  },
+  machines: {
+    id: "machines",
+    titleBn: "মেশিন",
+    titleEn: "Machines",
+    apiPath: "/api/machines",
+    canAdd: true,
+    columns: [
+      { key: "brand", labelBn: "ব্র্যান্ড", labelEn: "Brand" },
+      { key: "model", labelBn: "মডেল", labelEn: "Model" },
+      { key: "serialNo", labelBn: "সিরিয়াল নং", labelEn: "Serial No" },
+    ],
+  },
+  technicians: {
+    id: "technicians",
+    titleBn: "টেকনিশিয়ান",
+    titleEn: "Technicians",
+    apiPath: "/api/technicians",
+    canAdd: true,
+    columns: [
+      { key: "name", labelBn: "নাম", labelEn: "Name" },
+      { key: "mobile", labelBn: "মোবাইল", labelEn: "Mobile" },
+    ],
+  },
 };
 
 // Report modules share report API
@@ -372,6 +408,7 @@ const REPORT_IDS = [
   "report-register",
   "report-sales-rep",
   "report-activity-log",
+  "report-service",
   "mfg-report",
   "balance-sheet",
   "trial-balance",

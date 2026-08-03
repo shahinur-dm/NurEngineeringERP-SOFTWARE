@@ -23,14 +23,14 @@ export async function GET(
   const business = await Business.findOne().lean();
   if (!sale) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
-  const bizName = locale === "bn" && business?.nameBn ? business.nameBn : business?.name || "DIT POS";
+  const bizName = locale === "bn" && business?.nameBn ? business.nameBn : business?.name || "Nur Engineering ERP";
   const bizAddress =
     locale === "bn" && business?.addressBn ? business.addressBn : business?.address || "";
 
   if (format === "excel") {
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet(locale === "bn" ? "চালান" : "Invoice");
-    wb.creator = "DIT POS";
+    wb.creator = "Nur Engineering ERP";
 
     ws.mergeCells("A1:G1");
     ws.getCell("A1").value = bizName;

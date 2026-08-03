@@ -106,7 +106,7 @@ export default function LoginPage() {
                 <p className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted">
                   EEE Equipment POS
                 </p>
-                <p className="text-sm font-semibold text-[var(--gp-ink)]">DIT POS</p>
+                <p className="text-sm font-semibold text-[var(--gp-ink)]">Nur Engineering ERP</p>
               </div>
             </div>
 

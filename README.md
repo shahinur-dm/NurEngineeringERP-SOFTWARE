@@ -1,4 +1,4 @@
-# Nur Engineering POS (DIT POS)
+# Nur Engineering POS (Nur Engineering ERP)
 
 Bilingual (বাংলা + English) ERP & POS for EEE / lab equipment — products, suppliers, purchases, sales, and stock.
 
@@ -38,9 +38,9 @@ Force reseed (logged in):
 ## Environment
 
 ```
-MONGODB_URI=mongodb+srv://USER:PASS@cluster.mongodb.net/dit_pos
+MONGODB_URI=mongodb+srv://USER:PASS@cluster.mongodb.net/nur_engineering_erp
 AUTH_SECRET=change-me-to-a-long-random-string
-NEXT_PUBLIC_APP_NAME=DIT POS
+NEXT_PUBLIC_APP_NAME=Nur Engineering ERP
 NEXT_PUBLIC_DEFAULT_LOCALE=bn
 ```
 

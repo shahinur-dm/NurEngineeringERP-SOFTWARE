@@ -507,6 +507,85 @@ const ProductionSchema = new Schema(
   { timestamps: true },
 );
 
+const MachineSchema = new Schema(
+  {
+    customerId: { type: Schema.Types.ObjectId, ref: "Contact", required: true },
+    brand: String,
+    model: String,
+    serialNo: { type: String, unique: true, sparse: true },
+    machineType: String,
+    purchaseDate: Date,
+    warrantyExpiryDate: Date,
+    notes: String,
+  },
+  { timestamps: true },
+);
+
+const TechnicianSchema = new Schema(
+  {
+    userId: { type: Schema.Types.ObjectId, ref: "User" },
+    name: { type: String, required: true },
+    mobile: String,
+    speciality: String,
+    isActive: { type: Boolean, default: true },
+  },
+  { timestamps: true },
+);
+
+const ServiceJobItemSchema = new Schema(
+  {
+    productId: { type: Schema.Types.ObjectId, ref: "Product" },
+    name: String,
+    qty: { type: Number, required: true },
+    unitPrice: { type: Number, required: true },
+    lineTotal: { type: Number, required: true },
+  },
+  { _id: false },
+);
+
+const ServiceJobSchema = new Schema(
+  {
+    jobNo: { type: String, required: true, unique: true },
+    customerId: { type: Schema.Types.ObjectId, ref: "Contact", required: true },
+    machineId: { type: Schema.Types.ObjectId, ref: "Machine" },
+    technicianId: { type: Schema.Types.ObjectId, ref: "Technician" },
+    status: {
+      type: String,
+      enum: ["pending", "in_progress", "completed", "delivered", "cancelled"],
+      default: "pending",
+    },
+    issueDescription: { type: String, required: true },
+    serviceCharges: { type: Number, default: 0 },
+    parts: [ServiceJobItemSchema],
+    partsTotal: { type: Number, default: 0 },
+    discount: { type: Number, default: 0 },
+    tax: { type: Number, default: 0 },
+    grandTotal: { type: Number, default: 0 },
+    paidAmount: { type: Number, default: 0 },
+    dueAmount: { type: Number, default: 0 },
+    payments: [PaymentSchema], // Re-uses PaymentSchema
+    receivedDate: { type: Date, default: Date.now },
+    expectedDeliveryDate: Date,
+    deliveredDate: Date,
+    warrantyDays: { type: Number, default: 0 },
+    notes: String,
+    createdBy: { type: Schema.Types.ObjectId, ref: "User" },
+  },
+  { timestamps: true },
+);
+
+const ActivityLogSchema = new Schema(
+  {
+    userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    userName: { type: String, required: true },
+    action: { type: String, required: true }, // e.g., "Created", "Updated", "Deleted"
+    entityType: { type: String, required: true }, // e.g., "Sale", "Product", "ServiceJob"
+    entityId: { type: String },
+    details: { type: String }, // e.g., "Invoice #101 created"
+  },
+  { timestamps: true }
+);
+
 export const User = models.User || model("User", UserSchema);
 export const Location = models.Location || model("Location", LocationSchema);
 export const Business = models.Business || model("Business", BusinessSchema);
@@ -544,6 +623,11 @@ export const NotificationTemplate =
   models.NotificationTemplate || model("NotificationTemplate", NotificationTemplateSchema);
 export const Project = models.Project || model("Project", ProjectSchema);
 export const Production = models.Production || model("Production", ProductionSchema);
+
+export const Machine = models.Machine || model("Machine", MachineSchema);
+export const Technician = models.Technician || model("Technician", TechnicianSchema);
+export const ServiceJob = models.ServiceJob || model("ServiceJob", ServiceJobSchema);
+export const ActivityLog = models.ActivityLog || model("ActivityLog", ActivityLogSchema);
 
 export async function nextSeq(key: string) {
   const doc = await Counter.findOneAndUpdate(

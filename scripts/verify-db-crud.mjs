@@ -1,5 +1,5 @@
 /**
- * Full DB + relation + CRUD verification for DIT POS
+ * Full DB + relation + CRUD verification for Nur Engineering ERP
  * Run: node scripts/verify-db-crud.mjs
  */
 const base = "http://localhost:3000";

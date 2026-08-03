@@ -17,6 +17,7 @@ import {
   Briefcase,
   Calendar,
   UserCircle,
+  Wrench,
 } from "lucide-react";
 
 export type NavItem = {
@@ -105,6 +106,15 @@ export const NAV_TREE: NavItem[] = [
     ],
   },
   {
+    labelKey: "nav.services",
+    icon: Wrench,
+    children: [
+      { href: "/services", labelKey: "nav.serviceJobs", moduleId: "services" },
+      { href: "/services/machines", labelKey: "nav.machines", moduleId: "machines" },
+      { href: "/services/technicians", labelKey: "nav.technicians", moduleId: "technicians" },
+    ],
+  },
+  {
     labelKey: "nav.stockTransfers",
     icon: ArrowLeftRight,
     children: [
@@ -160,6 +170,7 @@ export const NAV_TREE: NavItem[] = [
       { href: "/reports/expense", labelKey: "reports.expense", moduleId: "report-expense" },
       { href: "/reports/register", labelKey: "reports.register", moduleId: "report-register" },
       { href: "/reports/sales-rep", labelKey: "reports.salesRep", moduleId: "report-sales-rep" },
+      { href: "/reports/service", labelKey: "reports.service", moduleId: "report-service" },
       { href: "/reports/activity-log", labelKey: "reports.activityLog", moduleId: "report-activity-log" },
     ],
   },

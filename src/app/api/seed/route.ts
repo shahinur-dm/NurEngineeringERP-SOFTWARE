@@ -49,6 +49,9 @@ import {
   StockTransfer,
   StockAdjustment,
   Counter,
+  Machine,
+  Technician,
+  ServiceJob,
 } from "@/models";
 
 const DEMO_ADMIN_ALIASES = [DEMO_ADMIN.email, "admin@greenpharma.bd"];
@@ -87,6 +90,9 @@ async function wipeAllDemoData() {
     StockTransfer.deleteMany({}),
     StockAdjustment.deleteMany({}),
     Counter.deleteMany({}),
+    Machine.deleteMany({}),
+    Technician.deleteMany({}),
+    ServiceJob.deleteMany({}),
     User.deleteMany({}),
   ]);
 
@@ -250,8 +256,8 @@ export async function POST(req: NextRequest) {
 
     // ─── Core business ───────────────────────────────────────────
     await Business.create({
-      name: "DIT POS (EEE Equipment)",
-      nameBn: "ডিট পিওএস (ইইই সরঞ্জাম)",
+      name: "Nur Engineering ERP (EEE Equipment)",
+      nameBn: "নূর ইঞ্জিনিয়ারিং ইআরপি (ইইই সরঞ্জাম)",
       address: "House 12, Road 5, Dhanmondi, Dhaka-1205",
       addressBn: "বাড়ি ১২, রোড ৫, ধানমন্ডি, ঢাকা-১২০৫",
       phone: DEMO_ADMIN.phone,
@@ -876,6 +882,81 @@ export async function POST(req: NextRequest) {
         body: "Supplier {{supplier}} has due amount {{amount}}.",
       },
     ]);
+
+    // ─── Service Management Data ─────────────────────────────────
+    const machinesDocs = await Machine.insertMany([
+      { customerId: customerDocs[0]._id, brand: "DIT Lab", model: "Oscilloscope 10x", serialNo: "OSC-001", machineType: "Meters" },
+      { customerId: customerDocs[1]._id, brand: "TechGear BD", model: "Soldering Station 60W", serialNo: "SOLD-002", machineType: "Lab Tools" },
+      { customerId: customerDocs[2]._id, brand: "VoltLab BD", model: "Power Supply 5A Bench", serialNo: "PS-103", machineType: "Power Supply" },
+      { customerId: customerDocs[3]._id, brand: "MakerEEE", model: "PLC Trainer Board Basic", serialNo: "PLC-005", machineType: "Kits & Boards" },
+      { customerId: customerDocs[4]._id, brand: "LabCore", model: "Function Generator DDS", serialNo: "FG-902", machineType: "Meters" },
+    ]);
+
+    const techsDocs = await Technician.insertMany([
+      { name: "Rafiq Hasan", mobile: "01750000010", speciality: "Microcontrollers" },
+      { name: "Sujon Ali", mobile: "01750000011", speciality: "Power Supply" },
+      { name: "Kamal Uddin", mobile: "01750000012", speciality: "Motors" },
+      { name: "Jashim", mobile: "01750000013", speciality: "General Repair" },
+    ]);
+
+    const serviceJobRows = Array.from({ length: 35 }, (_, i) => {
+      const cust = pick(customerDocs);
+      const machine = pick(machinesDocs);
+      const tech = pick(techsDocs);
+      
+      const hasParts = i % 3 !== 0;
+      let parts = [];
+      let partsTotal = 0;
+      
+      if (hasParts) {
+        const numParts = rand(1, 3);
+        for(let j=0; j<numParts; j++) {
+           const p = pick(productDocs);
+           const qty = rand(1, 3);
+           parts.push({
+             productId: p._id,
+             name: p.name,
+             qty: qty,
+             unitPrice: p.sellPrice,
+             lineTotal: p.sellPrice * qty
+           });
+           partsTotal += (p.sellPrice * qty);
+        }
+      }
+
+      const serviceCharges = pick([500, 800, 1000, 1500, 2000]);
+      const subtotal = partsTotal + serviceCharges;
+      const discount = i % 5 === 0 ? 100 : 0;
+      const grandTotal = subtotal - discount;
+      const isCompleted = i % 2 === 0;
+      const status = isCompleted ? "delivered" : pick(["pending", "in_progress", "completed"]);
+      const paid = status === "delivered" ? grandTotal : (i % 3 === 0 ? Math.floor(grandTotal / 2) : 0);
+      const due = grandTotal - paid;
+
+      return {
+        jobNo: `SJ-${1000 + i}`,
+        customerId: cust._id,
+        machineId: machine._id,
+        technicianId: tech._id,
+        status: status,
+        issueDescription: pick(["Not turning on", "Display broken", "Port damaged", "Software issue", "Overheating", "Motor jammed"]),
+        serviceCharges,
+        parts,
+        partsTotal,
+        discount,
+        tax: 0,
+        grandTotal,
+        paidAmount: paid,
+        dueAmount: due,
+        payments: paid > 0 ? [{ method: pick(["cash", "bkash"]), amount: paid }] : [],
+        receivedDate: daysAgo(rand(1, 40)),
+        deliveredDate: status === "delivered" ? daysAgo(rand(0, 10)) : undefined,
+        warrantyDays: status === "delivered" ? pick([0, 15, 30, 90]) : 0,
+        notes: "Seed dummy service data",
+        createdBy: admin._id,
+      };
+    });
+    await ServiceJob.insertMany(serviceJobRows);
 
     // ─── Verify relations ────────────────────────────────────────
     const [

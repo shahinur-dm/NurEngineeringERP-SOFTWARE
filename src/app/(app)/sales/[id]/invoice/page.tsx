@@ -103,7 +103,7 @@ export default function InvoiceViewPage() {
   }
 
   const bizName =
-    locale === "bn" && business?.nameBn ? business.nameBn : business?.name || "DIT POS";
+    locale === "bn" && business?.nameBn ? business.nameBn : business?.name || "Nur Engineering ERP";
   const bizAddress =
     locale === "bn" && business?.addressBn ? business.addressBn : business?.address || "";
 

@@ -1,5 +1,5 @@
 /**
- * Canonical demo catalog for DIT POS (EEE equipment).
+ * Canonical demo catalog for Nur Engineering ERP (EEE equipment).
  * Product ← ProductSupplier → Contact(supplier) is the source of truth for supplier prices.
  */
 

@@ -523,6 +523,52 @@ export const CRUD_CONFIG: Record<string, CrudConfig> = {
       { key: "note", labelBn: "নোট", labelEn: "Note", type: "textarea" },
     ],
   },
+  machines: {
+    resource: "machines",
+    listPath: "/api/machines",
+    itemPath: "/api/machines",
+    canCreate: true,
+    canUpdate: true,
+    canDelete: true,
+    fields: [
+      { key: "brand", labelBn: "ব্র্যান্ড", labelEn: "Brand", required: true },
+      { key: "model", labelBn: "মডেল", labelEn: "Model", required: true },
+      { key: "serialNo", labelBn: "সিরিয়াল নং", labelEn: "Serial No" },
+      { key: "machineType", labelBn: "মেশিনের ধরন", labelEn: "Machine Type" },
+    ],
+  },
+  technicians: {
+    resource: "technicians",
+    listPath: "/api/technicians",
+    itemPath: "/api/technicians",
+    canCreate: true,
+    canUpdate: true,
+    canDelete: true,
+    fields: [
+      { key: "name", labelBn: "নাম", labelEn: "Name", required: true },
+      { key: "mobile", labelBn: "মোবাইল", labelEn: "Mobile", required: true },
+      { key: "speciality", labelBn: "দক্ষতা", labelEn: "Speciality" },
+    ],
+  },
+  services: {
+    resource: "services",
+    listPath: "/api/services",
+    itemPath: "/api/services",
+    canCreate: true,
+    canUpdate: true,
+    canDelete: true,
+    fields: [
+      { key: "issueDescription", labelBn: "সমস্যা", labelEn: "Issue", required: true },
+      { key: "serviceCharges", labelBn: "সার্ভিস চার্জ", labelEn: "Service Charges", type: "number" },
+      { key: "status", labelBn: "স্ট্যাটাস", labelEn: "Status", type: "select", options: [
+        { value: "pending", labelBn: "পেন্ডিং", labelEn: "Pending" },
+        { value: "in_progress", labelBn: "চলমান", labelEn: "In Progress" },
+        { value: "completed", labelBn: "সম্পন্ন", labelEn: "Completed" },
+        { value: "delivered", labelBn: "ডেলিভারড", labelEn: "Delivered" },
+        { value: "cancelled", labelBn: "বাতিল", labelEn: "Cancelled" },
+      ]},
+    ],
+  },
 };
 
 export function getCrudConfig(moduleId: string): CrudConfig | null {

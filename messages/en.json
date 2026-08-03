@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "DIT POS",
+    "name": "Nur Engineering ERP",
     "tagline": "ERP & POS for EEE lab instruments and machinery equipment",
     "loading": "Loading..."
   },
@@ -24,6 +24,10 @@
     "settings": "Settings",
     "users": "Users",
     "logout": "Logout",
+    "services": "Services",
+    "serviceJobs": "Service Jobs",
+    "machines": "Machines",
+    "technicians": "Technicians",
     "more": "More",
     "usersMgmt": "User Management",
     "roles": "Roles",
@@ -304,6 +308,7 @@
     "expense": "Expense Report",
     "register": "Register Report",
     "salesRep": "Sales Representative",
+    "service": "Service Report",
     "activityLog": "Activity Log",
     "drillHint": "Click any number to see breakdown"
   },
@@ -343,5 +348,19 @@
     "title": "Manufacturing",
     "recipes": "Recipes",
     "production": "Production"
+  },
+  "services": {
+    "title": "Services",
+    "jobs": "Service Jobs",
+    "newJob": "New Job",
+    "machines": "Machines",
+    "newMachine": "New Machine",
+    "technicians": "Technicians",
+    "newTechnician": "New Technician",
+    "statusPending": "Pending",
+    "statusInProgress": "In Progress",
+    "statusCompleted": "Completed",
+    "statusDelivered": "Delivered",
+    "statusCancelled": "Cancelled"
   }
 }

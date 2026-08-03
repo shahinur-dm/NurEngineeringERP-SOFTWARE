@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "ডিট পিওএস",
+    "name": "নূর ইঞ্জিনিয়ারিং ইআরপি",
     "tagline": "ইইই ল্যাব যন্ত্রপাতি ও মেশিনারি সরঞ্জামের জন্য ইআরপি ও পিওএস",
     "loading": "লোড হচ্ছে..."
   },
@@ -24,6 +24,10 @@
     "settings": "সেটিংস",
     "users": "ব্যবহারকারী",
     "logout": "লগ আউট",
+    "services": "সার্ভিস",
+    "serviceJobs": "সার্ভিস জব",
+    "machines": "মেশিন",
+    "technicians": "টেকনিশিয়ান",
     "more": "আরও",
     "usersMgmt": "ব্যবহারকারী ব্যবস্থাপনা",
     "roles": "ভূমিকা",
@@ -304,6 +308,7 @@
     "expense": "খরচ রিপোর্ট",
     "register": "রেজিস্টার রিপোর্ট",
     "salesRep": "সেলস রিপ্রেজেন্টেটিভ",
+    "service": "সার্ভিস রিপোর্ট",
     "activityLog": "অ্যাক্টিভিটি লগ",
     "drillHint": "যেকোনো সংখ্যায় ক্লিক করে বিস্তারিত দেখুন"
   },
@@ -343,5 +348,19 @@
     "title": "উৎপাদন",
     "recipes": "রেসিপি",
     "production": "প্রোডাকশন"
+  },
+  "services": {
+    "title": "সার্ভিস",
+    "jobs": "সার্ভিস জব",
+    "newJob": "নতুন জব",
+    "machines": "মেশিন",
+    "newMachine": "নতুন মেশিন",
+    "technicians": "টেকনিশিয়ান",
+    "newTechnician": "নতুন টেকনিশিয়ান",
+    "statusPending": "পেন্ডিং",
+    "statusInProgress": "চলমান",
+    "statusCompleted": "সম্পন্ন",
+    "statusDelivered": "ডেলিভারড",
+    "statusCancelled": "বাতিল"
   }
 }

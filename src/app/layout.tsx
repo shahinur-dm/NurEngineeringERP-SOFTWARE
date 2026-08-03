@@ -32,7 +32,7 @@ const notoBengaliDisplay = Noto_Sans_Bengali({
 });
 
 export const metadata: Metadata = {
-  title: "DIT POS",
+  title: "Nur Engineering ERP",
   description:
     "Lightweight bilingual ERP & POS for EEE students — lab instruments, machinery & electrical equipment sales",
 };
