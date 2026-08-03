@@ -1,36 +1,45 @@
 @import "tailwindcss";
 
 :root {
-  /* Nur Engineering — light steel / electric blue */
-  --gp-bg: #f5f7fa;
-  --gp-surface: #ffffff;
-  --gp-ink: #152033;
-  --gp-muted: #64748b;
-  --gp-line: #e4e9f0;
-  --gp-line-strong: #c5d5e0;
-  --gp-primary: #1e6bb8;
-  --gp-primary-2: #2a7bc9;
-  --gp-primary-soft: #eaf3fb;
-  --gp-primary-glow: rgba(30, 107, 184, 0.12);
-  --gp-accent: #0d9488;
-  --gp-accent-soft: #e6f7f5;
-  --gp-danger: #c53030;
+  /* Nur Engineering — Tech / Industrial Theme (No Gradients) */
+  --gp-bg: #f3f4f6; /* Very light cool gray */
+  --gp-surface: #ffffff; /* Clean white */
+  --gp-ink: #111827; /* Deep slate, almost black */
+  --gp-muted: #6b7280; /* Gray-500 */
+  --gp-line: #e5e7eb; /* Gray-200 */
+  --gp-line-strong: #d1d5db; /* Gray-300 */
+  
+  /* Primary: Electric Cyan/Blue (Classic tech color) */
+  --gp-primary: #0284c7; /* Sky-600 */
+  --gp-primary-2: #0369a1; /* Sky-700 */
+  --gp-primary-soft: #f0f9ff;
+  --gp-primary-glow: rgba(2, 132, 199, 0.15);
+  
+  /* Accent: Copper/Amber (Represents wires/metals) */
+  --gp-accent: #f59e0b;
+  --gp-accent-soft: #fffbeb;
+  
+  /* Status Colors */
+  --gp-danger: #ef4444;
   --gp-danger-soft: #fef2f2;
-  --gp-warn: #b45309;
-  --gp-warn-soft: #fff8ed;
-  --gp-info: #2563eb;
+  --gp-warn: #f97316;
+  --gp-warn-soft: #fff7ed;
+  --gp-info: #3b82f6;
   --gp-info-soft: #eff6ff;
-  /* Light sidebar */
-  --gp-sidebar: #f8fafc;
+  
+  /* Layout & Shadows (Sharp & Industrial) */
+  --gp-sidebar: #ffffff;
   --gp-sidebar-elevated: #ffffff;
-  --gp-sidebar-ink: #334155;
-  --gp-sidebar-muted: #94a3b8;
-  --gp-sidebar-active: rgba(30, 107, 184, 0.1);
-  --gp-shadow-sm: 0 1px 2px rgba(21, 32, 51, 0.04);
-  --gp-shadow-md: 0 6px 20px rgba(21, 32, 51, 0.05);
-  --gp-shadow-lg: 0 16px 40px rgba(21, 32, 51, 0.07);
-  --gp-radius: 10px;
-  --gp-radius-lg: 14px;
+  --gp-sidebar-ink: #1f2937;
+  --gp-sidebar-muted: #9ca3af;
+  --gp-sidebar-active: #f0f9ff;
+  --gp-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --gp-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+  --gp-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+  
+  /* Corners (Slightly sharper for a technical feel) */
+  --gp-radius: 6px;
+  --gp-radius-lg: 10px;
 }
 
 html[lang="bn"] {
@@ -72,9 +81,6 @@ body {
 
 body {
   background: var(--gp-bg);
-  background-image:
-    radial-gradient(ellipse 80% 50% at 0% -10%, rgba(30, 107, 184, 0.05), transparent 50%),
-    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(13, 148, 136, 0.04), transparent 45%);
   color: var(--gp-ink);
   font-family: var(--font-body);
   font-size: 15px;
