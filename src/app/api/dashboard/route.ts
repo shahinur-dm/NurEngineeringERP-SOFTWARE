@@ -128,16 +128,12 @@ export async function GET(req: NextRequest) {
 
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
-  const startOfMonth = new Date(
-    startOfToday.getFullYear(),
-    startOfToday.getMonth(),
-    1,
-  );
+  const thirtyDaysAgo = new Date(startOfToday.getTime() - 30 * 24 * 60 * 60 * 1000);
   const monthSaleMatch = {
     ...saleMatch,
     saleDate: Object.keys(dateFilter).length
       ? dateFilter
-      : { $gte: startOfMonth },
+      : { $gte: thirtyDaysAgo },
   };
 
   const [
@@ -221,7 +217,7 @@ export async function GET(req: NextRequest) {
       {
         $match: Object.keys(dateFilter).length
           ? expenseMatch
-          : { expenseDate: { $gte: startOfMonth } },
+          : { expenseDate: { $gte: thirtyDaysAgo } },
       },
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]),
@@ -284,7 +280,7 @@ export async function GET(req: NextRequest) {
       {
         $match: Object.keys(dateFilter).length
           ? expenseMatch
-          : { expenseDate: { $gte: startOfMonth } },
+          : { expenseDate: { $gte: thirtyDaysAgo } },
       },
       { $group: { _id: "$category", total: { $sum: "$amount" } } },
     ]),
