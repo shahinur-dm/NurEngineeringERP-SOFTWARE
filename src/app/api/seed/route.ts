@@ -797,7 +797,7 @@ export async function POST(req: NextRequest) {
     ]);
 
     await Lead.insertMany(
-      Array.from({ length: 20 }, (_, i) => ({
+      Array.from({ length: 70 }, (_, i) => ({
         name: `Prospect Lab ${i + 1}`,
         mobile: `0194${String(1000000 + i).slice(1)}`,
         email: `prospect${i + 1}@edu.bd`,
@@ -844,26 +844,47 @@ export async function POST(req: NextRequest) {
       })),
     );
 
-    await Project.insertMany([
-      {
-        name: "Campus Lab Expansion",
-        status: "open",
-        description: "Supply Arduino/ESP kits to 5 universities",
-        dueDate: daysAgo(-45),
-      },
-      {
-        name: "Warehouse Digitization",
-        status: "open",
-        description: "Barcode + stock transfer upgrade",
-        dueDate: daysAgo(-20),
-      },
-      {
-        name: "Chittagong Branch Setup",
-        status: "completed",
-        description: "Opened Agrabad outlet",
-        dueDate: daysAgo(10),
-      },
+    await Project.insertMany(
+      Array.from({ length: 15 }, (_, i) => ({
+        name: `Project ${i + 1}: ${pick(["Lab Expansion", "Warehouse Upgrade", "Branch Setup", "Robotics Kit Supply", "IoT Automation"])}`,
+        status: pick(["open", "completed"]),
+        description: `Project description for project ${i + 1}`,
+        dueDate: daysAgo(rand(-60, 60)),
+      }))
+    );
+
+    await CommissionAgent.insertMany(
+      Array.from({ length: 10 }, (_, i) => ({
+        name: `Agent ${pick(["Hasan", "Jamal", "Rafiq", "Sujon", "Kamal"])} ${i + 1}`,
+        email: `agent${i + 1}@ditpharma.bd`,
+        phone: `0182${String(1000000 + i).slice(1)}`,
+        commissionPercent: pick([2, 5, 10, 15]),
+        address: pick(["Dhaka", "Sylhet", "Chittagong", "Rajshahi"]),
+        isActive: true
+      }))
+    );
+
+    await Role.insertMany([
+      { name: "Super Admin", permissions: ["all"], description: "Full access" },
+      { name: "Sales Exec", permissions: ["sales.create", "sales.view"], description: "Only sales access" },
+      { name: "Support Agent", permissions: ["service.view", "service.edit"], description: "Service management access" }
     ]);
+
+    const { ActivityLog } = await import("@/models");
+    if(ActivityLog) {
+      await ActivityLog.insertMany(
+        Array.from({ length: 150 }, (_, i) => ({
+          userId: admin._id,
+          userName: admin.name,
+          action: pick(["create", "update", "delete", "login"]),
+          entityType: pick(["Sale", "Purchase", "Product", "Contact", "Expense", "ServiceJob"]),
+          entityId: admin._id,
+          details: `Performed ${pick(["create", "update", "delete", "login"])} operation on ${pick(["Sale", "Purchase", "Product", "Contact", "Expense", "ServiceJob"])}`,
+          ipAddress: `192.168.1.${rand(10, 255)}`,
+          createdAt: daysAgo(rand(0, 30)),
+        }))
+      );
+    }
 
     await NotificationTemplate.insertMany([
       {

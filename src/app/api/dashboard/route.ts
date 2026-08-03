@@ -273,7 +273,12 @@ export async function GET(req: NextRequest) {
     PurchaseRequisition.find({ status: "pending" }).limit(10).lean(),
     Shipment.find({ status: "pending" }).limit(10).lean(),
     Sale.aggregate([
-      { $match: monthSaleMatch },
+      { 
+        $match: {
+          ...(Object.keys(dateFilter).length ? dateFilter : { saleDate: { $gte: thirtyDaysAgo } }),
+          ...(locationId ? { locationId } : {})
+        }
+      },
       { $group: { _id: "$status", total: { $sum: "$grandTotal" } } },
     ]),
     Expense.aggregate([
