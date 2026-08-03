@@ -32,12 +32,14 @@ export function KpiCard({
   label,
   value,
   hint,
+  icon: Icon,
   onClick,
   tone = "default",
 }: {
   label: string;
   value: string | number;
   hint?: string;
+  icon?: any;
   onClick?: () => void;
   tone?: "default" | "warn" | "danger" | "info";
 }) {
@@ -50,22 +52,33 @@ export function KpiCard({
           ? "gp-kpi-info"
           : "border-line bg-white";
 
+  const textToneClass = 
+    tone === "warn" ? "text-warn" 
+    : tone === "danger" ? "text-danger"
+    : tone === "info" ? "text-info"
+    : "text-muted";
+
   return (
     <button
       type="button"
       data-animate="card"
       onClick={onClick}
       className={cn(
-        "gp-card w-full p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md",
+        "gp-card w-full p-5 text-left transition hover:-translate-y-1 hover:shadow-md relative overflow-hidden flex flex-col justify-between",
         toneClass,
         onClick && "cursor-pointer",
       )}
     >
-      <p className="text-[0.7rem] font-semibold uppercase tracking-[0.06em] text-muted">{label}</p>
-      <p className="gp-money mt-1.5 text-xl tracking-tight text-[var(--gp-ink)] md:text-2xl">
-        {typeof value === "number" ? formatBDT(value) : value}
-      </p>
-      {hint ? <p className="mt-1.5 text-sm font-semibold text-primary">{hint}</p> : null}
+      <div className="flex justify-between items-start mb-3">
+        <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">{label}</p>
+        {Icon && <Icon className={cn("w-5 h-5 opacity-70", textToneClass)} />}
+      </div>
+      <div className="mt-auto">
+        <p className="gp-money text-2xl tracking-tight text-[var(--gp-ink)] md:text-3xl">
+          {typeof value === "number" ? formatBDT(value) : value}
+        </p>
+        {hint ? <p className="mt-1.5 text-xs font-semibold text-primary/80">{hint}</p> : null}
+      </div>
     </button>
   );
 }

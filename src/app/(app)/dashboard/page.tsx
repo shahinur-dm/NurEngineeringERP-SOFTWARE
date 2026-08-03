@@ -11,7 +11,24 @@ import {
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+  BarChart,
+  Bar,
 } from "recharts";
+import {
+  Banknote,
+  TrendingUp,
+  ShoppingCart,
+  Undo2,
+  AlertTriangle,
+  Wallet,
+  CreditCard,
+  Receipt,
+  Package,
+} from "lucide-react";
 import { EmptyState, Field, FilterBar, KpiCard, Modal, PageHeader } from "@/components/ui";
 import { formatBDT, formatDateBD } from "@/lib/utils";
 
@@ -29,6 +46,10 @@ type Dash = {
     lowStockCount: number;
   };
   trend: { _id: string; total: number }[];
+  charts?: {
+    salesByStatus?: { _id: string; total: number }[];
+    expensesByCategory?: { _id: string; total: number }[];
+  };
   recentSales: {
     _id: string;
     invoiceNo: string;
@@ -89,7 +110,7 @@ export default function DashboardPage() {
   const widgets = data?.widgets;
 
   return (
-    <div>
+    <div className="pb-10">
       <PageHeader title={t("dashboard.title")} subtitle={t("dashboard.clickBreakdown")} />
 
       <FilterBar>
@@ -128,58 +149,163 @@ export default function DashboardPage() {
         </div>
       </FilterBar>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard
-          label={t("dashboard.totalSales")}
-          value={data?.kpis.totalSales || 0}
-          hint={t("dashboard.clickBreakdown")}
-          onClick={() => openBreakdown("sales", t("dashboard.totalSales"))}
-        />
-        <KpiCard
-          label={t("dashboard.net")}
-          value={data?.kpis.net || 0}
-          tone="info"
-          onClick={() => openBreakdown("sales", t("dashboard.net"))}
-        />
-        <KpiCard
-          label={t("dashboard.invoiceDue")}
-          value={data?.kpis.invoiceDue || 0}
-          tone="warn"
-          hint={t("dashboard.clickBreakdown")}
-          onClick={() => openBreakdown("due", t("dashboard.invoiceDue"))}
-        />
-        <KpiCard
-          label={t("dashboard.sellReturn")}
-          value={data?.kpis.sellReturn || 0}
-          tone="danger"
-          onClick={() => openBreakdown("sell-returns", t("dashboard.sellReturn"))}
-        />
-        <KpiCard
-          label={t("dashboard.totalPurchase")}
-          value={data?.kpis.totalPurchase || 0}
-          onClick={() => openBreakdown("purchases", t("dashboard.totalPurchase"))}
-        />
-        <KpiCard
-          label={t("dashboard.purchaseDue")}
-          value={data?.kpis.purchaseDue || 0}
-          tone="warn"
-          onClick={() => openBreakdown("purchase-due", t("dashboard.purchaseDue"))}
-        />
-        <KpiCard
-          label={t("dashboard.purchaseReturn")}
-          value={data?.kpis.purchaseReturn || 0}
-          tone="danger"
-          onClick={() => openBreakdown("purchase-returns", t("dashboard.purchaseReturn"))}
-        />
-        <KpiCard
-          label={t("dashboard.expenses")}
-          value={data?.kpis.expenses || 0}
-          tone="danger"
-          onClick={() => openBreakdown("expenses", t("dashboard.expenses"))}
-        />
+      <div className="mb-8 space-y-4">
+        <h2 className="text-[0.8rem] font-bold uppercase tracking-wider text-muted">Primary Overview</h2>
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <KpiCard
+            label={t("dashboard.totalSales")}
+            value={data?.kpis.totalSales || 0}
+            icon={TrendingUp}
+            hint={t("dashboard.clickBreakdown")}
+            onClick={() => openBreakdown("sales", t("dashboard.totalSales"))}
+          />
+          <KpiCard
+            label={t("dashboard.net")}
+            value={data?.kpis.net || 0}
+            icon={Banknote}
+            tone="info"
+            onClick={() => openBreakdown("sales", t("dashboard.net"))}
+          />
+          <KpiCard
+            label={t("dashboard.totalPurchase")}
+            value={data?.kpis.totalPurchase || 0}
+            icon={ShoppingCart}
+            onClick={() => openBreakdown("purchases", t("dashboard.totalPurchase"))}
+          />
+          <KpiCard
+            label={t("dashboard.expenses")}
+            value={data?.kpis.expenses || 0}
+            icon={Wallet}
+            tone="danger"
+            onClick={() => openBreakdown("expenses", t("dashboard.expenses"))}
+          />
+        </div>
       </div>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+      <div className="mb-8 space-y-4">
+        <h2 className="text-[0.8rem] font-bold uppercase tracking-wider text-muted">Due & Returns</h2>
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <KpiCard
+            label={t("dashboard.invoiceDue")}
+            value={data?.kpis.invoiceDue || 0}
+            icon={AlertTriangle}
+            tone="warn"
+            hint={t("dashboard.clickBreakdown")}
+            onClick={() => openBreakdown("due", t("dashboard.invoiceDue"))}
+          />
+          <KpiCard
+            label={t("dashboard.purchaseDue")}
+            value={data?.kpis.purchaseDue || 0}
+            icon={CreditCard}
+            tone="warn"
+            onClick={() => openBreakdown("purchase-due", t("dashboard.purchaseDue"))}
+          />
+          <KpiCard
+            label={t("dashboard.sellReturn")}
+            value={data?.kpis.sellReturn || 0}
+            icon={Undo2}
+            tone="danger"
+            onClick={() => openBreakdown("sell-returns", t("dashboard.sellReturn"))}
+          />
+          <KpiCard
+            label={t("dashboard.purchaseReturn")}
+            value={data?.kpis.purchaseReturn || 0}
+            icon={Receipt}
+            tone="danger"
+            onClick={() => openBreakdown("purchase-returns", t("dashboard.purchaseReturn"))}
+          />
+        </div>
+      </div>
+
+      <div className="mt-8 grid gap-5 xl:grid-cols-3">
+        <div className="gp-card p-5 xl:col-span-2 shadow-sm border border-line">
+          <h2 className="mb-4 text-lg font-bold text-[var(--gp-ink)]">
+            {t("dashboard.salesTrend")}
+          </h2>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                <XAxis dataKey="date" tick={{ fontSize: 12, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 12, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+                <Tooltip formatter={(v) => formatBDT(Number(v || 0), locale)} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} />
+                <Line type="monotone" dataKey="total" stroke="#0284c7" strokeWidth={3} dot={false} activeDot={{ r: 6, fill: "#0284c7" }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="gp-card p-5 shadow-sm border border-line">
+          <h2 className="mb-4 text-lg font-bold text-[var(--gp-ink)]">Expense Breakdown</h2>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={data?.charts?.expensesByCategory || []}
+                  dataKey="total"
+                  nameKey="_id"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
+                >
+                  {(data?.charts?.expensesByCategory || []).map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={["#0284c7", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6"][index % 5]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(v) => formatBDT(Number(v || 0), locale)} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} />
+                <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6 grid gap-5 xl:grid-cols-3">
+        <div className="gp-card p-5 xl:col-span-2 shadow-sm border border-line">
+          <h2 className="mb-4 text-lg font-bold text-[var(--gp-ink)]">Sales by Status</h2>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data?.charts?.salesByStatus || []} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                <XAxis dataKey="_id" tick={{ fontSize: 12, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 12, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+                <Tooltip formatter={(v) => formatBDT(Number(v || 0), locale)} cursor={{ fill: '#f3f4f6' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} />
+                <Bar dataKey="total" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={40} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="gp-card p-5 shadow-sm border border-line">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-bold text-[var(--gp-ink)] flex items-center gap-2">
+              <Package className="w-5 h-5 text-warn" />
+              {t("dashboard.stockAlerts")}
+            </h2>
+            <Link href="/reports/stock" className="text-sm font-semibold text-primary hover:underline">
+              {t("common.view")} →
+            </Link>
+          </div>
+          <div className="space-y-3">
+            {(data?.lowStock || []).length === 0 ? (
+              <EmptyState message={t("common.noData")} />
+            ) : (
+              data?.lowStock.map((p) => (
+                <div key={p.sku} className="rounded-xl border border-line px-3 py-3 hover:bg-[#fafbfc] transition">
+                  <p className="font-bold text-sm text-[var(--gp-ink)]">{locale === "bn" && p.nameBn ? p.nameBn : p.name}</p>
+                  <p className="text-xs text-muted mt-0.5">
+                    SKU: {p.sku} · QTY: <span className="text-danger font-bold">{p.qty}</span>
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-8 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
         <WidgetCard
           title={t("dashboard.salesPaymentDue")}
           href="/reports/sell-payment"
@@ -216,29 +342,13 @@ export default function DashboardPage() {
           )}
         </WidgetCard>
 
-        <WidgetCard
-          title={t("dashboard.stockAlert")}
-          href="/reports/stock"
-          onViewAll={() => openBreakdown("lowstock", t("dashboard.stockAlert"))}
-        >
-          {(data?.lowStock || []).length === 0 ? (
-            <EmptyState message={t("common.noData")} />
-          ) : (
-            data?.lowStock.map((p) => (
-              <WidgetRow
-                key={p.sku}
-                label={locale === "bn" && p.nameBn ? p.nameBn : p.name}
-                value={`${p.qty} (${p.sku})`}
-              />
-            ))
-          )}
-        </WidgetCard>
-
         <WidgetCard title={t("dashboard.salesOrder")} href="/sales/drafts">
           <WidgetRow label={t("dashboard.todaySales")} value={formatBDT(data?.kpis.todaySales || 0, locale)} />
-          <Link href="/sales/drafts" className="text-sm font-semibold text-primary hover:underline">
-            {t("nav.listDrafts")} →
-          </Link>
+          <div className="pt-2 text-right">
+            <Link href="/sales/drafts" className="text-sm font-semibold text-primary hover:underline">
+              {t("nav.listDrafts")} →
+            </Link>
+          </div>
         </WidgetCard>
 
         <WidgetCard
@@ -270,50 +380,10 @@ export default function DashboardPage() {
         </WidgetCard>
       </div>
 
-      <div className="mt-6 grid gap-5 xl:grid-cols-3">
-        <div className="gp-card p-5 xl:col-span-2">
-          <h2 className="mb-4 text-xl font-bold">{t("dashboard.salesTrend")}</h2>
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e4e9f0" />
-                <XAxis dataKey="date" tick={{ fontSize: 12, fill: "#64748b" }} />
-                <YAxis tick={{ fontSize: 12, fill: "#64748b" }} />
-                <Tooltip formatter={(v) => formatBDT(Number(v || 0), locale)} />
-                <Line type="monotone" dataKey="total" stroke="#1e6bb8" strokeWidth={2.5} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="gp-card p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-bold">{t("dashboard.stockAlerts")}</h2>
-            <Link href="/reports/stock" className="text-sm font-semibold text-primary">
-              {t("common.view")} →
-            </Link>
-          </div>
-          <div className="space-y-3">
-            {(data?.lowStock || []).length === 0 ? (
-              <EmptyState message={t("common.noData")} />
-            ) : (
-              data?.lowStock.map((p) => (
-                <div key={p.sku} className="rounded-xl border border-line px-3 py-3">
-                  <p className="font-bold">{locale === "bn" && p.nameBn ? p.nameBn : p.name}</p>
-                  <p className="text-sm text-muted">
-                    {p.sku} · {p.qty}
-                  </p>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="gp-card mt-5 overflow-auto p-5">
+      <div className="gp-card mt-8 overflow-auto p-5 shadow-sm border-line">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-bold">{t("dashboard.recentSales")}</h2>
-          <Link href="/sales" className="text-sm font-semibold text-primary">
+          <h2 className="text-lg font-bold text-[var(--gp-ink)]">{t("dashboard.recentSales")}</h2>
+          <Link href="/sales" className="text-sm font-semibold text-primary hover:underline">
             {t("nav.allSales")} →
           </Link>
         </div>
@@ -396,9 +466,9 @@ function WidgetCard({
 }) {
   const t = useTranslations();
   return (
-    <div className="gp-card-elevated p-5">
+    <div className="gp-card p-5 shadow-sm border border-line">
       <div className="mb-4 flex items-center justify-between border-b border-line pb-3">
-        <h3 className="gp-display text-lg font-bold">{title}</h3>
+        <h3 className="text-[0.95rem] font-bold text-[var(--gp-ink)]">{title}</h3>
         {onViewAll ? (
           <button type="button" className="text-sm font-semibold text-primary hover:underline" onClick={onViewAll}>
             {t("common.view")} →
@@ -416,9 +486,9 @@ function WidgetCard({
 
 function WidgetRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between rounded-xl border border-line bg-[#fbfcfb] px-3 py-2.5 text-sm">
+    <div className="flex items-center justify-between rounded-lg border border-line bg-[#fbfcfb] px-3 py-2.5 text-sm hover:border-[color-mix(in_oklab,var(--gp-primary)_30%,white)] transition">
       <span className="font-medium text-[var(--gp-ink)]">{label}</span>
-      <span className="gp-money text-primary">{value}</span>
+      <span className="gp-money text-[var(--gp-primary)] font-bold">{value}</span>
     </div>
   );
 }

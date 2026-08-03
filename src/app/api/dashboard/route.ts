@@ -15,7 +15,8 @@ import {
 
 export async function GET(req: NextRequest) {
   const session = await readSession();
-  if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!session)
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   await connectDB();
   const { searchParams } = new URL(req.url);
@@ -36,7 +37,9 @@ export async function GET(req: NextRequest) {
   if (Object.keys(dateFilter).length) saleMatch.saleDate = dateFilter;
   if (locationId) saleMatch.locationId = locationId;
 
-  const purchaseMatch: Record<string, unknown> = { status: { $in: ["received", "ordered"] } };
+  const purchaseMatch: Record<string, unknown> = {
+    status: { $in: ["received", "ordered"] },
+  };
   if (Object.keys(dateFilter).length) purchaseMatch.purchaseDate = dateFilter;
   if (locationId) purchaseMatch.locationId = locationId;
 
@@ -67,12 +70,18 @@ export async function GET(req: NextRequest) {
   }
   if (breakdown === "expenses") {
     return NextResponse.json({
-      rows: await Expense.find(expenseMatch).sort({ expenseDate: -1 }).limit(100).lean(),
+      rows: await Expense.find(expenseMatch)
+        .sort({ expenseDate: -1 })
+        .limit(100)
+        .lean(),
     });
   }
   if (breakdown === "purchases") {
     return NextResponse.json({
-      rows: await Purchase.find(purchaseMatch).sort({ purchaseDate: -1 }).limit(100).lean(),
+      rows: await Purchase.find(purchaseMatch)
+        .sort({ purchaseDate: -1 })
+        .limit(100)
+        .lean(),
     });
   }
   if (breakdown === "sell-returns") {
@@ -82,12 +91,17 @@ export async function GET(req: NextRequest) {
   }
   if (breakdown === "purchase-returns") {
     return NextResponse.json({
-      rows: await PurchaseReturn.find().sort({ returnDate: -1 }).limit(100).lean(),
+      rows: await PurchaseReturn.find()
+        .sort({ returnDate: -1 })
+        .limit(100)
+        .lean(),
     });
   }
   if (breakdown === "requisitions") {
     return NextResponse.json({
-      rows: await PurchaseRequisition.find({ status: "pending" }).limit(100).lean(),
+      rows: await PurchaseRequisition.find({ status: "pending" })
+        .limit(100)
+        .lean(),
     });
   }
   if (breakdown === "shipments") {
@@ -100,7 +114,10 @@ export async function GET(req: NextRequest) {
     const rows = products
       .map((p) => {
         const qty = (p.stocks || [])
-          .filter((s: { locationId?: unknown; qty?: number }) => !locationId || String(s.locationId) === locationId)
+          .filter(
+            (s: { locationId?: unknown; qty?: number }) =>
+              !locationId || String(s.locationId) === locationId,
+          )
           .reduce((a: number, s: { qty?: number }) => a + (s.qty || 0), 0);
         return { ...p, qty };
       })
@@ -111,10 +128,16 @@ export async function GET(req: NextRequest) {
 
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
-  const startOfMonth = new Date(startOfToday.getFullYear(), startOfToday.getMonth(), 1);
+  const startOfMonth = new Date(
+    startOfToday.getFullYear(),
+    startOfToday.getMonth(),
+    1,
+  );
   const monthSaleMatch = {
     ...saleMatch,
-    saleDate: Object.keys(dateFilter).length ? dateFilter : { $gte: startOfMonth },
+    saleDate: Object.keys(dateFilter).length
+      ? dateFilter
+      : { $gte: startOfMonth },
   };
 
   const [
@@ -137,7 +160,13 @@ export async function GET(req: NextRequest) {
   ] = await Promise.all([
     Sale.aggregate([
       { $match: { ...saleMatch, saleDate: { $gte: startOfToday } } },
-      { $group: { _id: null, total: { $sum: "$grandTotal" }, count: { $sum: 1 } } },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$grandTotal" },
+          count: { $sum: 1 },
+        },
+      },
     ]),
     Sale.aggregate([
       { $match: monthSaleMatch },
@@ -152,27 +181,62 @@ export async function GET(req: NextRequest) {
       },
     ]),
     Sale.aggregate([
-      { $match: { status: "final", dueAmount: { $gt: 0 }, ...(locationId ? { locationId } : {}) } },
-      { $group: { _id: null, total: { $sum: "$dueAmount" }, count: { $sum: 1 } } },
+      {
+        $match: {
+          status: "final",
+          dueAmount: { $gt: 0 },
+          ...(locationId ? { locationId } : {}),
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$dueAmount" },
+          count: { $sum: 1 },
+        },
+      },
     ]),
     Purchase.aggregate([
-      { $match: { dueAmount: { $gt: 0 }, ...(locationId ? { locationId } : {}) } },
-      { $group: { _id: null, total: { $sum: "$dueAmount" }, count: { $sum: 1 } } },
+      {
+        $match: {
+          dueAmount: { $gt: 0 },
+          ...(locationId ? { locationId } : {}),
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$dueAmount" },
+          count: { $sum: 1 },
+        },
+      },
     ]),
     Purchase.aggregate([
       { $match: purchaseMatch },
       { $group: { _id: null, total: { $sum: "$grandTotal" } } },
     ]),
     Expense.aggregate([
-      { $match: Object.keys(dateFilter).length ? expenseMatch : { expenseDate: { $gte: startOfMonth } } },
+      {
+        $match: Object.keys(dateFilter).length
+          ? expenseMatch
+          : { expenseDate: { $gte: startOfMonth } },
+      },
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]),
     SellReturn.aggregate([
-      { $match: Object.keys(dateFilter).length ? { returnDate: dateFilter } : {} },
+      {
+        $match: Object.keys(dateFilter).length
+          ? { returnDate: dateFilter }
+          : {},
+      },
       { $group: { _id: null, total: { $sum: "$grandTotal" } } },
     ]),
     PurchaseReturn.aggregate([
-      { $match: Object.keys(dateFilter).length ? { returnDate: dateFilter } : {} },
+      {
+        $match: Object.keys(dateFilter).length
+          ? { returnDate: dateFilter }
+          : {},
+      },
       { $group: { _id: null, total: { $sum: "$grandTotal" } } },
     ]),
     Sale.aggregate([
@@ -185,7 +249,13 @@ export async function GET(req: NextRequest) {
       },
       {
         $group: {
-          _id: { $dateToString: { format: "%Y-%m-%d", date: "$saleDate", timezone: "Asia/Dhaka" } },
+          _id: {
+            $dateToString: {
+              format: "%Y-%m-%d",
+              date: "$saleDate",
+              timezone: "Asia/Dhaka",
+            },
+          },
           total: { $sum: "$grandTotal" },
         },
       },
@@ -194,8 +264,14 @@ export async function GET(req: NextRequest) {
     Sale.find(saleMatch).sort({ saleDate: -1 }).limit(8).lean(),
     Location.find({ isActive: true }).lean(),
     Product.find({ isActive: true }).lean(),
-    Sale.find({ dueAmount: { $gt: 0 } }).sort({ dueAmount: -1 }).limit(10).lean(),
-    Purchase.find({ dueAmount: { $gt: 0 } }).sort({ dueAmount: -1 }).limit(10).lean(),
+    Sale.find({ dueAmount: { $gt: 0 } })
+      .sort({ dueAmount: -1 })
+      .limit(10)
+      .lean(),
+    Purchase.find({ dueAmount: { $gt: 0 } })
+      .sort({ dueAmount: -1 })
+      .limit(10)
+      .lean(),
     PurchaseRequisition.find({ status: "pending" }).limit(10).lean(),
     Shipment.find({ status: "pending" }).limit(10).lean(),
   ]);
@@ -203,9 +279,19 @@ export async function GET(req: NextRequest) {
   const lowStock = products
     .map((p) => {
       const qty = (p.stocks || [])
-        .filter((s: { locationId?: unknown; qty?: number }) => !locationId || String(s.locationId) === locationId)
+        .filter(
+          (s: { locationId?: unknown; qty?: number }) =>
+            !locationId || String(s.locationId) === locationId,
+        )
         .reduce((a: number, s: { qty?: number }) => a + (s.qty || 0), 0);
-      return { id: p._id, name: p.name, nameBn: p.nameBn, sku: p.sku, qty, alertQty: p.alertQty };
+      return {
+        id: p._id,
+        name: p.name,
+        nameBn: p.nameBn,
+        sku: p.sku,
+        qty,
+        alertQty: p.alertQty,
+      };
     })
     .filter((p) => p.qty <= (p.alertQty || 0))
     .slice(0, 10);
