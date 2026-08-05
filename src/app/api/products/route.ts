@@ -2,16 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { Types } from "mongoose";
 import { connectDB } from "@/lib/db";
 import { readSession } from "@/lib/auth";
-import { Contact, Product, ProductSupplier } from "@/models";
-import {
-  attachOffersToProducts,
-  healSupplierLabels,
-  saveProductOffers,
-  syncProductSupplierLinks,
-} from "@/lib/product-suppliers";
+import { Contact, Location, Product, ProductSupplier, nextSeq } from "@/models";
+import { attachOffersToProducts, saveProductOffers } from "@/lib/product-suppliers";
 
 function escapeRegex(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function parseApiError(err: unknown) {
+  if (err && typeof err === "object" && "code" in err && err.code === 11000) {
+    return { status: 409, error: "duplicate_sku" as const };
+  }
+  const message = err instanceof Error ? err.message : "failed";
+  return { status: 500, error: message };
 }
 
 export async function GET(req: NextRequest) {
@@ -19,8 +22,6 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   await connectDB();
-  await syncProductSupplierLinks();
-  await healSupplierLabels();
 
   const { searchParams } = new URL(req.url);
   const q = searchParams.get("q")?.trim();
@@ -43,58 +44,59 @@ export async function GET(req: NextRequest) {
         ? { $gte: Math.max(0, amount * 0.98), $lte: amount * 1.02 }
         : null;
 
-    const textMatchIds = (
-      await Product.find({
-        isActive: true,
-        $or: [{ name: rx }, { nameBn: rx }, { sku: rx }, { barcode: rx }, { brand: rx }],
-      })
-        .select("_id")
-        .lean()
-    ).map((p) => String(p._id));
+    const or: Record<string, unknown>[] = [
+      { name: rx },
+      { nameBn: rx },
+      { sku: rx },
+      { barcode: rx },
+      { brand: rx },
+    ];
 
-    const supplierIds = (
-      await Contact.find({
+    const extraQueries: Promise<string[]>[] = [];
+
+    extraQueries.push(
+      Contact.find({
         type: { $in: ["supplier", "both"] },
         isActive: true,
         $or: [{ name: rx }, { nameBn: rx }, { mobile: rx }],
       })
         .select("_id")
         .lean()
-    ).map((s) => s._id);
+        .then(async (suppliers) => {
+          if (!suppliers.length) return [];
+          const ids = suppliers.map((s) => s._id);
+          return ProductSupplier.find({
+            isActive: true,
+            supplierId: { $in: ids },
+          })
+            .distinct("productId")
+            .then((ids) => ids.map(String));
+        }),
+    );
 
-    const linkOr: Record<string, unknown>[] = [];
-    if (supplierIds.length) linkOr.push({ supplierId: { $in: supplierIds } });
-    if (moneyRange) linkOr.push({ price: moneyRange });
-
-    let supplierMatchIds: string[] = [];
-    if (linkOr.length) {
-      supplierMatchIds = (
-        await ProductSupplier.find({ isActive: true, $or: linkOr })
-          .select("productId")
-          .lean()
-      ).map((l) => String(l.productId));
-    }
-
-    let priceProductIds: string[] = [];
     if (moneyRange) {
-      priceProductIds = (
-        await Product.find({
+      extraQueries.push(
+        Product.find({
           isActive: true,
-          $or: [
-            { purchasePrice: moneyRange },
-            { sellPrice: moneyRange },
-            { "supplierOffers.price": moneyRange },
-          ],
+          $or: [{ purchasePrice: moneyRange }, { sellPrice: moneyRange }],
         })
-          .select("_id")
-          .lean()
-      ).map((p) => String(p._id));
+          .distinct("_id")
+          .then((ids) => ids.map(String)),
+      );
+      extraQueries.push(
+        ProductSupplier.find({ isActive: true, price: moneyRange })
+          .distinct("productId")
+          .then((ids) => ids.map(String)),
+      );
     }
 
-    const idSet = new Set([...textMatchIds, ...supplierMatchIds, ...priceProductIds]);
-    filter._id = {
-      $in: [...idSet].map((id) => new Types.ObjectId(id)),
-    };
+    const extraIdSets = await Promise.all(extraQueries);
+    const extraIds = [...new Set(extraIdSets.flat())];
+    if (extraIds.length) {
+      or.push({ _id: { $in: extraIds.map((id) => new Types.ObjectId(id)) } });
+    }
+
+    filter.$or = or;
   }
 
   const total = await Product.countDocuments(filter);
@@ -135,28 +137,66 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   await connectDB();
-  const body = await req.json();
-  const product = await Product.create({
-    name: body.name,
-    nameBn: body.nameBn,
-    sku: body.sku,
-    barcode: body.barcode || body.sku,
-    categoryId: body.categoryId || undefined,
-    brand: body.brand,
-    unit: body.unit || "Pcs",
-    unitBn: body.unitBn || "পিস",
-    purchasePrice: Number(body.purchasePrice || 0),
-    sellPrice: Number(body.sellPrice || 0),
-    taxPercent: Number(body.taxPercent || 0),
-    alertQty: Number(body.alertQty || 10),
-    hsCode: body.hsCode,
-    stocks: body.stocks || [],
-  });
 
-  if (Array.isArray(body.supplierOffers)) {
-    await saveProductOffers(String(product._id), body.supplierOffers);
+  try {
+    const body = await req.json();
+    const name = String(body.name || "").trim();
+    if (!name) {
+      return NextResponse.json({ error: "missing_name" }, { status: 400 });
+    }
+
+    let sku = String(body.sku || "").trim();
+    if (!sku) {
+      const seq = await nextSeq("product_sku");
+      sku = `SKU-${String(seq).padStart(5, "0")}`;
+    }
+
+    const duplicate = await Product.findOne({ sku }).lean();
+    if (duplicate) {
+      return NextResponse.json({ error: "duplicate_sku", sku }, { status: 409 });
+    }
+
+    let stocks = body.stocks;
+    if (!Array.isArray(stocks) || !stocks.length) {
+      const location = await Location.findOne({ isActive: true }).sort({ createdAt: 1 }).lean();
+      if (location) {
+        stocks = [
+          {
+            locationId: location._id,
+            qty: Number(body.openingQty || 0),
+          },
+        ];
+      } else {
+        stocks = [];
+      }
+    }
+
+    const product = await Product.create({
+      name,
+      nameBn: body.nameBn,
+      sku,
+      barcode: body.barcode || sku,
+      categoryId: body.categoryId || undefined,
+      brand: body.brand,
+      unit: body.unit || "Pcs",
+      unitBn: body.unitBn || "পিস",
+      purchasePrice: Number(body.purchasePrice || 0),
+      sellPrice: Number(body.sellPrice || 0),
+      taxPercent: Number(body.taxPercent || 0),
+      alertQty: Number(body.alertQty || 10),
+      hsCode: body.hsCode,
+      stocks,
+    });
+
+    if (Array.isArray(body.supplierOffers)) {
+      await saveProductOffers(String(product._id), body.supplierOffers);
+    }
+
+    const [withOffers] = await attachOffersToProducts([product.toObject()]);
+    return NextResponse.json({ data: withOffers }, { status: 201 });
+  } catch (err) {
+    const parsed = parseApiError(err);
+    console.error("POST /api/products", err);
+    return NextResponse.json({ error: parsed.error }, { status: parsed.status });
   }
-
-  const [withOffers] = await attachOffersToProducts([product.toObject()]);
-  return NextResponse.json({ data: withOffers }, { status: 201 });
 }

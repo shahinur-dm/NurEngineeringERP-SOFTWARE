@@ -33,6 +33,10 @@ export async function POST(req: NextRequest) {
   await connectDB();
   const body = await req.json();
 
+  if (!body.customerId) {
+    return NextResponse.json({ error: "missing_customer" }, { status: 400 });
+  }
+
   try {
     const machine = await Machine.create({
       customerId: body.customerId,

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 
-const PUBLIC = ["/login", "/api/auth/login", "/api/seed", "/api/locale"];
+const PUBLIC = ["/login", "/api/auth/login", "/api/locale"];
 
 export default async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -11,6 +11,11 @@ export default async function proxy(req: NextRequest) {
     pathname.startsWith("/favicon") ||
     pathname.includes(".")
   ) {
+    return NextResponse.next();
+  }
+
+  // First-time seed allowed without auth only for non-force bootstrap
+  if (pathname === "/api/seed" && req.method === "POST") {
     return NextResponse.next();
   }
 

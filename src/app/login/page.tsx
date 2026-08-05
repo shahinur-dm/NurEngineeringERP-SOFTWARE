@@ -10,8 +10,8 @@ export default function LoginPage() {
   const t = useTranslations();
   const locale = useLocale();
   const router = useRouter();
-  const [email, setEmail] = useState("admin@ditpharma.bd");
-  const [password, setPassword] = useState("admin123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -32,11 +32,6 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
     try {
-      void fetch("/api/seed", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: "{}",
-      }).catch(() => {});
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -51,6 +46,12 @@ export default function LoginPage() {
         );
         return;
       }
+      // Soft seed after successful login (no wipe)
+      void fetch("/api/seed", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      }).catch(() => {});
       router.push("/dashboard");
       router.refresh();
     } catch {

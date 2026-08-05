@@ -1,34 +1,122 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
-import { Field, PageHeader } from "@/components/ui";
+import { FormEvent, useCallback, useEffect, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { Plus, Trash2 } from "lucide-react";
+import { AlertBanner, Field, Modal, PageHeader } from "@/components/ui";
+
+type Business = {
+  name?: string;
+  nameBn?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  bin?: string;
+  tin?: string;
+  currency?: string;
+  invoicePrefix?: string;
+};
+
+type LocationRow = {
+  _id: string;
+  name: string;
+  code: string;
+  address?: string;
+  phone?: string;
+};
 
 export default function SettingsPage() {
   const t = useTranslations();
-  const [business, setBusiness] = useState<Record<string, string> | null>(null);
-  const [locations, setLocations] = useState<{ name: string; code: string; address?: string }[]>([]);
+  const locale = useLocale();
+  const [business, setBusiness] = useState<Business>({});
+  const [locations, setLocations] = useState<LocationRow[]>([]);
+  const [saving, setSaving] = useState(false);
   const [seeding, setSeeding] = useState(false);
-  const [seedMsg, setSeedMsg] = useState("");
+  const [banner, setBanner] = useState<{ tone: "success" | "error"; message: string } | null>(null);
+  const [locOpen, setLocOpen] = useState(false);
+  const [locForm, setLocForm] = useState({ name: "", code: "", address: "", phone: "" });
 
-  async function loadMeta() {
+  const loadMeta = useCallback(async () => {
     const r = await fetch("/api/meta");
     const d = await r.json();
-    setBusiness(d.business);
+    setBusiness(d.business || {});
     setLocations(d.locations || []);
-  }
+  }, []);
 
   useEffect(() => {
-    loadMeta();
-  }, []);
+    void loadMeta();
+  }, [loadMeta]);
+
+  async function saveBusiness(e: FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setBanner(null);
+    try {
+      const res = await fetch("/api/meta", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "business", ...business }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        setBanner({
+          tone: "error",
+          message:
+            j.error === "forbidden"
+              ? locale === "bn"
+                ? "সেটিংস পরিবর্তনের অনুমতি নেই"
+                : "No permission to change settings"
+              : t("common.error"),
+        });
+        return;
+      }
+      setBanner({
+        tone: "success",
+        message: locale === "bn" ? "সেটিংস সংরক্ষিত" : "Settings saved",
+      });
+      await loadMeta();
+    } catch {
+      setBanner({ tone: "error", message: t("common.error") });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function saveLocation(e: FormEvent) {
+    e.preventDefault();
+    const res = await fetch("/api/meta", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "location", ...locForm }),
+    });
+    if (!res.ok) {
+      setBanner({ tone: "error", message: t("common.error") });
+      return;
+    }
+    setLocOpen(false);
+    setLocForm({ name: "", code: "", address: "", phone: "" });
+    setBanner({
+      tone: "success",
+      message: locale === "bn" ? "লোকেশন যোগ হয়েছে" : "Location added",
+    });
+    await loadMeta();
+  }
+
+  async function deleteLocation(id: string) {
+    if (!confirm(locale === "bn" ? "লোকেশন মুছবেন?" : "Delete location?")) return;
+    await fetch(`/api/meta?locationId=${id}`, { method: "DELETE" });
+    await loadMeta();
+  }
 
   async function reseed() {
     const ok = confirm(
-      "সব পুরনো ডেমো ডেটা মুছে নতুন ডামি ডেটা লোড হবে। চালিয়ে যাবেন?",
+      locale === "bn"
+        ? "সব পুরনো ডেমো ডেটা মুছে নতুন ডামি ডেটা লোড হবে। চালিয়ে যাবেন?"
+        : "This will wipe demo data and reseed. Continue?",
     );
     if (!ok) return;
     setSeeding(true);
-    setSeedMsg("");
+    setBanner(null);
     try {
       const res = await fetch("/api/seed", {
         method: "POST",
@@ -37,15 +125,27 @@ export default function SettingsPage() {
       });
       const json = await res.json();
       if (json.ok) {
-        setSeedMsg(
-          `সফল! প্রতিটি মডিউলে ${json.minPerModule || 50}+ ডেটা। পণ্য ${json.counts?.products}, গ্রাহক ${json.counts?.customers}, বিক্রি ${json.counts?.sales}, ক্রয় ${json.counts?.purchases}, লিড ${json.counts?.leads}`,
-        );
+        setBanner({
+          tone: "success",
+          message:
+            locale === "bn"
+              ? `সফল! পণ্য ${json.counts?.products}, গ্রাহক ${json.counts?.customers}, বিক্রি ${json.counts?.sales}`
+              : `Reseeded: ${json.counts?.products} products, ${json.counts?.sales} sales`,
+        });
         await loadMeta();
       } else {
-        setSeedMsg("সিড ব্যর্থ হয়েছে");
+        setBanner({
+          tone: "error",
+          message:
+            json.error === "forbidden"
+              ? locale === "bn"
+                ? "শুধু অ্যাডমিন রিসিড করতে পারে"
+                : "Only admin can reseed"
+              : t("common.error"),
+        });
       }
     } catch {
-      setSeedMsg("নেটওয়ার্ক সমস্যা");
+      setBanner({ tone: "error", message: t("common.error") });
     } finally {
       setSeeding(false);
     }
@@ -54,53 +154,125 @@ export default function SettingsPage() {
   return (
     <div>
       <PageHeader title={t("settings.title")} />
+      {banner ? (
+        <AlertBanner tone={banner.tone} message={banner.message} onClose={() => setBanner(null)} />
+      ) : null}
+
       <div className="grid gap-5 xl:grid-cols-2">
-        <div className="gp-card space-y-3 p-5">
+        <form onSubmit={saveBusiness} className="gp-card space-y-3 p-5">
           <h2 className="text-xl font-bold">{t("settings.business")}</h2>
           <Field label={t("settings.businessName")}>
-            <input className="gp-input" readOnly value={business?.name || ""} />
+            <input
+              className="gp-input"
+              required
+              value={business.name || ""}
+              onChange={(e) => setBusiness((b) => ({ ...b, name: e.target.value }))}
+            />
           </Field>
           <Field label={t("settings.address")}>
-            <input className="gp-input" readOnly value={business?.address || ""} />
+            <input
+              className="gp-input"
+              value={business.address || ""}
+              onChange={(e) => setBusiness((b) => ({ ...b, address: e.target.value }))}
+            />
           </Field>
           <Field label={t("settings.phone")}>
-            <input className="gp-input" readOnly value={business?.phone || ""} />
+            <input
+              className="gp-input"
+              value={business.phone || ""}
+              onChange={(e) => setBusiness((b) => ({ ...b, phone: e.target.value }))}
+            />
+          </Field>
+          <Field label="Email">
+            <input
+              className="gp-input"
+              type="email"
+              value={business.email || ""}
+              onChange={(e) => setBusiness((b) => ({ ...b, email: e.target.value }))}
+            />
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="BIN">
-              <input className="gp-input" readOnly value={business?.bin || ""} />
+              <input
+                className="gp-input"
+                value={business.bin || ""}
+                onChange={(e) => setBusiness((b) => ({ ...b, bin: e.target.value }))}
+              />
             </Field>
             <Field label="TIN">
-              <input className="gp-input" readOnly value={business?.tin || ""} />
+              <input
+                className="gp-input"
+                value={business.tin || ""}
+                onChange={(e) => setBusiness((b) => ({ ...b, tin: e.target.value }))}
+              />
             </Field>
           </div>
-          <Field label={t("settings.currency")}>
-            <input className="gp-input" readOnly value={business?.currency || "BDT"} />
-          </Field>
-          <p className="rounded-xl bg-[var(--gp-primary-soft)] px-3 py-3 text-sm font-semibold text-primary">
-            Asia/Dhaka · FIFO · বাংলা ডিফল্ট · BD ইনভয়েস (BIN/TIN/মূসক)
-          </p>
-        </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label={t("settings.currency")}>
+              <input
+                className="gp-input"
+                value={business.currency || "BDT"}
+                onChange={(e) => setBusiness((b) => ({ ...b, currency: e.target.value }))}
+              />
+            </Field>
+            <Field label={locale === "bn" ? "ইনভয়েস প্রিফিক্স" : "Invoice prefix"}>
+              <input
+                className="gp-input"
+                value={business.invoicePrefix || ""}
+                onChange={(e) => setBusiness((b) => ({ ...b, invoicePrefix: e.target.value }))}
+              />
+            </Field>
+          </div>
+          <button type="submit" className="gp-btn gp-btn-primary w-full" disabled={saving}>
+            {saving ? t("app.loading") : t("common.save")}
+          </button>
+        </form>
 
         <div className="space-y-5">
           <div className="gp-card p-5">
-            <h2 className="mb-4 text-xl font-bold">{t("settings.locations")}</h2>
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-xl font-bold">{t("settings.locations")}</h2>
+              <button
+                type="button"
+                className="gp-btn gp-btn-primary min-h-9 px-3"
+                onClick={() => setLocOpen(true)}
+              >
+                <Plus className="h-4 w-4" />
+                {t("common.add")}
+              </button>
+            </div>
             <div className="space-y-3">
               {locations.map((l) => (
-                <div key={l.code} className="rounded-xl border border-line px-4 py-3">
-                  <p className="text-lg font-bold">{l.name}</p>
-                  <p className="text-sm text-muted">
-                    {l.code} · {l.address}
-                  </p>
+                <div
+                  key={l._id || l.code}
+                  className="flex items-start justify-between gap-2 rounded-xl border border-line px-4 py-3"
+                >
+                  <div>
+                    <p className="text-lg font-bold">{l.name}</p>
+                    <p className="text-sm text-muted">
+                      {l.code} · {l.address}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="gp-btn gp-btn-ghost min-h-8 px-2 text-[var(--gp-danger)]"
+                    onClick={() => deleteLocation(l._id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
               ))}
             </div>
           </div>
 
           <div className="gp-card space-y-3 p-5">
-            <h2 className="text-xl font-bold">ডেমো ডেটা</h2>
+            <h2 className="text-xl font-bold">
+              {locale === "bn" ? "ডেমো ডেটা" : "Demo data"}
+            </h2>
             <p className="text-sm text-muted">
-              সব পেজে নমুনা ডেটা লোড করতে নিচের বাটনে ক্লিক করুন (পুরনো ডেমো মুছে যাবে)।
+              {locale === "bn"
+                ? "অ্যাডমিন হিসেবে সব পেজে নমুনা ডেটা লোড করতে নিচের বাটনে ক্লিক করুন।"
+                : "Admin only: wipe and reload sample data for all modules."}
             </p>
             <button
               type="button"
@@ -108,16 +280,55 @@ export default function SettingsPage() {
               disabled={seeding}
               onClick={reseed}
             >
-              {seeding ? "লোড হচ্ছে..." : "নতুন ডামি ডেটা লোড করুন"}
+              {seeding
+                ? t("app.loading")
+                : locale === "bn"
+                  ? "নতুন ডামি ডেটা লোড করুন"
+                  : "Reload demo data"}
             </button>
-            {seedMsg ? (
-              <p className="rounded-xl bg-[var(--gp-primary-soft)] px-3 py-2 text-sm font-semibold text-primary">
-                {seedMsg}
-              </p>
-            ) : null}
           </div>
         </div>
       </div>
+
+      <Modal
+        open={locOpen}
+        title={locale === "bn" ? "নতুন লোকেশন" : "Add location"}
+        onClose={() => setLocOpen(false)}
+      >
+        <form onSubmit={saveLocation} className="grid gap-3">
+          <Field label={locale === "bn" ? "নাম" : "Name"}>
+            <input
+              className="gp-input"
+              required
+              value={locForm.name}
+              onChange={(e) => setLocForm((f) => ({ ...f, name: e.target.value }))}
+            />
+          </Field>
+          <Field label={locale === "bn" ? "কোড" : "Code"}>
+            <input
+              className="gp-input"
+              required
+              value={locForm.code}
+              onChange={(e) => setLocForm((f) => ({ ...f, code: e.target.value }))}
+            />
+          </Field>
+          <Field label={t("settings.address")}>
+            <input
+              className="gp-input"
+              value={locForm.address}
+              onChange={(e) => setLocForm((f) => ({ ...f, address: e.target.value }))}
+            />
+          </Field>
+          <div className="flex justify-end gap-2">
+            <button type="button" className="gp-btn gp-btn-ghost" onClick={() => setLocOpen(false)}>
+              {t("common.cancel")}
+            </button>
+            <button type="submit" className="gp-btn gp-btn-primary">
+              {t("common.save")}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

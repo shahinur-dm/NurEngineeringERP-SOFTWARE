@@ -6,6 +6,7 @@ import { Cpu } from "lucide-react";
 import { PageHeader, Field } from "@/components/ui";
 import { formatBDT } from "@/lib/utils";
 import { animateStagger } from "@/lib/gsap";
+import { useDebouncedValue } from "@/lib/hooks";
 
 type Product = {
   _id: string;
@@ -26,6 +27,7 @@ export default function PosPage() {
   const [locations, setLocations] = useState<{ _id: string; name: string }[]>([]);
   const [locationId, setLocationId] = useState("");
   const [q, setQ] = useState("");
+  const debouncedQ = useDebouncedValue(q, 300);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [customerName, setCustomerName] = useState("");
   const [payMethod, setPayMethod] = useState("cash");
@@ -45,12 +47,12 @@ export default function PosPage() {
 
   useEffect(() => {
     const qs = new URLSearchParams({ limit: "100" });
-    if (q) qs.set("q", q);
+    if (debouncedQ) qs.set("q", debouncedQ);
     if (locationId) qs.set("locationId", locationId);
     fetch(`/api/products?${qs}`)
       .then((r) => r.json())
       .then((d) => setProducts(d.data || []));
-  }, [q, locationId]);
+  }, [debouncedQ, locationId]);
 
   useEffect(() => {
     if (!gridRef.current || !products.length) return;

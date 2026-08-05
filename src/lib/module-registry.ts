@@ -371,6 +371,7 @@ export const MODULE_REGISTRY: Record<string, ModuleDef> = {
     apiPath: "/api/machines",
     canAdd: true,
     columns: [
+      { key: "customerId", labelBn: "গ্রাহক", labelEn: "Customer" },
       { key: "brand", labelBn: "ব্র্যান্ড", labelEn: "Brand" },
       { key: "model", labelBn: "মডেল", labelEn: "Model" },
       { key: "serialNo", labelBn: "সিরিয়াল নং", labelEn: "Serial No" },

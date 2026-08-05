@@ -127,7 +127,7 @@ async function ensureDemoAdmin(locationId?: unknown) {
   return admin;
 }
 
-function pick<T>(arr: T[]): T {
+function pick<T>(arr: readonly T[] | T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]!;
 }
 
@@ -137,9 +137,14 @@ function rand(min: number, max: number) {
 
 type IdDoc = { _id: unknown; name?: string; nameBn?: string; mobile?: string; sku?: string; purchasePrice?: number; sellPrice?: string | number };
 
-/** GET — relation health check / counts (no auth required for local verify when session exists) */
+/** GET — relation health check / counts (auth required) */
 export async function GET() {
   try {
+    const session = await readSession();
+    if (!session) {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+
     await connectDB();
     const [
       products,
@@ -189,18 +194,13 @@ export async function GET() {
       ]),
     ]);
 
-    const productsWithLinks = await ProductSupplier.distinct("productId", { isActive: true });
-    const sample = await Product.findOne({ isActive: true }).lean();
-    let sampleOffers: unknown[] = [];
-    if (sample) {
-      const { attachOffersToProducts } = await import("@/lib/product-suppliers");
-      const [withOffers] = await attachOffersToProducts([sample]);
-      sampleOffers = withOffers.supplierOffers || [];
-    }
+    const sample = await Product.findOne({ isActive: true }).sort({ sku: 1 }).lean();
+    const { attachOffersToProducts } = await import("@/lib/product-suppliers");
+    const [withOffers] = sample ? await attachOffersToProducts([sample]) : [null];
+    const sampleOffers = withOffers?.supplierOffers || [];
 
     return NextResponse.json({
       ok: true,
-      business: business?.name || null,
       counts: {
         products,
         suppliers,
@@ -210,16 +210,12 @@ export async function GET() {
         sales,
         locations,
         categories,
-        productsWithSupplierLinks: productsWithLinks.length,
       },
-      relations: {
-        orphanProductSupplierLinks: orphanLinks[0]?.n || 0,
-        allProductsHaveLinks:
-          products > 0 && productsWithLinks.length === products,
-        sampleProduct: sample
-          ? { name: sample.name, sku: sample.sku, offers: sampleOffers }
-          : null,
-      },
+      orphanLinks: orphanLinks[0]?.n || 0,
+      business: business?.name || null,
+      sample: sample
+        ? { name: sample.name, sku: sample.sku, offers: sampleOffers }
+        : null,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "status failed";
@@ -233,16 +229,26 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const force = Boolean(body.force);
 
+    // Allow first-time seed without session when DB is empty.
+    // Force reseed always requires admin.
     await connectDB();
-
     const existing = await Business.findOne();
+
+    if (force) {
+      if (!session || session.role !== "admin") {
+        return NextResponse.json({ error: "forbidden" }, { status: 403 });
+      }
+    } else if (existing && !session) {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+
     if (existing && !force) {
-      await ensureDemoAdmin(undefined);
+      if (session) await ensureDemoAdmin(undefined);
       return NextResponse.json({
         ok: true,
         seeded: false,
         message: "already_seeded",
-        tip: "POST { force: true } to wipe and reseed",
+        tip: "POST { force: true } as admin to wipe and reseed",
       });
     }
 
@@ -1028,7 +1034,7 @@ export async function POST(req: NextRequest) {
         locations: locations.length,
         categories: cats.length,
       },
-      admin: `${DEMO_ADMIN.email} / ${DEMO_ADMIN.password}`,
+      admin: DEMO_ADMIN.email,
       tip: "Open /products — cards show live supplier names from ProductSupplier",
       session: session?.email ?? null,
     });

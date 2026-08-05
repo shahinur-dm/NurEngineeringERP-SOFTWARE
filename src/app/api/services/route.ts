@@ -66,6 +66,14 @@ export async function POST(req: NextRequest) {
 
   await connectDB();
   const body = await req.json();
+
+  if (!body.customerId) {
+    return NextResponse.json({ error: "missing_customer" }, { status: 400 });
+  }
+  if (!String(body.issueDescription || "").trim()) {
+    return NextResponse.json({ error: "missing_issue" }, { status: 400 });
+  }
+
   const seq = await nextSeq("service_job");
   const jobNo = generateDocNo("JOB", seq);
 

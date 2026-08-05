@@ -64,20 +64,30 @@ export function KpiCard({
       data-animate="card"
       onClick={onClick}
       className={cn(
-        "gp-card w-full p-5 text-left transition hover:-translate-y-1 hover:shadow-md relative overflow-hidden flex flex-col justify-between",
+        "gp-card gp-kpi-card w-full min-h-[152px] p-5 text-left transition hover:-translate-y-0.5 hover:shadow-md relative overflow-hidden flex flex-col",
         toneClass,
         onClick && "cursor-pointer",
       )}
     >
-      <div className="flex justify-between items-start mb-3">
-        <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">{label}</p>
-        {Icon && <Icon className={cn("w-5 h-5 opacity-70", textToneClass)} />}
+      <div className="flex items-start justify-between gap-2">
+        <p className="min-h-[2.5rem] text-xs font-bold uppercase leading-snug tracking-[0.08em] text-muted">
+          {label}
+        </p>
+        {Icon ? (
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/60">
+            <Icon className={cn("h-5 w-5", textToneClass)} />
+          </span>
+        ) : (
+          <span className="h-9 w-9 shrink-0" aria-hidden />
+        )}
       </div>
-      <div className="mt-auto">
-        <p className="gp-money text-2xl tracking-tight text-[var(--gp-ink)] md:text-3xl">
+      <div className="mt-auto pt-3">
+        <p className="gp-money text-2xl leading-none tracking-tight text-[var(--gp-ink)] md:text-[1.65rem]">
           {typeof value === "number" ? formatBDT(value) : value}
         </p>
-        {hint ? <p className="mt-1.5 text-xs font-semibold text-primary/80">{hint}</p> : null}
+        <p className="mt-2 min-h-[1.125rem] text-xs font-semibold text-primary/80">
+          {hint || "\u00A0"}
+        </p>
       </div>
     </button>
   );
@@ -87,6 +97,74 @@ export function EmptyState({ message }: { message: string }) {
   return (
     <div className="rounded-xl border border-dashed border-line bg-[#fafbfc] px-6 py-14 text-center text-[0.95rem] text-muted">
       {message}
+    </div>
+  );
+}
+
+export function AlertBanner({
+  tone,
+  message,
+  onClose,
+}: {
+  tone: "success" | "error" | "info";
+  message: string;
+  onClose?: () => void;
+}) {
+  const toneClass =
+    tone === "success"
+      ? "border-[var(--gp-success-border,#bbf7d0)] bg-[var(--gp-success-bg,#f0fdf4)] text-[var(--gp-success,#15803d)]"
+      : tone === "error"
+        ? "border-[var(--gp-danger-border,#fecaca)] bg-[var(--gp-danger-bg,#fef2f2)] text-[var(--gp-danger,#b91c1c)]"
+        : "border-line bg-[var(--gp-bg)] text-[var(--gp-ink)]";
+
+  return (
+    <div
+      className={cn(
+        "mb-4 flex items-start justify-between gap-3 rounded-xl border px-4 py-3 text-sm font-medium",
+        toneClass,
+      )}
+      role="status"
+    >
+      <span>{message}</span>
+      {onClose ? (
+        <button
+          type="button"
+          className="shrink-0 opacity-70 hover:opacity-100"
+          onClick={onClose}
+          aria-label="Close"
+        >
+          ✕
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+export function TableSkeleton({ rows = 6, cols = 5 }: { rows?: number; cols?: number }) {
+  return (
+    <div className="gp-table-wrap overflow-x-auto">
+      <table className="gp-table w-full">
+        <thead>
+          <tr>
+            {Array.from({ length: cols }).map((_, i) => (
+              <th key={i}>
+                <div className="gp-skeleton h-4 w-20" />
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {Array.from({ length: rows }).map((_, r) => (
+            <tr key={r}>
+              {Array.from({ length: cols }).map((_, c) => (
+                <td key={c}>
+                  <div className="gp-skeleton h-4 w-full max-w-[140px]" />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

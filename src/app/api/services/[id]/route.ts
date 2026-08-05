@@ -44,7 +44,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (body.status) existingJob.status = body.status;
     if (body.technicianId) existingJob.technicianId = body.technicianId;
     if (body.issueDescription) existingJob.issueDescription = body.issueDescription;
+    if (body.serviceCharges != null) existingJob.serviceCharges = Number(body.serviceCharges);
     if (body.notes !== undefined) existingJob.notes = body.notes;
+    if (body.customerId) existingJob.customerId = body.customerId;
     
     // Handle status transitions (e.g., pending -> completed, deduct stock)
     if (
@@ -92,10 +94,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await readSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  if (session.role !== "admin") return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   await connectDB();
   const { id } = await params;
-  await ServiceJob.findByIdAndDelete(id);
-  return NextResponse.json({ success: true });
+  const deleted = await ServiceJob.findByIdAndDelete(id);
+  if (!deleted) return NextResponse.json({ error: "not_found" }, { status: 404 });
+  return NextResponse.json({ ok: true });
 }

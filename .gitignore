@@ -15,6 +15,12 @@ node_modules
 
 # Testing
 coverage
+test.js
+test2.js
+test3.js
+test4.js
+test5.js
+*.local-probe.js
 
 # Next.js
 .next/

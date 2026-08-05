@@ -150,8 +150,10 @@ export default function DashboardPage() {
       </FilterBar>
 
       <div className="mb-8 space-y-4">
-        <h2 className="text-[0.8rem] font-bold uppercase tracking-wider text-muted">Primary Overview</h2>
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <h2 className="text-[0.8rem] font-bold uppercase tracking-wider text-muted">
+          {locale === "bn" ? "প্রধান সারাংশ" : "Primary Overview"}
+        </h2>
+        <div className="grid auto-rows-fr gap-5 sm:grid-cols-2 lg:grid-cols-4">
           <KpiCard
             label={t("dashboard.totalSales")}
             value={data?.kpis.totalSales || 0}
@@ -183,8 +185,10 @@ export default function DashboardPage() {
       </div>
 
       <div className="mb-8 space-y-4">
-        <h2 className="text-[0.8rem] font-bold uppercase tracking-wider text-muted">Due & Returns</h2>
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <h2 className="text-[0.8rem] font-bold uppercase tracking-wider text-muted">
+          {locale === "bn" ? "বকেয়া ও ফেরত" : "Due & Returns"}
+        </h2>
+        <div className="grid auto-rows-fr gap-5 sm:grid-cols-2 lg:grid-cols-4">
           <KpiCard
             label={t("dashboard.invoiceDue")}
             value={data?.kpis.invoiceDue || 0}
@@ -305,7 +309,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="mt-8 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-8 grid auto-rows-fr gap-4 lg:grid-cols-2 xl:grid-cols-3">
         <WidgetCard
           title={t("dashboard.salesPaymentDue")}
           href="/reports/sell-payment"
@@ -466,8 +470,8 @@ function WidgetCard({
 }) {
   const t = useTranslations();
   return (
-    <div className="gp-card p-5 shadow-sm border border-line">
-      <div className="mb-4 flex items-center justify-between border-b border-line pb-3">
+    <div className="gp-card flex h-full min-h-[220px] flex-col p-5 shadow-sm border border-line">
+      <div className="mb-4 flex min-h-[2.25rem] items-center justify-between border-b border-line pb-3">
         <h3 className="text-[0.95rem] font-bold text-[var(--gp-ink)]">{title}</h3>
         {onViewAll ? (
           <button type="button" className="text-sm font-semibold text-primary hover:underline" onClick={onViewAll}>
@@ -479,7 +483,7 @@ function WidgetCard({
           </Link>
         ) : null}
       </div>
-      <div className="space-y-2">{children}</div>
+      <div className="flex flex-1 flex-col space-y-2">{children}</div>
     </div>
   );
 }

@@ -475,6 +475,75 @@ h3,
   background: var(--gp-info-soft);
 }
 
+.gp-kpi-card {
+  border: 1px solid var(--gp-line);
+}
+
+.gp-calculator__display {
+  margin-bottom: 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: 10px;
+  border: 1px solid var(--gp-line);
+  background: #0f172a;
+  padding: 0.85rem 1rem;
+  text-align: right;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 1.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #f8fafc;
+}
+
+.gp-calculator__keys {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.gp-calc-key,
+.gp-calc-fn,
+.gp-calc-op,
+.gp-calc-eq {
+  min-height: 2.75rem;
+  border-radius: 10px;
+  border: 1px solid var(--gp-line);
+  background: white;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gp-ink);
+  transition: background 0.12s ease, transform 0.12s ease;
+}
+
+.gp-calc-key:active,
+.gp-calc-fn:active,
+.gp-calc-op:active,
+.gp-calc-eq:active {
+  transform: scale(0.97);
+}
+
+.gp-calc-fn {
+  background: #f1f5f9;
+  color: var(--gp-muted);
+}
+
+.gp-calc-op {
+  background: color-mix(in oklab, var(--gp-primary) 12%, white);
+  color: var(--gp-primary);
+  border-color: color-mix(in oklab, var(--gp-primary) 25%, white);
+}
+
+.gp-calc-eq {
+  background: var(--gp-primary);
+  color: white;
+  border-color: var(--gp-primary);
+}
+
+.gp-calc-key.col-span-2 {
+  grid-column: span 2;
+}
+
 .gp-badge {
   display: inline-flex;
   align-items: center;
@@ -515,6 +584,27 @@ h3,
   padding: 0.2rem 0.55rem;
   font-size: 0.8rem;
   font-weight: 600;
+}
+
+.gp-skeleton {
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--gp-line) 80%, white) 25%,
+    color-mix(in oklab, var(--gp-line) 40%, white) 50%,
+    color-mix(in oklab, var(--gp-line) 80%, white) 75%
+  );
+  background-size: 200% 100%;
+  animation: gp-shimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes gp-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 @media print {

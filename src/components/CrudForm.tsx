@@ -8,9 +8,14 @@ import type { CrudConfig, CrudField } from "@/lib/crud-config";
 function fieldValue(row: Record<string, unknown>, key: string) {
   const v = row[key];
   if (v == null) return "";
+  if (typeof v === "object" && v !== null && "_id" in v) {
+    return String((v as { _id: unknown })._id);
+  }
   if (typeof v === "object") return "";
   return String(v);
 }
+
+type RelationOption = { _id: string; label: string };
 
 export function CrudForm({
   config,
@@ -29,6 +34,9 @@ export function CrudForm({
 }) {
   const locale = useLocale();
   const [form, setForm] = useState<Record<string, string>>({});
+  const [relations, setRelations] = useState<Record<string, RelationOption[]>>({});
+
+  const relationFields = config.fields.filter((f) => f.type === "relation" && f.relation);
 
   useEffect(() => {
     const next: Record<string, string> = {};
@@ -37,6 +45,40 @@ export function CrudForm({
     }
     setForm(next);
   }, [config, initial]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadRelations() {
+      const entries = await Promise.all(
+        relationFields.map(async (f) => {
+          const api = f.relation!.api;
+          try {
+            const res = await fetch(api);
+            const json = await res.json();
+            const rows = (json.data || []) as Record<string, unknown>[];
+            const labelField = f.relation!.labelField || "name";
+            const subField = f.relation!.subField;
+            const options: RelationOption[] = rows.map((row) => {
+              const main = String(row[labelField] || row.name || "—");
+              const sub = subField && row[subField] ? ` (${row[subField]})` : "";
+              return { _id: String(row._id), label: `${main}${sub}` };
+            });
+            return [f.key, options] as const;
+          } catch {
+            return [f.key, []] as const;
+          }
+        }),
+      );
+      if (!cancelled) {
+        setRelations(Object.fromEntries(entries));
+      }
+    }
+    if (relationFields.length) void loadRelations();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config.resource]);
 
   function set(key: string, value: string) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -74,6 +116,18 @@ export function CrudForm({
             />
           );
         }
+        if (f.type === "relation" && f.relation) {
+          return (
+            <RelationFieldRow
+              key={f.key}
+              field={f}
+              locale={locale}
+              value={form[f.key] || ""}
+              options={relations[f.key] || []}
+              onChange={(v) => set(f.key, v)}
+            />
+          );
+        }
         return (
           <FieldRow
             key={f.key}
@@ -85,7 +139,7 @@ export function CrudForm({
         );
       })}
       <div className="mt-1 flex justify-end gap-2 sm:col-span-2">
-        <button type="button" className="gp-btn gp-btn-ghost min-h-10 px-4" onClick={onCancel}>
+        <button type="button" className="gp-btn gp-btn-ghost min-h-10 px-4" onClick={onCancel} disabled={saving}>
           {locale === "bn" ? "বাতিল" : "Cancel"}
         </button>
         <button type="submit" className="gp-btn gp-btn-primary min-h-10 px-5" disabled={saving}>
@@ -93,6 +147,39 @@ export function CrudForm({
         </button>
       </div>
     </form>
+  );
+}
+
+function RelationFieldRow({
+  field,
+  locale,
+  value,
+  options,
+  onChange,
+}: {
+  field: CrudField;
+  locale: string;
+  value: string;
+  options: RelationOption[];
+  onChange: (v: string) => void;
+}) {
+  const label = locale === "bn" ? field.labelBn : field.labelEn;
+  return (
+    <Field label={label}>
+      <select
+        className="gp-input"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        required={field.required}
+      >
+        <option value="">{locale === "bn" ? "নির্বাচন করুন…" : "Select…"}</option>
+        {options.map((o) => (
+          <option key={o._id} value={o._id}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </Field>
   );
 }
 
@@ -159,6 +246,8 @@ function FieldRow({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         required={field.required}
+        min={field.type === "number" ? 0 : undefined}
+        step={field.type === "number" ? "0.01" : undefined}
       />
     </Field>
   );

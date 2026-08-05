@@ -1,4 +1,10 @@
-export type CrudFieldType = "text" | "number" | "email" | "date" | "textarea" | "select";
+export type CrudFieldType = "text" | "number" | "email" | "date" | "textarea" | "select" | "relation";
+
+export type CrudFieldRelation = {
+  api: string;
+  labelField?: string;
+  subField?: string;
+};
 
 export type CrudField = {
   key: string;
@@ -7,6 +13,7 @@ export type CrudField = {
   type?: CrudFieldType;
   required?: boolean;
   options?: { value: string; labelBn: string; labelEn: string }[];
+  relation?: CrudFieldRelation;
 };
 
 export type CrudConfig = {
@@ -56,15 +63,10 @@ const READ_ONLY = new Set([
   "settings-business",
   "mfg-settings",
   "pos-list",
-  "import-contacts",
-  "products-import",
   "import-sales",
-  "products-labels",
-  "products-price",
-  "opening-stock",
-  "price-groups",
   "variations",
   "warranties",
+  "price-groups",
 ]);
 
 export const CRUD_CONFIG: Record<string, CrudConfig> = {
@@ -276,12 +278,11 @@ export const CRUD_CONFIG: Record<string, CrudConfig> = {
     canUpdate: true,
     canDelete: true,
     fields: [
-      { key: "reqNo", labelBn: "চাহিদা নং", labelEn: "Req No", required: true },
       { key: "locationName", labelBn: "লোকেশন", labelEn: "Location" },
       { key: "status", labelBn: "স্ট্যাটাস", labelEn: "Status", type: "select", options: [
         { value: "pending", labelBn: "অপেক্ষমাণ", labelEn: "Pending" },
         { value: "approved", labelBn: "অনুমোদিত", labelEn: "Approved" },
-        { value: "rejected", labelBn: "প্রত্যাখ্যাত", labelEn: "Rejected" },
+        { value: "ordered", labelBn: "অর্ডার করা", labelEn: "Ordered" },
       ]},
       { key: "note", labelBn: "নোট", labelEn: "Note", type: "textarea" },
     ],
@@ -294,7 +295,6 @@ export const CRUD_CONFIG: Record<string, CrudConfig> = {
     canUpdate: true,
     canDelete: true,
     fields: [
-      { key: "transferNo", labelBn: "ট্রান্সফার নং", labelEn: "Transfer No", required: true },
       { key: "status", labelBn: "স্ট্যাটাস", labelEn: "Status", type: "select", options: [
         { value: "pending", labelBn: "অপেক্ষমাণ", labelEn: "Pending" },
         { value: "completed", labelBn: "সম্পন্ন", labelEn: "Completed" },
@@ -310,7 +310,6 @@ export const CRUD_CONFIG: Record<string, CrudConfig> = {
     canUpdate: true,
     canDelete: true,
     fields: [
-      { key: "adjustmentNo", labelBn: "সমন্বয় নং", labelEn: "Adjustment No", required: true },
       { key: "note", labelBn: "নোট", labelEn: "Note", type: "textarea" },
     ],
   },
@@ -322,8 +321,7 @@ export const CRUD_CONFIG: Record<string, CrudConfig> = {
     canUpdate: true,
     canDelete: true,
     fields: [
-      { key: "returnNo", labelBn: "রিটার্ন নং", labelEn: "Return No", required: true },
-      { key: "customerName", labelBn: "গ্রাহক", labelEn: "Customer" },
+      { key: "customerName", labelBn: "গ্রাহক", labelEn: "Customer", required: true },
       { key: "grandTotal", labelBn: "মোট", labelEn: "Total", type: "number" },
     ],
   },
@@ -335,8 +333,7 @@ export const CRUD_CONFIG: Record<string, CrudConfig> = {
     canUpdate: true,
     canDelete: true,
     fields: [
-      { key: "returnNo", labelBn: "রিটার্ন নং", labelEn: "Return No", required: true },
-      { key: "supplierName", labelBn: "সরবরাহকারী", labelEn: "Supplier" },
+      { key: "supplierName", labelBn: "সরবরাহকারী", labelEn: "Supplier", required: true },
       { key: "grandTotal", labelBn: "মোট", labelEn: "Total", type: "number" },
     ],
   },
@@ -348,12 +345,12 @@ export const CRUD_CONFIG: Record<string, CrudConfig> = {
     canUpdate: true,
     canDelete: true,
     fields: [
-      { key: "shipmentNo", labelBn: "শিপমেন্ট নং", labelEn: "Shipment No", required: true },
-      { key: "customerName", labelBn: "গ্রাহক", labelEn: "Customer" },
+      { key: "customerName", labelBn: "গ্রাহক", labelEn: "Customer", required: true },
       { key: "status", labelBn: "স্ট্যাটাস", labelEn: "Status", type: "select", options: [
         { value: "pending", labelBn: "অপেক্ষমাণ", labelEn: "Pending" },
         { value: "shipped", labelBn: "পাঠানো", labelEn: "Shipped" },
         { value: "delivered", labelBn: "ডেলিভার্ড", labelEn: "Delivered" },
+        { value: "cancelled", labelBn: "বাতিল", labelEn: "Cancelled" },
       ]},
       { key: "shippingAddress", labelBn: "ঠিকানা", labelEn: "Address", type: "textarea" },
     ],
@@ -378,8 +375,7 @@ export const CRUD_CONFIG: Record<string, CrudConfig> = {
     canUpdate: true,
     canDelete: true,
     fields: [
-      { key: "productionNo", labelBn: "প্রোডাকশন নং", labelEn: "Production No", required: true },
-      { key: "productName", labelBn: "পণ্য", labelEn: "Product" },
+      { key: "productName", labelBn: "পণ্য", labelEn: "Product", required: true },
       { key: "qty", labelBn: "পরিমাণ", labelEn: "Qty", type: "number" },
     ],
   },
@@ -531,10 +527,21 @@ export const CRUD_CONFIG: Record<string, CrudConfig> = {
     canUpdate: true,
     canDelete: true,
     fields: [
+      {
+        key: "customerId",
+        labelBn: "গ্রাহক",
+        labelEn: "Customer",
+        type: "relation",
+        required: true,
+        relation: { api: "/api/contacts?type=customer&limit=200", labelField: "name", subField: "mobile" },
+      },
       { key: "brand", labelBn: "ব্র্যান্ড", labelEn: "Brand", required: true },
       { key: "model", labelBn: "মডেল", labelEn: "Model", required: true },
       { key: "serialNo", labelBn: "সিরিয়াল নং", labelEn: "Serial No" },
       { key: "machineType", labelBn: "মেশিনের ধরন", labelEn: "Machine Type" },
+      { key: "purchaseDate", labelBn: "ক্রয় তারিখ", labelEn: "Purchase Date", type: "date" },
+      { key: "warrantyExpiryDate", labelBn: "ওয়ারেন্টি শেষ", labelEn: "Warranty Expiry", type: "date" },
+      { key: "notes", labelBn: "নোট", labelEn: "Notes", type: "textarea" },
     ],
   },
   technicians: {
@@ -558,7 +565,22 @@ export const CRUD_CONFIG: Record<string, CrudConfig> = {
     canUpdate: true,
     canDelete: true,
     fields: [
-      { key: "issueDescription", labelBn: "সমস্যা", labelEn: "Issue", required: true },
+      {
+        key: "customerId",
+        labelBn: "গ্রাহক",
+        labelEn: "Customer",
+        type: "relation",
+        required: true,
+        relation: { api: "/api/contacts?type=customer&limit=200", labelField: "name", subField: "mobile" },
+      },
+      {
+        key: "technicianId",
+        labelBn: "টেকনিশিয়ান",
+        labelEn: "Technician",
+        type: "relation",
+        relation: { api: "/api/technicians", labelField: "name", subField: "mobile" },
+      },
+      { key: "issueDescription", labelBn: "সমস্যা", labelEn: "Issue", required: true, type: "textarea" },
       { key: "serviceCharges", labelBn: "সার্ভিস চার্জ", labelEn: "Service Charges", type: "number" },
       { key: "status", labelBn: "স্ট্যাটাস", labelEn: "Status", type: "select", options: [
         { value: "pending", labelBn: "পেন্ডিং", labelEn: "Pending" },

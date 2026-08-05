@@ -7,6 +7,7 @@ import {
   deactivateProductLinks,
   saveProductOffers,
 } from "@/lib/product-suppliers";
+import { canDelete, canWrite } from "@/lib/rbac";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -24,41 +25,80 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
 export async function PUT(req: NextRequest, ctx: Ctx) {
   const session = await readSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!canWrite(session.role)) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
   const { id } = await ctx.params;
   await connectDB();
   const body = await req.json();
 
-  const updated = await Product.findByIdAndUpdate(
-    id,
-    {
-      $set: {
-        name: body.name,
-        nameBn: body.nameBn,
-        sku: body.sku,
-        barcode: body.barcode || body.sku,
-        brand: body.brand,
-        purchasePrice: Number(body.purchasePrice || 0),
-        sellPrice: Number(body.sellPrice || 0),
-        alertQty: Number(body.alertQty || 10),
-        hsCode: body.hsCode,
-      },
-    },
-    { new: true },
-  );
-  if (!updated) return NextResponse.json({ error: "not_found" }, { status: 404 });
+  try {
+    const $set: Record<string, unknown> = {};
+    if (body.name != null) $set.name = body.name;
+    if (body.nameBn != null) $set.nameBn = body.nameBn;
+    if (body.sku != null) {
+      $set.sku = body.sku;
+      $set.barcode = body.barcode || body.sku;
+    } else if (body.barcode != null) {
+      $set.barcode = body.barcode;
+    }
+    if (body.brand != null) $set.brand = body.brand;
+    if (body.purchasePrice != null && body.purchasePrice !== "") {
+      $set.purchasePrice = Number(body.purchasePrice);
+    }
+    if (body.sellPrice != null && body.sellPrice !== "") {
+      $set.sellPrice = Number(body.sellPrice);
+    }
+    if (body.alertQty != null && body.alertQty !== "") {
+      $set.alertQty = Number(body.alertQty);
+    }
+    if (body.hsCode != null) $set.hsCode = body.hsCode;
+    if (Array.isArray(body.stocks)) $set.stocks = body.stocks;
 
-  if (Array.isArray(body.supplierOffers)) {
-    await saveProductOffers(id, body.supplierOffers);
+    let updated =
+      Object.keys($set).length > 0
+        ? await Product.findByIdAndUpdate(id, { $set }, { new: true, runValidators: true })
+        : await Product.findById(id);
+
+    if (!updated) return NextResponse.json({ error: "not_found" }, { status: 404 });
+
+    if (body.stockUpdate?.locationId != null) {
+      const locId = body.stockUpdate.locationId;
+      const qty = Number(body.stockUpdate.qty || 0);
+      const stocks = [...(updated.stocks || [])];
+      const idx = stocks.findIndex((s) => String(s.locationId) === String(locId));
+      if (idx >= 0) {
+        stocks[idx]!.qty = qty;
+      } else {
+        stocks.push({ locationId: locId, qty });
+      }
+      updated.stocks = stocks;
+      await updated.save();
+    }
+
+    if (Array.isArray(body.supplierOffers)) {
+      await saveProductOffers(id, body.supplierOffers);
+      updated = await Product.findById(id);
+    }
+
+    const lean = updated!.toObject();
+    const [withOffers] = await attachOffersToProducts([lean]);
+    return NextResponse.json({ data: withOffers });
+  } catch (err) {
+    if (err && typeof err === "object" && "code" in err && err.code === 11000) {
+      return NextResponse.json({ error: "duplicate_sku" }, { status: 409 });
+    }
+    console.error("PUT /api/products/[id]", err);
+    return NextResponse.json({ error: "failed" }, { status: 500 });
   }
-
-  const lean = updated.toObject();
-  const [withOffers] = await attachOffersToProducts([lean]);
-  return NextResponse.json({ data: withOffers });
 }
 
 export async function DELETE(_req: NextRequest, ctx: Ctx) {
   const session = await readSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!canDelete(session.role)) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
   const { id } = await ctx.params;
   await connectDB();
   const updated = await Product.findByIdAndUpdate(id, { isActive: false }, { new: true });

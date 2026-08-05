@@ -4,9 +4,10 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { Pencil, Plus, Search, Trash2 } from "lucide-react";
-import { EmptyState, Field, Modal, PageHeader } from "@/components/ui";
+import { AlertBanner, EmptyState, Field, Modal, PageHeader, TableSkeleton } from "@/components/ui";
 import { formatBDT } from "@/lib/utils";
 import { displaySupplierLabel } from "@/lib/supplier-label";
+import { useDebouncedValue } from "@/lib/hooks";
 
 type SupplierOffer = {
   supplierId?: string;
@@ -51,16 +52,33 @@ function relationOffers(p: Product): SupplierOffer[] {
   return (p.supplierOffers || []).filter((o) => o?.supplierId).slice(0, 4);
 }
 
+function apiErrorMessage(
+  code: string | undefined,
+  locale: string,
+): string {
+  if (code === "duplicate_sku") {
+    return locale === "bn"
+      ? "এই SKU ইতিমধ্যে ব্যবহার হচ্ছে — অন্য SKU দিন"
+      : "This SKU already exists — use a different code";
+  }
+  if (code === "missing_name") {
+    return locale === "bn" ? "পণ্যের নাম লিখুন" : "Product name is required";
+  }
+  return locale === "bn" ? "সংরক্ষণ ব্যর্থ হয়েছে" : "Could not save — please try again";
+}
+
 export default function ProductsPage() {
   const t = useTranslations();
   const locale = useLocale();
   const [products, setProducts] = useState<Product[]>([]);
   const [catalog, setCatalog] = useState<CatalogSupplier[]>([]);
   const [q, setQ] = useState("");
+  const debouncedQ = useDebouncedValue(q, 350);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [busy, setBusy] = useState(false);
+  const [banner, setBanner] = useState<{ tone: "success" | "error"; message: string } | null>(null);
   const [form, setForm] = useState({
     name: "",
     nameBn: "",
@@ -69,27 +87,35 @@ export default function ProductsPage() {
     purchasePrice: "",
     sellPrice: "",
     alertQty: "10",
+    openingQty: "0",
   });
   const [slots, setSlots] = useState<OfferSlot[]>(EMPTY_SLOTS);
 
-  const load = useCallback(async () => {
+  useEffect(() => {
+    fetch("/api/contacts?type=supplier&limit=200")
+      .then((r) => r.json())
+      .then((d) => setCatalog(d.data || []))
+      .catch(() => setCatalog([]));
+  }, []);
+
+  const loadProducts = useCallback(async () => {
     setLoading(true);
     const qs = new URLSearchParams({ limit: "100" });
-    if (q) qs.set("q", q);
-    const [productsRes, suppliersRes] = await Promise.all([
-      fetch(`/api/products?${qs}`),
-      fetch("/api/contacts?type=supplier&limit=100"),
-    ]);
-    const productsJson = await productsRes.json();
-    const suppliersJson = await suppliersRes.json();
-    setProducts(productsJson.data || []);
-    setCatalog(suppliersJson.data || []);
-    setLoading(false);
-  }, [q]);
+    if (debouncedQ) qs.set("q", debouncedQ);
+    try {
+      const res = await fetch(`/api/products?${qs}`);
+      const json = await res.json();
+      setProducts(json.data || []);
+    } catch {
+      setProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [debouncedQ]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    loadProducts();
+  }, [loadProducts]);
 
   function openCreate() {
     setEditing(null);
@@ -101,6 +127,7 @@ export default function ProductsPage() {
       purchasePrice: "",
       sellPrice: "",
       alertQty: "10",
+      openingQty: "0",
     });
     setSlots([
       { supplierId: catalog[0]?._id || "", price: "" },
@@ -122,6 +149,7 @@ export default function ProductsPage() {
       purchasePrice: String(p.purchasePrice ?? ""),
       sellPrice: String(p.sellPrice ?? ""),
       alertQty: String(p.alertQty ?? 10),
+      openingQty: "0",
     });
     setSlots([
       {
@@ -147,6 +175,7 @@ export default function ProductsPage() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
+    setBanner(null);
 
     const seen = new Set<string>();
     const supplierOffers = slots
@@ -161,16 +190,20 @@ export default function ProductsPage() {
         return true;
       });
 
-    const payload = {
-      name: form.name,
-      nameBn: form.nameBn,
-      sku: form.sku,
-      brand: form.brand,
+    const payload: Record<string, unknown> = {
+      name: form.name.trim(),
+      nameBn: form.nameBn.trim(),
+      sku: form.sku.trim(),
+      brand: form.brand.trim(),
       purchasePrice: Number(form.purchasePrice || 0),
       sellPrice: Number(form.sellPrice || 0),
       alertQty: Number(form.alertQty || 10),
       supplierOffers,
     };
+
+    if (!editing) {
+      payload.openingQty = Number(form.openingQty || 0);
+    }
 
     try {
       const res = await fetch(
@@ -181,11 +214,29 @@ export default function ProductsPage() {
           body: JSON.stringify(payload),
         },
       );
-      if (!res.ok) throw new Error("fail");
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setBanner({
+          tone: "error",
+          message: apiErrorMessage(json.error, locale),
+        });
+        return;
+      }
       setModalOpen(false);
-      await load();
+      setBanner({
+        tone: "success",
+        message:
+          locale === "bn"
+            ? editing
+              ? "পণ্য আপডেট হয়েছে"
+              : `পণ্য যোগ হয়েছে (${json.data?.sku || form.sku})`
+            : editing
+              ? "Product updated"
+              : `Product added (${json.data?.sku || form.sku})`,
+      });
+      await loadProducts();
     } catch {
-      alert(t("common.error"));
+      setBanner({ tone: "error", message: t("common.error") });
     } finally {
       setBusy(false);
     }
@@ -193,8 +244,16 @@ export default function ProductsPage() {
 
   async function onDelete(id: string) {
     if (!confirm(locale === "bn" ? "পণ্য মুছবেন?" : "Delete this product?")) return;
-    await fetch(`/api/products/${id}`, { method: "DELETE" });
-    await load();
+    const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      setBanner({ tone: "error", message: t("common.error") });
+      return;
+    }
+    setBanner({
+      tone: "success",
+      message: locale === "bn" ? "পণ্য মুছে ফেলা হয়েছে" : "Product deleted",
+    });
+    await loadProducts();
   }
 
   function updateSlot(index: number, patch: Partial<OfferSlot>) {
@@ -218,6 +277,10 @@ export default function ProductsPage() {
         }
       />
 
+      {banner ? (
+        <AlertBanner tone={banner.tone} message={banner.message} onClose={() => setBanner(null)} />
+      ) : null}
+
       <div className="gp-card mb-5 flex items-center gap-3 p-3.5">
         <Search className="h-4 w-4 shrink-0 text-muted" />
         <input
@@ -225,13 +288,17 @@ export default function ProductsPage() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder={t("products.searchWide")}
+          aria-label={t("common.search")}
         />
+        {loading && q ? (
+          <span className="shrink-0 text-xs text-muted">{t("common.loading")}</span>
+        ) : null}
       </div>
 
-      {loading ? (
-        <EmptyState message={t("app.loading")} />
+      {loading && !products.length ? (
+        <TableSkeleton rows={8} cols={7} />
       ) : products.length === 0 ? (
-        <EmptyState message={t("common.noData")} />
+        <EmptyState message={debouncedQ ? (locale === "bn" ? "কোনো পণ্য পাওয়া যায়নি" : "No products match your search") : t("common.noData")} />
       ) : (
         <div className="gp-table-wrap overflow-x-auto">
           <table className="gp-table gp-product-list">
@@ -246,7 +313,7 @@ export default function ProductsPage() {
                 <th>{t("common.actions")}</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className={loading ? "opacity-60" : undefined}>
               {products.map((p) => {
                 const title = locale === "bn" && p.nameBn ? p.nameBn : p.name;
                 const offers = relationOffers(p);
@@ -276,11 +343,7 @@ export default function ProductsPage() {
                               key={offer.linkId || `${p._id}-${offer.supplierId}-${idx}`}
                               href={`/contacts/suppliers/${offer.supplierId}`}
                               className="gp-product-list__chip"
-                              title={
-                                locale === "bn"
-                                  ? "সরবরাহকারী দেখুন"
-                                  : "View supplier"
-                              }
+                              title={locale === "bn" ? "সরবরাহকারী দেখুন" : "View supplier"}
                             >
                               <span className="gp-product-list__chip-name">
                                 {displaySupplierLabel(offer, locale)}
@@ -332,6 +395,7 @@ export default function ProductsPage() {
             <input
               className="gp-input"
               required
+              autoFocus
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
             />
@@ -346,9 +410,9 @@ export default function ProductsPage() {
           <Field label={t("products.sku")}>
             <input
               className="gp-input"
-              required
               value={form.sku}
               onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value }))}
+              placeholder={locale === "bn" ? "খালি রাখলে অটো তৈরি হবে" : "Leave blank to auto-generate"}
             />
           </Field>
           <Field label={t("products.brand")}>
@@ -361,6 +425,8 @@ export default function ProductsPage() {
           <Field label={t("products.purchasePrice")}>
             <input
               type="number"
+              min={0}
+              step="0.01"
               className="gp-input"
               value={form.purchasePrice}
               onChange={(e) => setForm((f) => ({ ...f, purchasePrice: e.target.value }))}
@@ -369,11 +435,24 @@ export default function ProductsPage() {
           <Field label={t("products.sellPrice")}>
             <input
               type="number"
+              min={0}
+              step="0.01"
               className="gp-input"
               value={form.sellPrice}
               onChange={(e) => setForm((f) => ({ ...f, sellPrice: e.target.value }))}
             />
           </Field>
+          {!editing ? (
+            <Field label={locale === "bn" ? "প্রারম্ভিক স্টক" : "Opening stock"}>
+              <input
+                type="number"
+                min={0}
+                className="gp-input"
+                value={form.openingQty}
+                onChange={(e) => setForm((f) => ({ ...f, openingQty: e.target.value }))}
+              />
+            </Field>
+          ) : null}
 
           <div className="md:col-span-2">
             <p className="mb-1 text-sm font-semibold text-muted">{t("products.supplierPrices")}</p>
@@ -399,6 +478,8 @@ export default function ProductsPage() {
                     <Field label={t("products.price")}>
                       <input
                         type="number"
+                        min={0}
+                        step="0.01"
                         className="gp-input"
                         value={slot.price}
                         onChange={(e) => updateSlot(n, { price: e.target.value })}
@@ -416,6 +497,7 @@ export default function ProductsPage() {
               type="button"
               className="gp-btn gp-btn-ghost"
               onClick={() => setModalOpen(false)}
+              disabled={busy}
             >
               {t("common.cancel")}
             </button>

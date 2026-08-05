@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { readSession } from "@/lib/auth";
+import { readSession, hashPassword } from "@/lib/auth";
 import { MODULE_MODEL_MAP } from "@/lib/module-models";
+import { canDelete, canWrite, hasPermission } from "@/lib/rbac";
 
 type Ctx = { params: Promise<{ module: string; id: string }> };
+
+function moduleNeedsUserManage(module: string) {
+  return module === "users" || module === "roles";
+}
 
 export async function GET(_req: NextRequest, ctx: Ctx) {
   const session = await readSession();
@@ -22,8 +27,15 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
 export async function PUT(req: NextRequest, ctx: Ctx) {
   const session = await readSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!canWrite(session.role)) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
 
   const { module, id } = await ctx.params;
+  if (moduleNeedsUserManage(module) && !hasPermission(session.role, "manage_users")) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+
   const handler = MODULE_MODEL_MAP[module];
   if (!handler) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
@@ -35,12 +47,14 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   delete body.updatedAt;
 
   if (module === "users" && body.password) {
-    const { hashPassword } = await import("@/lib/auth");
     body.passwordHash = await hashPassword(String(body.password));
     delete body.password;
   }
 
-  const updated = await handler.model.findByIdAndUpdate(id, body, { new: true, runValidators: true });
+  const updated = await handler.model.findByIdAndUpdate(id, body, {
+    new: true,
+    runValidators: true,
+  });
   if (!updated) return NextResponse.json({ error: "not_found" }, { status: 404 });
   return NextResponse.json({ data: updated });
 }
@@ -48,8 +62,15 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
 export async function DELETE(_req: NextRequest, ctx: Ctx) {
   const session = await readSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!canDelete(session.role)) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
 
   const { module, id } = await ctx.params;
+  if (moduleNeedsUserManage(module) && !hasPermission(session.role, "manage_users")) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+
   const handler = MODULE_MODEL_MAP[module];
   if (!handler) return NextResponse.json({ error: "not_found" }, { status: 404 });
 

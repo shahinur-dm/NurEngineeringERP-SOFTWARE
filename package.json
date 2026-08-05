@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:crud": "node scripts/verify-db-crud.mjs",
+    "test:amounts": "node scripts/verify-amounts.mjs"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",

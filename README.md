@@ -24,16 +24,27 @@ npm run dev
 
 Open http://localhost:3000
 
-Demo login (after seed):
+## Demo login
+
+After first seed (or empty DB bootstrap):
 
 - Email: `admin@ditpharma.bd`
 - Password: `admin123`
 
-Force reseed (logged in):
+Force reseed requires an **admin** session:
 
 ```bash
-# POST /api/seed  body: { "force": true }
+# POST /api/seed  body: { "force": true }  (must be logged in as admin)
 ```
+
+## Scripts
+
+```bash
+npm run test:crud      # API CRUD smoke against localhost
+npm run test:amounts   # financial amount checks
+```
+
+**Security:** Do not commit Mongo credentials. `/api/seed` force wipe is admin-only.
 
 ## Environment
 

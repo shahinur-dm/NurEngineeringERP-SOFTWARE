@@ -10,6 +10,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const from = searchParams.get("from");
   const to = searchParams.get("to");
+  const q = searchParams.get("q")?.trim();
   const filter: Record<string, unknown> = {};
   if (from || to) {
     filter.expenseDate = {};
@@ -19,6 +20,13 @@ export async function GET(req: NextRequest) {
       end.setHours(23, 59, 59, 999);
       (filter.expenseDate as Record<string, Date>).$lte = end;
     }
+  }
+  if (q) {
+    filter.$or = [
+      { category: new RegExp(q, "i") },
+      { title: new RegExp(q, "i") },
+      { note: new RegExp(q, "i") },
+    ];
   }
   const data = await Expense.find(filter).sort({ expenseDate: -1 }).limit(200).lean();
   const total = data.reduce((a, e) => a + e.amount, 0);

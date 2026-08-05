@@ -36,10 +36,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await readSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  if (session.role !== "admin") return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   await connectDB();
   const { id } = await params;
-  await Machine.findByIdAndDelete(id);
-  return NextResponse.json({ success: true });
+  const deleted = await Machine.findByIdAndDelete(id);
+  if (!deleted) return NextResponse.json({ error: "not_found" }, { status: 404 });
+  return NextResponse.json({ ok: true });
 }

@@ -5,10 +5,11 @@ import { useLocale, useTranslations } from "next-intl";
 import { Download, Pencil, Plus, Trash2 } from "lucide-react";
 import { CrudForm } from "@/components/CrudForm";
 import { InvoiceActions } from "@/components/InvoiceActions";
-import { EmptyState, Field, FilterBar, Modal, PageHeader } from "@/components/ui";
+import { AlertBanner, EmptyState, Field, FilterBar, Modal, PageHeader, TableSkeleton } from "@/components/ui";
 import { formatBDT, formatDateBD } from "@/lib/utils";
 import { getModule, type ModuleDef } from "@/lib/module-registry";
 import { getCrudConfig, isReadOnlyModule, type CrudConfig } from "@/lib/crud-config";
+import { useDebouncedValue } from "@/lib/hooks";
 import { animateIn, animateStagger } from "@/lib/gsap";
 
 function cellValue(
@@ -28,13 +29,13 @@ function cellValue(
       .join(" : ");
   }
   if (typeof v === "object") {
-    // Avoid dumping raw JSON objects in the table
-    return Object.values(v as Record<string, unknown>)
+    const obj = v as Record<string, unknown>;
+    if ("name" in obj) return String(obj.name);
+    return Object.values(obj)
       .map((item) => (item == null ? "" : String(item)))
       .filter(Boolean)
       .join(" : ");
   }
-  // If value was stored as a JSON array string, unwrap it
   if (typeof v === "string" && v.trim().startsWith("[") && v.trim().endsWith("]")) {
     try {
       const parsed = JSON.parse(v) as unknown;
@@ -66,12 +67,14 @@ export function ModulePage({ moduleId }: { moduleId: string }) {
 
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
   const [q, setQ] = useState("");
+  const debouncedQ = useDebouncedValue(q, 350);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Record<string, unknown> | null>(null);
+  const [banner, setBanner] = useState<{ tone: "success" | "error"; message: string } | null>(null);
 
   const listApi = mod?.apiPath || crud?.listPath || "";
 
@@ -79,7 +82,7 @@ export function ModulePage({ moduleId }: { moduleId: string }) {
     if (!listApi) return;
     setLoading(true);
     const qs = new URLSearchParams({ limit: "100" });
-    if (q) qs.set("q", q);
+    if (debouncedQ) qs.set("q", debouncedQ);
     if (from) qs.set("from", from);
     if (to) qs.set("to", to);
     const sep = listApi.includes("?") ? "&" : "?";
@@ -92,7 +95,7 @@ export function ModulePage({ moduleId }: { moduleId: string }) {
     } finally {
       setLoading(false);
     }
-  }, [listApi, q, from, to]);
+  }, [listApi, debouncedQ, from, to]);
 
   useEffect(() => {
     load();
@@ -111,23 +114,49 @@ export function ModulePage({ moduleId }: { moduleId: string }) {
   async function saveRecord(data: Record<string, unknown>) {
     if (!crud) return;
     setSaving(true);
+    setBanner(null);
     try {
-      if (editing?._id) {
-        await fetch(itemUrl(crud, String(editing._id)), {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
+      const res = editing?._id
+        ? await fetch(itemUrl(crud, String(editing._id)), {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+          })
+        : await fetch(postUrl(crud), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+          });
+
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setBanner({
+          tone: "error",
+          message:
+            json.error === "missing_customer"
+              ? locale === "bn"
+                ? "গ্রাহক নির্বাচন করুন"
+                : "Please select a customer"
+              : t("common.error"),
         });
-      } else {
-        await fetch(postUrl(crud), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        });
+        return;
       }
+
       setFormOpen(false);
       setEditing(null);
+      setBanner({
+        tone: "success",
+        message: editing
+          ? locale === "bn"
+            ? "আপডেট হয়েছে"
+            : "Updated successfully"
+          : locale === "bn"
+            ? "যোগ হয়েছে"
+            : "Added successfully",
+      });
       await load();
+    } catch {
+      setBanner({ tone: "error", message: t("common.error") });
     } finally {
       setSaving(false);
     }
@@ -137,7 +166,16 @@ export function ModulePage({ moduleId }: { moduleId: string }) {
     if (!crud || !row._id) return;
     const msg = locale === "bn" ? "এই রেকর্ড মুছে ফেলবেন?" : "Delete this record?";
     if (!confirm(msg)) return;
-    await fetch(itemUrl(crud, String(row._id)), { method: "DELETE" });
+    setBanner(null);
+    const res = await fetch(itemUrl(crud, String(row._id)), { method: "DELETE" });
+    if (!res.ok) {
+      setBanner({ tone: "error", message: t("common.error") });
+      return;
+    }
+    setBanner({
+      tone: "success",
+      message: locale === "bn" ? "মুছে ফেলা হয়েছে" : "Deleted successfully",
+    });
     await load();
   }
 
@@ -179,9 +217,18 @@ export function ModulePage({ moduleId }: { moduleId: string }) {
         }
       />
 
+      {banner ? (
+        <AlertBanner tone={banner.tone} message={banner.message} onClose={() => setBanner(null)} />
+      ) : null}
+
       <FilterBar>
         <Field label={t("common.search")}>
-          <input className="gp-input" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input
+            className="gp-input"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder={t("common.search")}
+          />
         </Field>
         <Field label={t("dashboard.fromDate")}>
           <input type="date" className="gp-input" value={from} onChange={(e) => setFrom(e.target.value)} />
@@ -197,10 +244,10 @@ export function ModulePage({ moduleId }: { moduleId: string }) {
       </FilterBar>
 
       <div className="gp-table-wrap overflow-auto">
-        {loading ? (
-          <p className="p-8 text-center text-muted">{t("common.loading")}</p>
+        {loading && rows.length === 0 ? (
+          <TableSkeleton rows={6} cols={mod.columns.length + (showActions ? 1 : 0)} />
         ) : rows.length === 0 ? (
-          <EmptyState message={t("common.noData")} />
+          <EmptyState message={debouncedQ ? (locale === "bn" ? "কোনো ফলাফল নেই" : "No matching records") : t("common.noData")} />
         ) : (
           <table className="gp-table">
             <thead>
@@ -211,57 +258,57 @@ export function ModulePage({ moduleId }: { moduleId: string }) {
                 {showActions ? <th>{t("common.actions")}</th> : null}
               </tr>
             </thead>
-            <tbody ref={tableRef}>
+            <tbody ref={tableRef} className={loading ? "opacity-60" : undefined}>
               {rows.map((row, i) => {
                 const rowId = String(row._id || row.id || "");
                 const showInvoice = hasInvoiceCol && !!rowId && !!row.invoiceNo;
                 return (
-                <tr key={rowId || String(i)}>
-                  {mod.columns.map((c) => (
-                    <td key={c.key} className={c.format === "money" ? "font-semibold" : ""}>
-                      {c.key === "invoiceNo" && showInvoice ? (
-                        <a
-                          href={`/sales/${rowId}/invoice`}
-                          className="font-semibold text-primary hover:underline"
-                        >
-                          {cellValue(row, c.key, c.format, locale)}
-                        </a>
-                      ) : (
-                        cellValue(row, c.key, c.format, locale)
-                      )}
-                    </td>
-                  ))}
-                  {showActions ? (
-                    <td>
-                      <div className="flex flex-wrap gap-1">
-                        {showInvoice ? <InvoiceActions saleId={rowId} compact /> : null}
-                        {showCrud && crud.canUpdate ? (
-                          <button
-                            type="button"
-                            className="gp-btn gp-btn-ghost min-h-9 px-2"
-                            onClick={() => {
-                              setEditing(row);
-                              setFormOpen(true);
-                            }}
-                            title={t("common.edit")}
+                  <tr key={rowId || String(i)}>
+                    {mod.columns.map((c) => (
+                      <td key={c.key} className={c.format === "money" ? "font-semibold" : ""}>
+                        {c.key === "invoiceNo" && showInvoice ? (
+                          <a
+                            href={`/sales/${rowId}/invoice`}
+                            className="font-semibold text-primary hover:underline"
                           >
-                            <Pencil className="h-4 w-4" />
-                          </button>
-                        ) : null}
-                        {showCrud && crud.canDelete ? (
-                          <button
-                            type="button"
-                            className="gp-btn gp-btn-danger min-h-9 px-2"
-                            onClick={() => deleteRecord(row)}
-                            title={t("common.delete")}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        ) : null}
-                      </div>
-                    </td>
-                  ) : null}
-                </tr>
+                            {cellValue(row, c.key, c.format, locale)}
+                          </a>
+                        ) : (
+                          cellValue(row, c.key, c.format, locale)
+                        )}
+                      </td>
+                    ))}
+                    {showActions ? (
+                      <td>
+                        <div className="flex flex-wrap gap-1">
+                          {showInvoice ? <InvoiceActions saleId={rowId} compact /> : null}
+                          {showCrud && crud.canUpdate ? (
+                            <button
+                              type="button"
+                              className="gp-btn gp-btn-ghost min-h-9 px-2"
+                              onClick={() => {
+                                setEditing(row);
+                                setFormOpen(true);
+                              }}
+                              title={t("common.edit")}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                          ) : null}
+                          {showCrud && crud.canDelete ? (
+                            <button
+                              type="button"
+                              className="gp-btn gp-btn-danger min-h-9 px-2"
+                              onClick={() => deleteRecord(row)}
+                              title={t("common.delete")}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          ) : null}
+                        </div>
+                      </td>
+                    ) : null}
+                  </tr>
                 );
               })}
             </tbody>
@@ -276,6 +323,7 @@ export function ModulePage({ moduleId }: { moduleId: string }) {
           setFormOpen(false);
           setEditing(null);
         }}
+        wide={!!crud && crud.fields.length > 4}
       >
         {crud ? (
           <CrudForm
