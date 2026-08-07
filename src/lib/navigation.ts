@@ -46,6 +46,8 @@ export const NAV_TREE: NavItem[] = [
     children: [
       { href: "/contacts/suppliers", labelKey: "nav.suppliers", moduleId: "suppliers" },
       { href: "/contacts/customers", labelKey: "nav.customers", moduleId: "customers" },
+      { href: "/contacts/employees", labelKey: "nav.employees", moduleId: "employees" },
+      { href: "/contacts/payslips", labelKey: "nav.payslips", moduleId: "payslips" },
       { href: "/contacts/groups", labelKey: "nav.customerGroups", moduleId: "customer-groups" },
       { href: "/contacts/import", labelKey: "nav.importContacts", moduleId: "import-contacts" },
     ],
@@ -128,6 +130,7 @@ export const NAV_TREE: NavItem[] = [
     children: [
       { href: "/stock/adjustments", labelKey: "nav.listAdjustments", moduleId: "stock-adjustments" },
       { href: "/stock/adjustments/add", labelKey: "nav.addAdjustment", moduleId: "stock-adjustments-add" },
+      { href: "/stock/cylinders", labelKey: "nav.cylinders", moduleId: "cylinders" },
     ],
   },
   {
@@ -144,6 +147,8 @@ export const NAV_TREE: NavItem[] = [
     icon: Landmark,
     children: [
       { href: "/accounts", labelKey: "nav.listAccounts", moduleId: "accounts" },
+      { href: "/accounts/chart", labelKey: "nav.chartOfAccounts", moduleId: "chart-of-accounts" },
+      { href: "/accounts/journals", labelKey: "nav.journals", moduleId: "journals" },
       { href: "/accounts/balance-sheet", labelKey: "nav.balanceSheet", moduleId: "balance-sheet" },
       { href: "/accounts/trial-balance", labelKey: "nav.trialBalance", moduleId: "trial-balance" },
       { href: "/accounts/cash-flow", labelKey: "nav.cashFlow", moduleId: "cash-flow" },
@@ -160,6 +165,7 @@ export const NAV_TREE: NavItem[] = [
       { href: "/reports/customer-supplier", labelKey: "reports.customerSupplier", moduleId: "report-customer-supplier" },
       { href: "/reports/customer-groups", labelKey: "reports.customerGroups", moduleId: "report-customer-groups" },
       { href: "/reports/stock", labelKey: "reports.stock", moduleId: "report-stock" },
+      { href: "/reports/stock-ledger", labelKey: "reports.stockLedger", moduleId: "report-stock-ledger" },
       { href: "/reports/stock-adjustment", labelKey: "reports.stockAdjustment", moduleId: "report-stock-adjustment" },
       { href: "/reports/trending", labelKey: "reports.trending", moduleId: "report-trending" },
       { href: "/reports/items", labelKey: "reports.items", moduleId: "report-items" },

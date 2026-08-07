@@ -182,9 +182,22 @@ export async function POST(req: NextRequest) {
       unitBn: body.unitBn || "পিস",
       purchasePrice: Number(body.purchasePrice || 0),
       sellPrice: Number(body.sellPrice || 0),
+      currency: ["BDT", "USD", "RMB"].includes(String(body.currency || ""))
+        ? String(body.currency)
+        : "BDT",
       taxPercent: Number(body.taxPercent || 0),
       alertQty: Number(body.alertQty || 10),
       hsCode: body.hsCode,
+      imageUrl: body.imageUrl || undefined,
+      description: body.description != null ? String(body.description) : undefined,
+      warrantyMonths: Number(body.warrantyMonths || 0),
+      serialNo: body.serialNo != null ? String(body.serialNo).trim() : undefined,
+      incomeAccountId: body.incomeAccountId || undefined,
+      expenseAccountId: body.expenseAccountId || undefined,
+      stockMethod:
+        body.stockMethod === "fifo" || body.stockMethod === "lifo" || body.stockMethod === "avg"
+          ? body.stockMethod
+          : undefined,
       stocks,
     });
 

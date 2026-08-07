@@ -49,10 +49,31 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
     if (body.sellPrice != null && body.sellPrice !== "") {
       $set.sellPrice = Number(body.sellPrice);
     }
+    if (body.currency != null && body.currency !== "") {
+      const c = String(body.currency);
+      if (["BDT", "USD", "RMB"].includes(c)) $set.currency = c;
+    }
     if (body.alertQty != null && body.alertQty !== "") {
       $set.alertQty = Number(body.alertQty);
     }
     if (body.hsCode != null) $set.hsCode = body.hsCode;
+    if (body.description != null) $set.description = String(body.description);
+    if (body.warrantyMonths != null && body.warrantyMonths !== "") {
+      $set.warrantyMonths = Number(body.warrantyMonths);
+    }
+    if (body.serialNo != null) $set.serialNo = String(body.serialNo).trim();
+    if (body.imageUrl != null) $set.imageUrl = body.imageUrl || undefined;
+    if (body.incomeAccountId !== undefined) {
+      $set.incomeAccountId = body.incomeAccountId || undefined;
+    }
+    if (body.expenseAccountId !== undefined) {
+      $set.expenseAccountId = body.expenseAccountId || undefined;
+    }
+    if (body.stockMethod === "fifo" || body.stockMethod === "lifo" || body.stockMethod === "avg") {
+      $set.stockMethod = body.stockMethod;
+    } else if (body.stockMethod === "" || body.stockMethod === null) {
+      $set.stockMethod = undefined;
+    }
     if (Array.isArray(body.stocks)) $set.stocks = body.stocks;
 
     let updated =

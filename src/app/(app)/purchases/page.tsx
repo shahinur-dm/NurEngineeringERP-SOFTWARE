@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { Pencil, Trash2 } from "lucide-react";
 import { EmptyState, Field, FilterBar, Modal, PageHeader } from "@/components/ui";
@@ -12,6 +13,7 @@ type PurchaseRow = {
   _id: string;
   referenceNo: string;
   supplierName: string;
+  supplierId?: string;
   grandTotal: number;
   dueAmount: number;
   purchaseDate: string;
@@ -220,7 +222,18 @@ export default function PurchasesPage() {
               {data.map((p) => (
                 <tr key={p._id}>
                   <td className="font-semibold">{p.referenceNo}</td>
-                  <td>{p.supplierName}</td>
+                  <td>
+                    {p.supplierId ? (
+                      <Link
+                        href={`/contacts/${p.supplierId}/statement`}
+                        className="font-semibold text-primary hover:underline"
+                      >
+                        {p.supplierName}
+                      </Link>
+                    ) : (
+                      p.supplierName
+                    )}
+                  </td>
                   <td>{formatDateBD(p.purchaseDate, locale)}</td>
                   <td className="font-bold">{formatBDT(p.grandTotal, locale)}</td>
                   <td>{formatBDT(p.dueAmount, locale)}</td>

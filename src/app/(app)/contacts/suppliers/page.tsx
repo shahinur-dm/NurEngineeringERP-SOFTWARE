@@ -3,7 +3,7 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { Eye, Pencil, Plus, Trash2 } from "lucide-react";
+import { Eye, FileText, Pencil, Plus, Trash2 } from "lucide-react";
 import { EmptyState, Field, FilterBar, Modal, PageHeader } from "@/components/ui";
 import { formatBDT } from "@/lib/utils";
 import { displaySupplierLabel } from "@/lib/supplier-label";
@@ -107,15 +107,17 @@ export default function SuppliersPage() {
 
     setBusy(true);
     setMessage("");
-    const payload = {
+    const payload: Record<string, unknown> = {
       type: "supplier",
       name: form.name.trim(),
       nameBn: form.nameBn.trim(),
       mobile: form.mobile.trim(),
       address: form.address.trim(),
       openingBalance: Number(form.openingBalance || 0),
-      balance: Number(form.openingBalance || 0),
     };
+    if (!editing) {
+      payload.balance = Number(form.openingBalance || 0);
+    }
 
     try {
       const res = await fetch(
@@ -173,8 +175,8 @@ export default function SuppliersPage() {
         title={locale === "bn" ? "সরবরাহকারী" : "Suppliers"}
         subtitle={
           locale === "bn"
-            ? "যোগ / সম্পাদনা / মুছুন — সব ডায়নামিক"
-            : "Add / edit / delete — fully dynamic"
+            ? "নামে ক্লিক করে স্টেটমেন্ট · চোখ আইকনে বিস্তারিত"
+            : "Click name for statement · eye icon for details"
         }
         actions={
           <button type="button" className="gp-btn gp-btn-primary" onClick={openCreate}>
@@ -217,7 +219,7 @@ export default function SuppliersPage() {
               <tr>
                 <th>{locale === "bn" ? "নাম" : "Name"}</th>
                 <th>{locale === "bn" ? "মোবাইল" : "Mobile"}</th>
-                <th>{locale === "bn" ? "ব্যালেন্স" : "Balance"}</th>
+                <th>{locale === "bn" ? "প্রদেয় (Payable)" : "Payable"}</th>
                 <th>{t("common.actions")}</th>
               </tr>
             </thead>
@@ -228,8 +230,9 @@ export default function SuppliersPage() {
                   <tr key={s._id}>
                     <td>
                       <Link
-                        href={`/contacts/suppliers/${s._id}`}
+                        href={`/contacts/${s._id}/statement`}
                         className="font-semibold text-primary hover:underline"
+                        title={locale === "bn" ? "স্টেটমেন্ট দেখুন" : "View statement"}
                       >
                         {name}
                       </Link>
@@ -239,9 +242,16 @@ export default function SuppliersPage() {
                     <td>
                       <div className="flex flex-wrap gap-1">
                         <Link
+                          href={`/contacts/${s._id}/statement`}
+                          className="gp-btn gp-btn-ghost min-h-9 px-2.5"
+                          title={locale === "bn" ? "স্টেটমেন্ট" : "Statement"}
+                        >
+                          <FileText className="h-4 w-4" />
+                        </Link>
+                        <Link
                           href={`/contacts/suppliers/${s._id}`}
                           className="gp-btn gp-btn-ghost min-h-9 px-2.5"
-                          title={locale === "bn" ? "ইতিহাস" : "History"}
+                          title={locale === "bn" ? "বিস্তারিত" : "Details"}
                         >
                           <Eye className="h-4 w-4" />
                         </Link>
@@ -307,7 +317,7 @@ export default function SuppliersPage() {
               onChange={(e) => setForm((f) => ({ ...f, mobile: e.target.value }))}
             />
           </Field>
-          <Field label={locale === "bn" ? "ব্যালেন্স" : "Balance"}>
+          <Field label={locale === "bn" ? "প্রারম্ভিক ব্যালেন্স (Opening)" : "Opening balance"}>
             <input
               type="number"
               className="gp-input"
@@ -315,6 +325,15 @@ export default function SuppliersPage() {
               onChange={(e) => setForm((f) => ({ ...f, openingBalance: e.target.value }))}
             />
           </Field>
+          {editing ? (
+            <Field label={locale === "bn" ? "বর্তমান প্রদেয়" : "Current payable"}>
+              <input
+                className="gp-input"
+                readOnly
+                value={formatBDT(editing.balance || 0, locale)}
+              />
+            </Field>
+          ) : null}
           <label className="block space-y-1 sm:col-span-2">
             <span className="text-[0.8rem] font-semibold text-muted">
               {locale === "bn" ? "ঠিকানা" : "Address"}

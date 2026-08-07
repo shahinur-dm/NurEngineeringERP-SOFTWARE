@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { Download, Pencil, Plus, Trash2 } from "lucide-react";
+import { Download, FileText, Pencil, Plus, Trash2 } from "lucide-react";
 import { CrudForm } from "@/components/CrudForm";
 import { InvoiceActions } from "@/components/InvoiceActions";
 import { AlertBanner, EmptyState, Field, FilterBar, Modal, PageHeader, TableSkeleton } from "@/components/ui";
@@ -187,7 +188,9 @@ export function ModulePage({ moduleId }: { moduleId: string }) {
   const readOnly = isReadOnlyModule(moduleId);
   const showCrud = crud && !readOnly;
   const hasInvoiceCol = mod.columns.some((c) => c.key === "invoiceNo");
-  const showActions = showCrud || hasInvoiceCol;
+  const statementModules = new Set(["customers", "suppliers"]);
+  const canOpenStatement = statementModules.has(moduleId);
+  const showActions = showCrud || hasInvoiceCol || canOpenStatement;
 
   return (
     <div ref={pageRef}>
@@ -273,6 +276,13 @@ export function ModulePage({ moduleId }: { moduleId: string }) {
                           >
                             {cellValue(row, c.key, c.format, locale)}
                           </a>
+                        ) : canOpenStatement && (c.key === "name" || c.key === "nameBn") && rowId ? (
+                          <Link
+                            href={`/contacts/${rowId}/statement`}
+                            className="font-semibold text-primary hover:underline"
+                          >
+                            {cellValue(row, c.key, c.format, locale)}
+                          </Link>
                         ) : (
                           cellValue(row, c.key, c.format, locale)
                         )}
@@ -281,6 +291,15 @@ export function ModulePage({ moduleId }: { moduleId: string }) {
                     {showActions ? (
                       <td>
                         <div className="flex flex-wrap gap-1">
+                          {canOpenStatement && rowId ? (
+                            <Link
+                              href={`/contacts/${rowId}/statement`}
+                              className="gp-btn gp-btn-ghost min-h-9 px-2"
+                              title={locale === "bn" ? "স্টেটমেন্ট" : "Statement"}
+                            >
+                              <FileText className="h-4 w-4" />
+                            </Link>
+                          ) : null}
                           {showInvoice ? <InvoiceActions saleId={rowId} compact /> : null}
                           {showCrud && crud.canUpdate ? (
                             <button

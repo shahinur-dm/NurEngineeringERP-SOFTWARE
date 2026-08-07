@@ -63,7 +63,7 @@ export const MODULE_REGISTRY: Record<string, ModuleDef> = {
     columns: [
       { key: "name", labelBn: "নাম", labelEn: "Name" },
       { key: "mobile", labelBn: "মোবাইল", labelEn: "Mobile" },
-      { key: "balance", labelBn: "ব্যালেন্স", labelEn: "Balance", format: "money" },
+      { key: "balance", labelBn: "প্রাপ্য (Receivable)", labelEn: "Receivable", format: "money" },
     ],
   },
   suppliers: {
@@ -74,7 +74,20 @@ export const MODULE_REGISTRY: Record<string, ModuleDef> = {
     columns: [
       { key: "name", labelBn: "নাম", labelEn: "Name" },
       { key: "mobile", labelBn: "মোবাইল", labelEn: "Mobile" },
-      { key: "balance", labelBn: "ব্যালেন্স", labelEn: "Balance", format: "money" },
+      { key: "balance", labelBn: "প্রদেয় (Payable)", labelEn: "Payable", format: "money" },
+    ],
+  },
+  employees: {
+    id: "employees",
+    titleBn: "কর্মচারী",
+    titleEn: "Employees",
+    apiPath: "/api/contacts?type=employee",
+    canAdd: true,
+    addHref: "/contacts/employees",
+    columns: [
+      { key: "name", labelBn: "নাম", labelEn: "Name" },
+      { key: "mobile", labelBn: "মোবাইল", labelEn: "Mobile" },
+      { key: "balance", labelBn: "বর্তমান ব্যালেন্স", labelEn: "Balance", format: "money" },
     ],
   },
   "customer-groups": {

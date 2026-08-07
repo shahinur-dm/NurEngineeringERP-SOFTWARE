@@ -8,6 +8,7 @@ export const PATH_TO_MODULE: Record<string, string> = {
   "commission-agents": "commission-agents",
   "contacts/suppliers": "suppliers",
   "contacts/customers": "customers",
+  "contacts/employees": "employees",
   "contacts/groups": "customer-groups",
   "contacts/import": "import-contacts",
   "products/add": "products-add",

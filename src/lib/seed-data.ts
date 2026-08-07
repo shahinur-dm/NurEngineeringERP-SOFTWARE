@@ -177,6 +177,19 @@ export const ACCOUNTS = [
   { name: "Rocket Merchant", type: "rocket" as const, accountNo: "01900000000", openingBalance: 5000, balance: 9200 },
 ] as const;
 
+export const LEDGER_ACCOUNTS = [
+  { code: "1000", name: "Cash on Hand", nameBn: "হাতে নগদ", type: "asset" as const },
+  { code: "1100", name: "Inventory Asset", nameBn: "ইনভেন্টরি সম্পদ", type: "asset" as const },
+  { code: "1200", name: "Accounts Receivable", nameBn: "প্রাপ্য হিসাব", type: "asset" as const },
+  { code: "2000", name: "Accounts Payable", nameBn: "প্রদেয় হিসাব", type: "liability" as const },
+  { code: "3000", name: "Owner Equity", nameBn: "মালিকানার ইকুইটি", type: "equity" as const },
+  { code: "4000", name: "Sales Income", nameBn: "বিক্রয় আয়", type: "income" as const },
+  { code: "4100", name: "Service Income", nameBn: "সার্ভিস আয়", type: "income" as const },
+  { code: "5000", name: "Cost of Goods Sold", nameBn: "বিক্রীত পণ্যের ব্যয়", type: "expense" as const },
+  { code: "5100", name: "Purchase Expense", nameBn: "ক্রয় ব্যয়", type: "expense" as const },
+  { code: "5200", name: "Salary Expense", nameBn: "বেতন ব্যয়", type: "expense" as const },
+] as const;
+
 export const EXPENSE_CATEGORIES = [
   "Transport",
   "Utility",

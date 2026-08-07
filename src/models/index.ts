@@ -75,6 +75,11 @@ const ProductSchema = new Schema(
     unitBn: { type: String, default: "পিস" },
     purchasePrice: { type: Number, default: 0 },
     sellPrice: { type: Number, default: 0 },
+    currency: {
+      type: String,
+      enum: ["BDT", "USD", "RMB"],
+      default: "BDT",
+    },
     taxPercent: { type: Number, default: 0 },
     alertQty: { type: Number, default: 10 },
     isActive: { type: Boolean, default: true },
@@ -82,6 +87,18 @@ const ProductSchema = new Schema(
     imageUrl: String,
     hsCode: String,
     description: String,
+    /** Product warranty period in months (0 = none) */
+    warrantyMonths: { type: Number, default: 0 },
+    /** Serial / SL number */
+    serialNo: String,
+    /** Chart of accounts mapping */
+    incomeAccountId: { type: Schema.Types.ObjectId, ref: "LedgerAccount" },
+    expenseAccountId: { type: Schema.Types.ObjectId, ref: "LedgerAccount" },
+    /** Per-product costing; empty = use business default */
+    stockMethod: {
+      type: String,
+      enum: ["fifo", "lifo", "avg"],
+    },
     supplierOffers: [
       {
         supplierId: { type: Schema.Types.ObjectId, ref: "Contact" },
@@ -128,7 +145,7 @@ ProductSupplierSchema.index({ productId: 1, isActive: 1 });
 
 const ContactSchema = new Schema(
   {
-    type: { type: String, enum: ["customer", "supplier", "both"], required: true },
+    type: { type: String, enum: ["customer", "supplier", "both", "employee"], required: true },
     name: { type: String, required: true },
     nameBn: String,
     mobile: { type: String, required: true },
@@ -143,6 +160,8 @@ const ContactSchema = new Schema(
     creditLimit: { type: Number, default: 0 },
     openingBalance: { type: Number, default: 0 },
     balance: { type: Number, default: 0 },
+    /** Monthly / payslip base for employees */
+    basicSalary: { type: Number, default: 0 },
     group: String,
     isActive: { type: Boolean, default: true },
     notes: String,
@@ -326,6 +345,95 @@ const AccountSchema = new Schema(
     openingBalance: { type: Number, default: 0 },
     balance: { type: Number, default: 0 },
     isActive: { type: Boolean, default: true },
+  },
+  { timestamps: true },
+);
+
+/** Chart of Accounts (GL) — separate from payment wallets */
+const LedgerAccountSchema = new Schema(
+  {
+    code: { type: String, required: true },
+    name: { type: String, required: true },
+    nameBn: String,
+    type: {
+      type: String,
+      enum: ["asset", "liability", "equity", "income", "expense"],
+      required: true,
+    },
+    openingBalance: { type: Number, default: 0 },
+    balance: { type: Number, default: 0 },
+    isActive: { type: Boolean, default: true },
+  },
+  { timestamps: true },
+);
+LedgerAccountSchema.index({ code: 1 }, { unique: true });
+LedgerAccountSchema.index({ type: 1, isActive: 1 });
+
+const JournalLineSchema = new Schema(
+  {
+    accountId: { type: Schema.Types.ObjectId, ref: "LedgerAccount", required: true },
+    accountName: String,
+    debit: { type: Number, default: 0 },
+    credit: { type: Number, default: 0 },
+    memo: String,
+  },
+  { _id: false },
+);
+
+const JournalEntrySchema = new Schema(
+  {
+    entryNo: { type: String, required: true, unique: true },
+    entryDate: { type: Date, default: Date.now },
+    memo: String,
+    status: { type: String, enum: ["draft", "posted"], default: "draft" },
+    lines: { type: [JournalLineSchema], default: [] },
+    totalDebit: { type: Number, default: 0 },
+    totalCredit: { type: Number, default: 0 },
+    createdBy: { type: Schema.Types.ObjectId, ref: "User" },
+    postedAt: Date,
+  },
+  { timestamps: true },
+);
+
+/** Cylinder / returnable packaging movement (not a financial sale) */
+const CylinderMovementSchema = new Schema(
+  {
+    movementDate: { type: Date, default: Date.now },
+    productId: { type: Schema.Types.ObjectId, ref: "Product", required: true },
+    productName: String,
+    partyType: {
+      type: String,
+      enum: ["customer", "supplier", "warehouse"],
+      required: true,
+    },
+    partyId: { type: Schema.Types.ObjectId },
+    partyName: { type: String, required: true },
+    delivered: { type: Number, default: 0 },
+    received: { type: Number, default: 0 },
+    balance: { type: Number, default: 0 },
+    note: String,
+    createdBy: { type: Schema.Types.ObjectId, ref: "User" },
+  },
+  { timestamps: true },
+);
+CylinderMovementSchema.index({ partyType: 1, partyId: 1, productId: 1, movementDate: 1 });
+
+const PayslipSchema = new Schema(
+  {
+    slipNo: { type: String, required: true, unique: true },
+    employeeId: { type: Schema.Types.ObjectId, ref: "Contact", required: true },
+    employeeName: String,
+    periodLabel: String,
+    periodFrom: Date,
+    periodTo: Date,
+    basicSalary: { type: Number, default: 0 },
+    allowances: { type: Number, default: 0 },
+    deductions: { type: Number, default: 0 },
+    netPay: { type: Number, default: 0 },
+    status: { type: String, enum: ["draft", "paid"], default: "draft" },
+    paidAt: Date,
+    note: String,
+    createdBy: { type: Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true },
 );
@@ -602,6 +710,13 @@ export const StockTransfer =
 export const StockAdjustment =
   models.StockAdjustment || model("StockAdjustment", StockAdjustmentSchema);
 export const Account = models.Account || model("Account", AccountSchema);
+export const LedgerAccount =
+  models.LedgerAccount || model("LedgerAccount", LedgerAccountSchema);
+export const JournalEntry =
+  models.JournalEntry || model("JournalEntry", JournalEntrySchema);
+export const CylinderMovement =
+  models.CylinderMovement || model("CylinderMovement", CylinderMovementSchema);
+export const Payslip = models.Payslip || model("Payslip", PayslipSchema);
 export const Lead = models.Lead || model("Lead", LeadSchema);
 export const Recipe = models.Recipe || model("Recipe", RecipeSchema);
 export const Counter = models.Counter || model("Counter", CounterSchema);

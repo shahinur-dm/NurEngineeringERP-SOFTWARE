@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { AlertBanner, EmptyState, Field, Modal, PageHeader, TableSkeleton } from "@/components/ui";
-import { formatBDT } from "@/lib/utils";
+import { formatMoney } from "@/lib/utils";
 import { displaySupplierLabel } from "@/lib/supplier-label";
 import { useDebouncedValue } from "@/lib/hooks";
 
@@ -31,25 +31,28 @@ type Product = {
   brand?: string;
   purchasePrice?: number;
   sellPrice: number;
+  currency?: string;
   alertQty?: number;
   locationQty?: number;
+  imageUrl?: string;
+  incomeAccountId?: string;
+  expenseAccountId?: string;
+  stockMethod?: string;
+  description?: string;
+  warrantyMonths?: number;
+  serialNo?: string;
   supplierOffers?: SupplierOffer[];
 };
+
+type LedgerAcc = { _id: string; code: string; name: string; nameBn?: string; type: string };
 
 type OfferSlot = {
   supplierId: string;
   price: string;
 };
 
-const EMPTY_SLOTS: OfferSlot[] = [
-  { supplierId: "", price: "" },
-  { supplierId: "", price: "" },
-  { supplierId: "", price: "" },
-  { supplierId: "", price: "" },
-];
-
 function relationOffers(p: Product): SupplierOffer[] {
-  return (p.supplierOffers || []).filter((o) => o?.supplierId).slice(0, 4);
+  return (p.supplierOffers || []).filter((o) => o?.supplierId);
 }
 
 function apiErrorMessage(
@@ -86,16 +89,38 @@ export default function ProductsPage() {
     brand: "",
     purchasePrice: "",
     sellPrice: "",
+    currency: "BDT",
     alertQty: "10",
     openingQty: "0",
+    imageUrl: "",
+    incomeAccountId: "",
+    expenseAccountId: "",
+    stockMethod: "",
+    description: "",
+    warrantyMonths: "0",
+    serialNo: "",
   });
-  const [slots, setSlots] = useState<OfferSlot[]>(EMPTY_SLOTS);
+  const [slots, setSlots] = useState<OfferSlot[]>([{ supplierId: "", price: "" }]);
+  const [incomeAccounts, setIncomeAccounts] = useState<LedgerAcc[]>([]);
+  const [expenseAccounts, setExpenseAccounts] = useState<LedgerAcc[]>([]);
 
   useEffect(() => {
     fetch("/api/contacts?type=supplier&limit=200")
       .then((r) => r.json())
       .then((d) => setCatalog(d.data || []))
       .catch(() => setCatalog([]));
+    Promise.all([
+      fetch("/api/ledger-accounts?type=income").then((r) => r.json()),
+      fetch("/api/ledger-accounts?type=expense").then((r) => r.json()),
+    ])
+      .then(([inc, exp]) => {
+        setIncomeAccounts(inc.data || []);
+        setExpenseAccounts(exp.data || []);
+      })
+      .catch(() => {
+        setIncomeAccounts([]);
+        setExpenseAccounts([]);
+      });
   }, []);
 
   const loadProducts = useCallback(async () => {
@@ -126,15 +151,18 @@ export default function ProductsPage() {
       brand: "",
       purchasePrice: "",
       sellPrice: "",
+      currency: "BDT",
       alertQty: "10",
       openingQty: "0",
+      imageUrl: "",
+      incomeAccountId: "",
+      expenseAccountId: "",
+      stockMethod: "",
+      description: "",
+      warrantyMonths: "0",
+      serialNo: "",
     });
-    setSlots([
-      { supplierId: catalog[0]?._id || "", price: "" },
-      { supplierId: catalog[1]?._id || "", price: "" },
-      { supplierId: catalog[2]?._id || "", price: "" },
-      { supplierId: "", price: "" },
-    ]);
+    setSlots([{ supplierId: "", price: "" }]);
     setModalOpen(true);
   }
 
@@ -148,27 +176,25 @@ export default function ProductsPage() {
       brand: p.brand || "",
       purchasePrice: String(p.purchasePrice ?? ""),
       sellPrice: String(p.sellPrice ?? ""),
+      currency: p.currency || "BDT",
       alertQty: String(p.alertQty ?? 10),
       openingQty: "0",
+      imageUrl: p.imageUrl || "",
+      incomeAccountId: p.incomeAccountId ? String(p.incomeAccountId) : "",
+      expenseAccountId: p.expenseAccountId ? String(p.expenseAccountId) : "",
+      stockMethod: p.stockMethod || "",
+      description: p.description || "",
+      warrantyMonths: String(p.warrantyMonths ?? 0),
+      serialNo: p.serialNo || "",
     });
-    setSlots([
-      {
-        supplierId: offers[0]?.supplierId || "",
-        price: offers[0] ? String(offers[0].price) : "",
-      },
-      {
-        supplierId: offers[1]?.supplierId || "",
-        price: offers[1] ? String(offers[1].price) : "",
-      },
-      {
-        supplierId: offers[2]?.supplierId || "",
-        price: offers[2] ? String(offers[2].price) : "",
-      },
-      {
-        supplierId: offers[3]?.supplierId || "",
-        price: offers[3] ? String(offers[3].price) : "",
-      },
-    ]);
+    setSlots(
+      offers.length
+        ? offers.map((o) => ({
+            supplierId: o.supplierId || "",
+            price: String(o.price ?? ""),
+          }))
+        : [{ supplierId: "", price: "" }],
+    );
     setModalOpen(true);
   }
 
@@ -197,7 +223,15 @@ export default function ProductsPage() {
       brand: form.brand.trim(),
       purchasePrice: Number(form.purchasePrice || 0),
       sellPrice: Number(form.sellPrice || 0),
+      currency: form.currency || "BDT",
       alertQty: Number(form.alertQty || 10),
+      imageUrl: form.imageUrl || "",
+      incomeAccountId: form.incomeAccountId || null,
+      expenseAccountId: form.expenseAccountId || null,
+      stockMethod: form.stockMethod || "",
+      description: form.description.trim(),
+      warrantyMonths: Number(form.warrantyMonths || 0),
+      serialNo: form.serialNo.trim(),
       supplierOffers,
     };
 
@@ -260,6 +294,34 @@ export default function ProductsPage() {
     setSlots((prev) => prev.map((s, i) => (i === index ? { ...s, ...patch } : s)));
   }
 
+  function addSlot() {
+    setSlots((prev) => [...prev, { supplierId: "", price: "" }]);
+  }
+
+  function removeSlot(index: number) {
+    setSlots((prev) => {
+      if (prev.length <= 1) return [{ supplierId: "", price: "" }];
+      return prev.filter((_, i) => i !== index);
+    });
+  }
+
+  function onImagePick(file: File | undefined) {
+    if (!file) return;
+    if (file.size > 800_000) {
+      setBanner({
+        tone: "error",
+        message:
+          locale === "bn" ? "ছবি ৮০০KB এর কম হতে হবে" : "Image must be under 800KB",
+      });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setForm((f) => ({ ...f, imageUrl: String(reader.result || "") }));
+    };
+    reader.readAsDataURL(file);
+  }
+
   return (
     <div>
       <PageHeader
@@ -306,9 +368,8 @@ export default function ProductsPage() {
               <tr>
                 <th>{t("products.name")}</th>
                 <th>{t("products.sku")}</th>
-                <th>{t("products.brand")}</th>
-                <th>{t("products.purchasePrice")}</th>
-                <th>{t("products.sellPrice")}</th>
+                <th>{locale === "bn" ? "খরচ মূল্য" : "Cost"}</th>
+                <th>{locale === "bn" ? "বিক্রয় মূল্য" : "Sales price"}</th>
                 <th>{t("products.supplierPrices")}</th>
                 <th>{t("common.actions")}</th>
               </tr>
@@ -320,18 +381,29 @@ export default function ProductsPage() {
                 return (
                   <tr key={p._id}>
                     <td>
-                      <div className="font-semibold text-[var(--gp-ink)]">{title}</div>
-                      {locale === "bn" && p.name && p.nameBn ? (
-                        <div className="mt-0.5 text-xs text-muted">{p.name}</div>
-                      ) : null}
+                      <div className="flex items-center gap-2">
+                        {p.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={p.imageUrl}
+                            alt=""
+                            className="h-9 w-9 rounded-lg object-cover border border-line"
+                          />
+                        ) : null}
+                        <div>
+                          <div className="font-semibold text-[var(--gp-ink)]">{title}</div>
+                          {locale === "bn" && p.name && p.nameBn ? (
+                            <div className="mt-0.5 text-xs text-muted">{p.name}</div>
+                          ) : null}
+                        </div>
+                      </div>
                     </td>
                     <td className="gp-money whitespace-nowrap">{p.sku}</td>
-                    <td className="text-muted">{p.brand || "—"}</td>
                     <td className="gp-money whitespace-nowrap">
-                      {formatBDT(p.purchasePrice || 0, locale)}
+                      {formatMoney(p.purchasePrice || 0, p.currency || "BDT", locale)}
                     </td>
                     <td className="gp-money whitespace-nowrap">
-                      {formatBDT(p.sellPrice || 0, locale)}
+                      {formatMoney(p.sellPrice || 0, p.currency || "BDT", locale)}
                     </td>
                     <td>
                       {offers.length === 0 ? (
@@ -349,7 +421,7 @@ export default function ProductsPage() {
                                 {displaySupplierLabel(offer, locale)}
                               </span>
                               <span className="gp-product-list__chip-price gp-money">
-                                {formatBDT(offer.price, locale)}
+                                {formatMoney(offer.price, p.currency || "BDT", locale)}
                               </span>
                             </Link>
                           ))}
@@ -422,7 +494,24 @@ export default function ProductsPage() {
               onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value }))}
             />
           </Field>
-          <Field label={t("products.purchasePrice")}>
+          <Field label={locale === "bn" ? "মুদ্রা (Currency)" : "Currency"}>
+            <select
+              className="gp-input"
+              value={form.currency}
+              onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value }))}
+            >
+              <option value="BDT">BDT (৳ / Tk) — default</option>
+              <option value="USD">USD ($)</option>
+              <option value="RMB">RMB (¥)</option>
+            </select>
+          </Field>
+          <Field
+            label={
+              locale === "bn"
+                ? `খরচ মূল্য (${form.currency || "BDT"})`
+                : `Cost price (${form.currency || "BDT"})`
+            }
+          >
             <input
               type="number"
               min={0}
@@ -432,7 +521,13 @@ export default function ProductsPage() {
               onChange={(e) => setForm((f) => ({ ...f, purchasePrice: e.target.value }))}
             />
           </Field>
-          <Field label={t("products.sellPrice")}>
+          <Field
+            label={
+              locale === "bn"
+                ? `বিক্রয় মূল্য (${form.currency || "BDT"})`
+                : `Sales price (${form.currency || "BDT"})`
+            }
+          >
             <input
               type="number"
               min={0}
@@ -441,6 +536,64 @@ export default function ProductsPage() {
               value={form.sellPrice}
               onChange={(e) => setForm((f) => ({ ...f, sellPrice: e.target.value }))}
             />
+          </Field>
+          <Field label={locale === "bn" ? "ওয়ারেন্টি (মাস)" : "Warranty (months)"}>
+            <input
+              type="number"
+              min={0}
+              className="gp-input"
+              value={form.warrantyMonths}
+              onChange={(e) => setForm((f) => ({ ...f, warrantyMonths: e.target.value }))}
+              placeholder="0"
+            />
+          </Field>
+          <Field label={locale === "bn" ? "এসএল নং (SL No)" : "SL No / Serial"}>
+            <input
+              className="gp-input"
+              value={form.serialNo}
+              onChange={(e) => setForm((f) => ({ ...f, serialNo: e.target.value }))}
+              placeholder={locale === "bn" ? "সিরিয়াল নম্বর" : "Serial number"}
+            />
+          </Field>
+          <Field label={locale === "bn" ? "আয় হিসাব (Income)" : "Income account"}>
+            <select
+              className="gp-input"
+              value={form.incomeAccountId}
+              onChange={(e) => setForm((f) => ({ ...f, incomeAccountId: e.target.value }))}
+            >
+              <option value="">—</option>
+              {incomeAccounts.map((a) => (
+                <option key={a._id} value={a._id}>
+                  {a.code} — {locale === "bn" && a.nameBn ? a.nameBn : a.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label={locale === "bn" ? "ব্যয় হিসাব (Expense)" : "Expense account"}>
+            <select
+              className="gp-input"
+              value={form.expenseAccountId}
+              onChange={(e) => setForm((f) => ({ ...f, expenseAccountId: e.target.value }))}
+            >
+              <option value="">—</option>
+              {expenseAccounts.map((a) => (
+                <option key={a._id} value={a._id}>
+                  {a.code} — {locale === "bn" && a.nameBn ? a.nameBn : a.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label={locale === "bn" ? "কস্টিং পদ্ধতি" : "Costing method"}>
+            <select
+              className="gp-input"
+              value={form.stockMethod}
+              onChange={(e) => setForm((f) => ({ ...f, stockMethod: e.target.value }))}
+            >
+              <option value="">{locale === "bn" ? "ব্যবসার ডিফল্ট" : "Business default"}</option>
+              <option value="fifo">FIFO</option>
+              <option value="lifo">LIFO</option>
+              <option value="avg">{locale === "bn" ? "ওয়েটেড অ্যাভারেজ" : "Weighted average"}</option>
+            </select>
           </Field>
           {!editing ? (
             <Field label={locale === "bn" ? "প্রারম্ভিক স্টক" : "Opening stock"}>
@@ -452,15 +605,104 @@ export default function ProductsPage() {
                 onChange={(e) => setForm((f) => ({ ...f, openingQty: e.target.value }))}
               />
             </Field>
-          ) : null}
+          ) : (
+            <div />
+          )}
 
           <div className="md:col-span-2">
-            <p className="mb-1 text-sm font-semibold text-muted">{t("products.supplierPrices")}</p>
-            <p className="mb-3 text-xs text-muted">{t("products.supplierHint")}</p>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Field label={locale === "bn" ? "পণ্য বিবরণ" : "Product description"}>
+              <textarea
+                className="gp-input min-h-[88px] py-2"
+                value={form.description}
+                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                placeholder={
+                  locale === "bn"
+                    ? "স্পেসিফিকেশন, ওয়ারেন্টি, নোট…"
+                    : "Specs, warranty, notes…"
+                }
+              />
+            </Field>
+          </div>
+
+          <div className="md:col-span-2">
+            <Field label={locale === "bn" ? "পণ্য ছবি" : "Product image"}>
+              <div className="flex flex-wrap items-start gap-3">
+                {form.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={form.imageUrl}
+                    alt=""
+                    className="h-20 w-20 rounded-xl border border-line object-cover"
+                  />
+                ) : (
+                  <div className="flex h-20 w-20 items-center justify-center rounded-xl border border-dashed border-line bg-[var(--gp-bg)] text-xs text-muted">
+                    {locale === "bn" ? "নেই" : "None"}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1 space-y-2">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="gp-input"
+                    onChange={(e) => {
+                      onImagePick(e.target.files?.[0]);
+                      e.target.value = "";
+                    }}
+                  />
+                  <p className="text-xs text-muted">
+                    {locale === "bn"
+                      ? "JPG/PNG · সর্বোচ্চ ৮০০KB"
+                      : "JPG/PNG · max 800KB"}
+                  </p>
+                  {form.imageUrl ? (
+                    <button
+                      type="button"
+                      className="gp-btn gp-btn-ghost min-h-9 px-3 text-danger"
+                      onClick={() => setForm((f) => ({ ...f, imageUrl: "" }))}
+                    >
+                      {locale === "bn" ? "ছবি সরান" : "Remove image"}
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            </Field>
+          </div>
+
+          <div className="md:col-span-2">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-semibold text-muted">{t("products.supplierPrices")}</p>
+                <p className="text-xs text-muted">{t("products.supplierHint")}</p>
+              </div>
+              <button
+                type="button"
+                className="gp-btn gp-btn-primary min-h-9 px-3"
+                onClick={addSlot}
+              >
+                <Plus className="h-4 w-4" />
+                {locale === "bn" ? "সরবরাহকারী রেট" : "Supplier rate"}
+              </button>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
               {slots.map((slot, n) => (
-                <div key={n} className="rounded-xl border border-line bg-[var(--gp-bg)] p-3">
-                  <Field label={`${t("contacts.suppliers")} ${n + 1}`}>
+                <div
+                  key={n}
+                  className="relative rounded-xl border border-line bg-[var(--gp-bg)] p-3"
+                >
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold text-muted">
+                      {locale === "bn" ? `সরবরাহকারী ${n + 1}` : `Supplier ${n + 1}`}
+                    </span>
+                    <button
+                      type="button"
+                      className="gp-btn gp-btn-ghost min-h-8 px-2 text-danger"
+                      title={t("common.delete")}
+                      onClick={() => removeSlot(n)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <Field label={t("contacts.suppliers")}>
                     <select
                       className="gp-input"
                       value={slot.supplierId}
@@ -475,7 +717,7 @@ export default function ProductsPage() {
                     </select>
                   </Field>
                   <div className="mt-2">
-                    <Field label={t("products.price")}>
+                    <Field label={`${t("products.price")} (${form.currency || "BDT"})`}>
                       <input
                         type="number"
                         min={0}

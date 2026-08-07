@@ -119,17 +119,22 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
     if (!nameBn || isGenericSupplierLabel(nameBn)) {
       nameBn = name;
     }
-    await Contact.findByIdAndUpdate(id, {
-      $set: {
-        name,
-        nameBn,
-        mobile,
-        address: String(s.address || "").trim(),
-        ...(openingBalance != null && Number.isFinite(openingBalance)
-          ? { openingBalance, balance: openingBalance }
-          : {}),
-      },
-    });
+    const $set: Record<string, unknown> = {
+      name,
+      nameBn,
+      mobile,
+      address: String(s.address || "").trim(),
+    };
+    if (openingBalance != null && Number.isFinite(openingBalance)) {
+      const existing = await Contact.findById(id).lean();
+      if (existing) {
+        const oldOpening = Number(existing.openingBalance || 0);
+        const oldBalance = Number(existing.balance || 0);
+        $set.openingBalance = openingBalance;
+        $set.balance = oldBalance - oldOpening + openingBalance;
+      }
+    }
+    await Contact.findByIdAndUpdate(id, { $set });
     await propagateSupplierIdentity(id);
   }
 

@@ -4,7 +4,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { ArrowLeft, Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, FileText, Pencil, Plus, Trash2 } from "lucide-react";
 import { EmptyState, Field, Modal, PageHeader } from "@/components/ui";
 import { formatBDT, formatDateBD } from "@/lib/utils";
 import { displaySupplierLabel } from "@/lib/supplier-label";
@@ -244,10 +244,16 @@ export default function SupplierDetailPage() {
               : "Linked products, prices and purchase history — all editable"
           }
           actions={
-            <button type="button" className="gp-btn gp-btn-primary" onClick={openEditSupplier}>
-              <Pencil className="h-4 w-4" />
-              {t("common.edit")}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <Link href={`/contacts/${id}/statement`} className="gp-btn gp-btn-ghost">
+                <FileText className="h-4 w-4" />
+                {locale === "bn" ? "স্টেটমেন্ট" : "Statement"}
+              </Link>
+              <button type="button" className="gp-btn gp-btn-primary" onClick={openEditSupplier}>
+                <Pencil className="h-4 w-4" />
+                {t("common.edit")}
+              </button>
+            </div>
           }
         />
       </div>
@@ -267,7 +273,7 @@ export default function SupplierDetailPage() {
         </div>
         <div className="gp-card p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">
-            {locale === "bn" ? "ব্যালেন্স" : "Balance"}
+            {locale === "bn" ? "প্রদেয় (Payable)" : "Payable"}
           </p>
           <p className="gp-money mt-1 text-xl text-primary">
             {formatBDT(summary.balance ?? supplier.balance ?? 0, locale)}
@@ -442,7 +448,7 @@ export default function SupplierDetailPage() {
               onChange={(e) => setSupplierForm((f) => ({ ...f, mobile: e.target.value }))}
             />
           </Field>
-          <Field label={locale === "bn" ? "ব্যালেন্স" : "Balance"}>
+          <Field label={locale === "bn" ? "প্রারম্ভিক ব্যালেন্স (Opening)" : "Opening balance"}>
             <input
               type="number"
               className="gp-input"
@@ -450,6 +456,13 @@ export default function SupplierDetailPage() {
               onChange={(e) =>
                 setSupplierForm((f) => ({ ...f, openingBalance: e.target.value }))
               }
+            />
+          </Field>
+          <Field label={locale === "bn" ? "বর্তমান প্রদেয়" : "Current payable"}>
+            <input
+              className="gp-input"
+              readOnly
+              value={formatBDT(data?.supplier?.balance ?? 0, locale)}
             />
           </Field>
           <label className="block space-y-1 sm:col-span-2">

@@ -11,6 +11,7 @@ import {
   DEMO_ADMIN,
   EXPENSE_CATEGORIES,
   EXTRA_SUPPLIERS,
+  LEDGER_ACCOUNTS,
   LOCATIONS,
   PRODUCTS,
   ROLES,
@@ -26,6 +27,7 @@ import {
   ProductSupplier,
   Contact,
   Account,
+  LedgerAccount,
   User,
   Sale,
   Purchase,
@@ -501,6 +503,9 @@ export async function POST(req: NextRequest) {
 
     // ─── Accounts / users ────────────────────────────────────────
     await Account.insertMany(ACCOUNTS.map((a) => ({ ...a, isActive: true })));
+    await LedgerAccount.insertMany(
+      LEDGER_ACCOUNTS.map((a) => ({ ...a, openingBalance: 0, balance: 0, isActive: true })),
+    );
 
     const admin = await ensureDemoAdmin(hq._id);
     const pwd = admin.passwordHash;

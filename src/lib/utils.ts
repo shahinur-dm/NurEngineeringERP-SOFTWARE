@@ -6,12 +6,35 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatBDT(amount: number, _locale: string = "bn") {
+  return formatMoney(amount, "BDT", _locale);
+}
+
+export type MoneyCurrency = "BDT" | "USD" | "RMB";
+
+const CURRENCY_SYMBOL: Record<MoneyCurrency, string> = {
+  BDT: "৳",
+  USD: "$",
+  RMB: "¥",
+};
+
+export function formatMoney(
+  amount: number,
+  currency: string = "BDT",
+  _locale: string = "bn",
+) {
   const value = Number.isFinite(amount) ? amount : 0;
+  const code = (["BDT", "USD", "RMB"].includes(currency) ? currency : "BDT") as MoneyCurrency;
   const num = value.toLocaleString("en-BD", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-  return `৳${num}`;
+  return `${CURRENCY_SYMBOL[code]}${num}`;
+}
+
+export function currencyLabel(code: string, locale: string = "en") {
+  if (code === "USD") return "USD ($)";
+  if (code === "RMB") return locale === "bn" ? "RMB (¥)" : "RMB (¥)";
+  return locale === "bn" ? "BDT (৳ / Tk)" : "BDT (৳ / Tk)";
 }
 
 export function formatDateBD(date: Date | string, locale: string = "bn") {

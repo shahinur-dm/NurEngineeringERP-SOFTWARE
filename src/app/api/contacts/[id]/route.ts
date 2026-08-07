@@ -38,9 +38,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
     const openingBalance =
       body.openingBalance != null && body.openingBalance !== ""
         ? Number(body.openingBalance)
-        : body.balance != null && body.balance !== ""
-          ? Number(body.balance)
-          : undefined;
+        : undefined;
 
     let nameBn = String(body.nameBn || "").trim();
     if (!nameBn || isGenericSupplierLabel(nameBn)) {
@@ -61,9 +59,17 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
     if (body.bin != null && String(body.bin).trim() !== "") $set.bin = String(body.bin);
     if (body.tin != null && String(body.tin).trim() !== "") $set.tin = String(body.tin);
     if (body.type) $set.type = body.type;
+    if (body.basicSalary != null && body.basicSalary !== "") {
+      $set.basicSalary = Number(body.basicSalary);
+    }
     if (openingBalance != null && Number.isFinite(openingBalance)) {
+      const existing = await Contact.findById(id).lean();
+      if (!existing) return NextResponse.json({ error: "not_found" }, { status: 404 });
+      const oldOpening = Number(existing.openingBalance || 0);
+      const oldBalance = Number(existing.balance || 0);
+      // Keep receivable/payable intact: only shift by opening delta
       $set.openingBalance = openingBalance;
-      $set.balance = openingBalance;
+      $set.balance = oldBalance - oldOpening + openingBalance;
     }
 
     const updated = await Contact.findByIdAndUpdate(id, { $set }, { new: true, runValidators: true });

@@ -14,6 +14,7 @@ type Sale = {
   _id: string;
   invoiceNo: string;
   customerName: string;
+  customerId?: string;
   grandTotal: number;
   paidAmount: number;
   dueAmount: number;
@@ -145,7 +146,18 @@ export default function SalesPage() {
                       {s.invoiceNo}
                     </Link>
                   </td>
-                  <td>{s.customerName}</td>
+                  <td>
+                    {s.customerId ? (
+                      <Link
+                        href={`/contacts/${s.customerId}/statement`}
+                        className="font-semibold text-primary hover:underline"
+                      >
+                        {s.customerName}
+                      </Link>
+                    ) : (
+                      s.customerName
+                    )}
+                  </td>
                   <td>{formatDateBD(s.saleDate, locale)}</td>
                   <td className="font-bold">{formatBDT(s.grandTotal, locale)}</td>
                   <td>{formatBDT(s.dueAmount, locale)}</td>

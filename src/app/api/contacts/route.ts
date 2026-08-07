@@ -17,6 +17,7 @@ export async function GET(req: NextRequest) {
   const filter: Record<string, unknown> = { isActive: true };
   if (type === "customer") filter.type = { $in: ["customer", "both"] };
   if (type === "supplier") filter.type = { $in: ["supplier", "both"] };
+  if (type === "employee") filter.type = "employee";
   if (q) {
     filter.$or = [
       { name: new RegExp(q, "i") },
@@ -62,6 +63,7 @@ export async function POST(req: NextRequest) {
       creditLimit: Number(body.creditLimit || 0),
       balance: Number(body.openingBalance || 0),
       openingBalance: Number(body.openingBalance || 0),
+      basicSalary: Number(body.basicSalary || 0),
     });
 
     return NextResponse.json({ data: contact }, { status: 201 });
