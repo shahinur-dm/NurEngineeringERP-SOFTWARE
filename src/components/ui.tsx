@@ -43,49 +43,44 @@ export function KpiCard({
   onClick?: () => void;
   tone?: "default" | "warn" | "danger" | "info";
 }) {
-  const toneClass =
-    tone === "warn"
-      ? "gp-kpi-warn"
-      : tone === "danger"
-        ? "gp-kpi-danger"
-        : tone === "info"
-          ? "gp-kpi-info"
-          : "border-line bg-white";
-
-  const textToneClass = 
-    tone === "warn" ? "text-warn" 
-    : tone === "danger" ? "text-danger"
-    : tone === "info" ? "text-info"
-    : "text-muted";
-
   return (
     <button
       type="button"
       data-animate="card"
       onClick={onClick}
       className={cn(
-        "gp-card gp-kpi-card w-full min-h-[152px] p-5 text-left transition hover:-translate-y-0.5 hover:shadow-md relative overflow-hidden flex flex-col",
-        toneClass,
+        "gp-card gp-kpi-card w-full min-h-[140px] p-5 text-left transition-shadow hover:shadow-md flex flex-col",
         onClick && "cursor-pointer",
       )}
     >
       <div className="flex items-start justify-between gap-2">
-        <p className="min-h-[2.5rem] text-xs font-bold uppercase leading-snug tracking-[0.08em] text-muted">
+        <p className="min-h-[2.25rem] text-[0.72rem] font-bold uppercase leading-snug tracking-[0.08em] text-muted">
           {label}
         </p>
         {Icon ? (
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/60">
-            <Icon className={cn("h-5 w-5", textToneClass)} />
+          <span
+            className={cn(
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+              tone === "warn"
+                ? "bg-[#fff7ed] text-[#ea580c]"
+                : tone === "danger"
+                  ? "bg-[#fef2f2] text-[#dc2626]"
+                  : tone === "info"
+                    ? "bg-[#ecfdf5] text-[#059669]"
+                    : "bg-[#eff6ff] text-[#2563eb]",
+            )}
+          >
+            <Icon className="h-5 w-5" />
           </span>
         ) : (
-          <span className="h-9 w-9 shrink-0" aria-hidden />
+          <span className="h-10 w-10 shrink-0" aria-hidden />
         )}
       </div>
       <div className="mt-auto pt-3">
-        <p className="gp-money text-2xl leading-none tracking-tight text-[var(--gp-ink)] md:text-[1.65rem]">
+        <p className="gp-money text-2xl leading-none tracking-tight text-[var(--gp-ink)] md:text-[1.7rem]">
           {typeof value === "number" ? formatBDT(value) : value}
         </p>
-        <p className="mt-2 min-h-[1.125rem] text-xs font-semibold text-primary/80">
+        <p className="mt-2 min-h-[1.125rem] text-xs font-medium text-muted">
           {hint || "\u00A0"}
         </p>
       </div>

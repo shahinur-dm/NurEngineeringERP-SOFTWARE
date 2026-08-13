@@ -1,10 +1,9 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
-import { Cpu, CircuitBoard, Wrench, BarChart3, Zap } from "lucide-react";
-import { animateIn, animateStagger } from "@/lib/gsap";
+import { Cpu, CircuitBoard, Wrench, BarChart3, Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
 
 export default function LoginPage() {
   const t = useTranslations();
@@ -12,20 +11,9 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
-  const brandRef = useRef<HTMLDivElement>(null);
-  const formRef = useRef<HTMLFormElement>(null);
-  const featureRefs = useRef<HTMLLIElement[]>([]);
-
-  useEffect(() => {
-    animateIn(brandRef.current, { y: 28, duration: 0.55 });
-    animateIn(formRef.current, { y: 24, delay: 0.12, duration: 0.5 });
-    requestAnimationFrame(() => {
-      animateStagger(featureRefs.current.filter(Boolean), { y: 14, stagger: 0.08 });
-    });
-  }, []);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -46,7 +34,6 @@ export default function LoginPage() {
         );
         return;
       }
-      // Soft seed after successful login (no wipe)
       void fetch("/api/seed", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -59,6 +46,12 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function fillDemo() {
+    setEmail("admin@ditpharma.bd");
+    setPassword("admin123");
+    setError("");
   }
 
   const features = [
@@ -86,115 +79,130 @@ export default function LoginPage() {
   ];
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[var(--gp-bg)]">
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          backgroundImage:
-            "radial-gradient(ellipse 70% 55% at 12% 18%, rgba(30,107,184,0.09) 0%, transparent 55%), radial-gradient(ellipse 50% 40% at 88% 8%, rgba(13,148,136,0.07) 0%, transparent 50%), linear-gradient(180deg, #f8fafc 0%, #f5f7fa 100%)",
-        }}
-      />
-      <div className="pointer-events-none absolute inset-0 opacity-[0.35] [background-image:linear-gradient(rgba(30,107,184,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(30,107,184,0.04)_1px,transparent_1px)] [background-size:56px_56px]" />
-
-      <div className="relative mx-auto flex min-h-screen max-w-6xl items-center px-4 py-10">
-        <div className="grid w-full gap-12 lg:grid-cols-2 lg:items-center">
-          <div ref={brandRef} className="text-[var(--gp-ink)]">
-            <div className="mb-7 inline-flex items-center gap-3 rounded-2xl border border-line bg-white/80 px-4 py-3 shadow-sm backdrop-blur">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--gp-primary)] text-white">
-                <Cpu className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted">
-                  EEE Equipment POS
-                </p>
-                <p className="text-sm font-semibold text-[var(--gp-ink)]">Nur Engineering ERP</p>
-              </div>
+    <div className="erp-login-grid bg-white">
+      <aside className="relative hidden flex-col justify-between overflow-hidden bg-[#0b1629] px-10 py-10 text-white md:flex">
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.18]"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)",
+            backgroundSize: "48px 48px",
+          }}
+        />
+        <div className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-[#2563eb]/25" />
+        <div className="relative">
+          <div className="mb-14 flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#2563eb] text-white">
+              <Cpu className="h-5 w-5" />
             </div>
-
-            <h1 className="gp-display text-4xl font-bold leading-[1.12] text-[var(--gp-ink)] md:text-5xl lg:text-[3.25rem]">
-              {t("app.name")}
-            </h1>
-            <p className="mt-4 max-w-md text-base leading-relaxed text-muted md:text-lg">
-              {t("app.tagline")}
-            </p>
-
-            <ul className="mt-10 space-y-3.5">
-              {features.map(({ icon: Icon, text }, i) => (
-                <li
-                  key={text}
-                  ref={(el) => {
-                    if (el) featureRefs.current[i] = el;
-                  }}
-                  className="flex items-start gap-3 text-[0.95rem] text-[var(--gp-ink)]"
-                >
-                  <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--gp-primary-soft)] text-[var(--gp-primary)]">
-                    <Icon className="h-4 w-4" />
-                  </span>
-                  <span className="pt-1.5 font-medium">{text}</span>
-                </li>
-              ))}
-            </ul>
-
-            <div className="mt-10 flex items-center gap-2 text-sm text-muted">
-              <Zap className="h-4 w-4 text-[var(--gp-accent)]" />
-              <span>
-                {locale === "en"
-                  ? "Built for Electrical & Electronic Engineering students"
-                  : "ইলেকট্রিক্যাল ও ইলেকট্রনিক্স ইঞ্জিনিয়ারিং শিক্ষার্থীদের জন্য"}
-              </span>
+            <div>
+              <p className="text-base font-bold leading-tight">Nur Engineering ERP</p>
+              <p className="text-xs text-[#93c5fd]">EEE Equipment POS</p>
             </div>
           </div>
+          <h1 className="max-w-md text-3xl font-bold leading-tight lg:text-4xl">
+            {locale === "en" ? (
+              <>
+                Manage your entire <span className="text-[#60a5fa]">business</span> in one place
+              </>
+            ) : (
+              t("app.name")
+            )}
+          </h1>
+          <p className="mt-4 max-w-md text-sm leading-relaxed text-white/70">{t("app.tagline")}</p>
+          <ul className="mt-10 space-y-4">
+            {features.map(({ icon: Icon, text }) => (
+              <li key={text} className="flex items-start gap-3 text-sm text-white/90">
+                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#2563eb]/30 text-[#93c5fd]">
+                  <Icon className="h-4 w-4" />
+                </span>
+                <span className="pt-1.5">{text}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <p className="relative text-xs text-white/40">
+          {locale === "en"
+            ? "Built for Electrical & Electronic Engineering"
+            : "ইলেকট্রিক্যাল ও ইলেকট্রনিক্স ইঞ্জিনিয়ারিংয়ের জন্য"}
+        </p>
+      </aside>
 
-          <form
-            ref={formRef}
-            onSubmit={onSubmit}
-            className="gp-card-elevated border-line bg-white p-7 md:p-9"
-          >
-            <div className="mb-7 border-b border-line pb-5">
-              <h2 className="gp-display text-2xl font-bold text-[var(--gp-ink)] md:text-3xl">
-                {t("auth.welcome")}
-              </h2>
-              <p className="mt-1.5 text-muted">{t("auth.loginTitle")}</p>
+      <div className="flex items-center justify-center px-4 py-10 sm:px-8">
+        <form onSubmit={onSubmit} className="w-full max-w-[420px]">
+          <div className="mb-8 flex items-center gap-3 md:hidden">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#2563eb] text-white">
+              <Cpu className="h-5 w-5" />
             </div>
+            <div>
+              <p className="text-sm font-bold">{t("app.name")}</p>
+              <p className="text-xs text-muted">EEE Equipment ERP</p>
+            </div>
+          </div>
+          <h2 className="text-2xl font-bold text-[var(--gp-ink)] md:text-3xl">{t("auth.login")}</h2>
+          <p className="mt-1.5 text-sm text-muted">{t("auth.loginTitle")}</p>
 
-            <div className="space-y-4">
-              <label className="block space-y-1.5">
-                <span className="text-sm font-semibold text-muted">{t("auth.email")}</span>
+          <div className="mt-8 space-y-4">
+            <label className="block space-y-1.5">
+              <span className="text-[0.7rem] font-bold uppercase tracking-[0.08em] text-muted">
+                {t("auth.email")}
+              </span>
+              <span className="relative block">
+                <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
                 <input
-                  className="gp-input text-base"
+                  className="gp-input pl-10 text-base"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   autoComplete="username"
                   required
                 />
-              </label>
-              <label className="block space-y-1.5">
-                <span className="text-sm font-semibold text-muted">{t("auth.password")}</span>
+              </span>
+            </label>
+            <label className="block space-y-1.5">
+              <span className="text-[0.7rem] font-bold uppercase tracking-[0.08em] text-muted">
+                {t("auth.password")}
+              </span>
+              <span className="relative block">
+                <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
                 <input
-                  type="password"
-                  className="gp-input text-base"
+                  type={showPassword ? "text" : "password"}
+                  className="gp-input px-10 text-base"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete="current-password"
                   required
                 />
-              </label>
-              {error ? (
-                <p className="rounded-xl border border-[#f5c2c2] bg-[#fef2f2] px-3 py-2.5 text-sm font-semibold text-danger">
-                  {error}
-                </p>
-              ) : null}
-              <button
-                type="submit"
-                disabled={loading}
-                className="gp-btn gp-btn-primary w-full text-base"
-              >
-                {loading ? t("auth.loggingIn") : t("auth.login")}
-              </button>
-              <p className="text-center text-sm text-muted">{t("auth.demoHint")}</p>
-            </div>
-          </form>
-        </div>
+                <button
+                  type="button"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted hover:text-[var(--gp-ink)]"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </span>
+            </label>
+            {error ? (
+              <p className="rounded-xl border border-[#f5c2c2] bg-[#fef2f2] px-3 py-2.5 text-sm font-semibold text-danger">
+                {error}
+              </p>
+            ) : null}
+            <button type="submit" disabled={loading} className="gp-btn gp-btn-primary w-full text-base">
+              {loading ? t("auth.loggingIn") : t("auth.login")}
+              {!loading ? <ArrowRight className="h-4 w-4" /> : null}
+            </button>
+            <button
+              type="button"
+              onClick={fillDemo}
+              className="w-full rounded-xl border border-line bg-[#f8fafc] px-4 py-3 text-left"
+            >
+              <p className="text-[0.65rem] font-bold uppercase tracking-[0.08em] text-muted">
+                {locale === "bn" ? "ডেমো লগইন" : "Quick demo login"}
+              </p>
+              <p className="mt-1 text-sm text-[var(--gp-ink)]">{t("auth.demoHint")}</p>
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

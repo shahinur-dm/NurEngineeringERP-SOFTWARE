@@ -1,32 +1,39 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { useLocale, useTranslations } from "next-intl";
-import { ArrowLeft, Building2 } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { ArrowLeft } from "lucide-react";
 import { InvoiceActions } from "@/components/InvoiceActions";
-import { EmptyState } from "@/components/ui";
-import { amountInWords, formatBDT, formatDateBD } from "@/lib/utils";
-
-type SaleItem = {
-  name?: string;
-  sku?: string;
-  unit?: string;
-  qty: number;
-  unitPrice: number;
-  discount?: number;
-  lineTotal: number;
-};
+import { NesTradeDocument } from "@/components/NesTradeDocument";
+import { EmptyState, Field } from "@/components/ui";
 
 type SaleDoc = {
   _id: string;
-  invoiceNo: string;
+  invoiceNo?: string;
+  quotationNo?: string;
+  salesOrderNo?: string;
+  referenceNo?: string;
+  poNo?: string;
+  poDate?: string;
+  subject?: string;
+  terms?: string;
   status: string;
   customerName?: string;
   customerMobile?: string;
   customerAddress?: string;
-  items: SaleItem[];
+  items: {
+    name?: string;
+    sku?: string;
+    unit?: string;
+    description?: string;
+    imageUrl?: string;
+    qty: number;
+    unitPrice: number;
+    discount?: number;
+    lineTotal: number;
+  }[];
   subtotal: number;
   discount: number;
   tax: number;
@@ -42,49 +49,90 @@ type SaleDoc = {
 
 type BusinessDoc = {
   name?: string;
-  nameBn?: string;
   address?: string;
-  addressBn?: string;
   phone?: string;
   email?: string;
-  bin?: string;
-  tin?: string;
-  mushak?: string;
+  website?: string;
+  logoUrl?: string;
 };
 
 export default function InvoiceViewPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
   const t = useTranslations();
-  const locale = useLocale();
   const [sale, setSale] = useState<SaleDoc | null>(null);
   const [business, setBusiness] = useState<BusinessDoc | null>(null);
+  const [shipment, setShipment] = useState<{ shipmentNo?: string; status?: string; shippedDate?: string } | null>(
+    null,
+  );
   const [locationName, setLocationName] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [payBusy, setPayBusy] = useState(false);
+  const [payMethod, setPayMethod] = useState("cash");
+  const [payAmount, setPayAmount] = useState("");
+  const [payMessage, setPayMessage] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/sales/${id}`);
+      if (!res.ok) {
+        setError(t("common.noData"));
+        return;
+      }
+      const json = await res.json();
+      setSale(json.data);
+      setBusiness(json.business);
+      setShipment(json.shipment);
+      setLocationName(json.location?.name || "");
+      if (json.data?.dueAmount > 0) {
+        setPayAmount(String(json.data.dueAmount));
+      } else {
+        setPayAmount("");
+      }
+    } catch {
+      setError(t("common.error"));
+    } finally {
+      setLoading(false);
+    }
+  }, [id, t]);
 
   useEffect(() => {
-    async function load() {
-      setLoading(true);
-      setError("");
-      try {
-        const res = await fetch(`/api/sales/${id}`);
-        if (!res.ok) {
-          setError(t("common.noData"));
-          return;
-        }
-        const json = await res.json();
-        setSale(json.data);
-        setBusiness(json.business);
-        setLocationName(json.location?.name || "");
-      } catch {
-        setError(t("common.error"));
-      } finally {
-        setLoading(false);
-      }
+    if (id) void load();
+  }, [id, load]);
+
+  useEffect(() => {
+    if (loading || !sale) return;
+    if (typeof window === "undefined") return;
+    if (new URLSearchParams(window.location.search).get("print") !== "1") return;
+    const timer = window.setTimeout(() => window.print(), 400);
+    return () => window.clearTimeout(timer);
+  }, [loading, sale]);
+
+  async function recordPayment() {
+    if (!sale) return;
+    const amount = Number(payAmount || 0);
+    if (amount <= 0) return;
+    setPayBusy(true);
+    setPayMessage("");
+    try {
+      const res = await fetch(`/api/sales/${sale._id}/payments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ method: payMethod, amount }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "fail");
+      setPayMessage(t("sales.paymentRecorded"));
+      await load();
+    } catch {
+      setPayMessage(t("common.error"));
+    } finally {
+      setPayBusy(false);
     }
-    if (id) load();
-  }, [id, t]);
+  }
 
   if (loading) {
     return <p className="p-8 text-center text-muted">{t("common.loading")}</p>;
@@ -102,11 +150,6 @@ export default function InvoiceViewPage() {
     );
   }
 
-  const bizName =
-    locale === "bn" && business?.nameBn ? business.nameBn : business?.name || "Nur Engineering ERP";
-  const bizAddress =
-    locale === "bn" && business?.addressBn ? business.addressBn : business?.address || "";
-
   return (
     <div>
       <div className="no-print mb-6 flex flex-col gap-3 border-b border-line pb-5 sm:flex-row sm:items-center sm:justify-between">
@@ -117,202 +160,67 @@ export default function InvoiceViewPage() {
           </Link>
           <div>
             <h1 className="gp-display text-2xl font-bold">{t("invoice.title")}</h1>
-            <p className="text-sm text-muted">{sale.invoiceNo}</p>
+            <p className="text-sm text-muted">
+              {sale.invoiceNo || "—"}
+              {sale.referenceNo ? ` · ${sale.referenceNo}` : ""}
+            </p>
           </div>
         </div>
-        <InvoiceActions saleId={sale._id} showPrint />
+        <InvoiceActions saleId={sale._id} saleStatus={sale.status} showPrint />
       </div>
 
-      <article className="invoice-sheet mx-auto max-w-4xl overflow-hidden rounded-2xl border border-line bg-white shadow-md print:max-w-none print:rounded-none print:border-0 print:shadow-none">
-        <header className="bg-[var(--gp-primary)] px-6 py-5 text-white md:px-8">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/20">
-                <Building2 className="h-6 w-6" />
-              </div>
-              <div>
-                <p className="gp-display text-2xl font-bold leading-tight md:text-3xl">{bizName}</p>
-                <p className="mt-1 text-sm text-white/85">{bizAddress}</p>
-                <p className="mt-1 text-sm text-white/75">
-                  {business?.phone ? `${business.phone}` : ""}
-                  {business?.email ? ` · ${business.email}` : ""}
-                </p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-white/70">
-                {t("invoice.taxInvoice")}
-              </p>
-              <p className="mt-1 text-xl font-bold">{sale.invoiceNo}</p>
-              <p className="mt-1 text-sm text-white/85">{formatDateBD(sale.saleDate, locale)}</p>
-              <span className="mt-2 inline-flex rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-semibold capitalize">
-                {sale.status}
-              </span>
-            </div>
-          </div>
-        </header>
+      <NesTradeDocument
+        kind="bill"
+        sale={sale}
+        business={business}
+        challan={shipment}
+        locationName={locationName}
+      />
 
-        <div className="grid gap-4 border-b border-line bg-[var(--gp-bg)] px-6 py-5 md:grid-cols-2 md:px-8">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">
-              {t("invoice.billTo")}
-            </p>
-            <p className="mt-1 text-lg font-bold">{sale.customerName || "—"}</p>
-            {sale.customerMobile ? (
-              <p className="text-sm text-muted">
-                {t("invoice.mobile")}: {sale.customerMobile}
-              </p>
-            ) : null}
-            {sale.customerAddress ? (
-              <p className="text-sm text-muted">{sale.customerAddress}</p>
-            ) : null}
-          </div>
-          <div className="md:text-right">
-            <div className="inline-grid gap-1 text-sm md:justify-items-end">
-              <p>
-                <span className="text-muted">{t("invoice.bin")}: </span>
-                <span className="font-semibold">{business?.bin || "—"}</span>
-              </p>
-              <p>
-                <span className="text-muted">{t("invoice.tin")}: </span>
-                <span className="font-semibold">{business?.tin || "—"}</span>
-              </p>
-              <p>
-                <span className="text-muted">{t("invoice.mushak")}: </span>
-                <span className="font-semibold">{business?.mushak || "—"}</span>
-              </p>
-              {locationName ? (
-                <p>
-                  <span className="text-muted">{t("dashboard.location")}: </span>
-                  <span className="font-semibold">{locationName}</span>
-                </p>
-              ) : null}
-              {sale.soldByName ? (
-                <p>
-                  <span className="text-muted">{t("invoice.soldBy")}: </span>
-                  <span className="font-semibold">{sale.soldByName}</span>
-                </p>
-              ) : null}
+      {sale.status === "final" && sale.dueAmount > 0 ? (
+        <div className="no-print mx-auto mt-6 max-w-4xl rounded-2xl border border-line bg-white p-4 shadow-sm">
+          <h2 className="text-base font-bold">{t("sales.recordPayment")}</h2>
+          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+            <Field label={t("sales.paymentMethod")}>
+              <select
+                className="gp-input"
+                value={payMethod}
+                onChange={(e) => setPayMethod(e.target.value)}
+              >
+                <option value="cash">{t("sales.cash")}</option>
+                <option value="bkash">{t("sales.bkash")}</option>
+                <option value="nagad">{t("sales.nagad")}</option>
+                <option value="rocket">{t("sales.rocket")}</option>
+                <option value="card">{t("sales.card")}</option>
+                <option value="cheque">{t("sales.cheque")}</option>
+                <option value="bank">{t("sales.bank")}</option>
+              </select>
+            </Field>
+            <Field label={t("common.amount")}>
+              <input
+                type="number"
+                min={0.01}
+                max={sale.dueAmount}
+                step="0.01"
+                className="gp-input"
+                value={payAmount}
+                onChange={(e) => setPayAmount(e.target.value)}
+              />
+            </Field>
+            <div className="flex items-end">
+              <button
+                type="button"
+                className="gp-btn gp-btn-primary w-full"
+                disabled={payBusy || Number(payAmount || 0) <= 0}
+                onClick={() => void recordPayment()}
+              >
+                {payBusy ? "..." : t("sales.recordPayment")}
+              </button>
             </div>
           </div>
+          {payMessage ? <p className="mt-2 text-sm font-semibold text-primary">{payMessage}</p> : null}
         </div>
-
-        <div className="overflow-x-auto px-2 py-4 md:px-4">
-          <table className="gp-table">
-            <thead>
-              <tr>
-                <th className="w-14">{t("invoice.sl")}</th>
-                <th>{t("invoice.description")}</th>
-                <th>SKU</th>
-                <th>{t("invoice.qty")}</th>
-                <th>{t("invoice.rate")}</th>
-                <th>{t("common.discount")}</th>
-                <th className="text-right">{t("invoice.amount")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sale.items.map((item, idx) => (
-                <tr key={idx}>
-                  <td>{idx + 1}</td>
-                  <td className="font-semibold">{item.name}</td>
-                  <td className="text-muted">{item.sku || "—"}</td>
-                  <td>
-                    {item.qty}
-                    {item.unit ? ` ${item.unit}` : ""}
-                  </td>
-                  <td>{formatBDT(item.unitPrice, locale)}</td>
-                  <td>{formatBDT(item.discount || 0, locale)}</td>
-                  <td className="text-right font-bold">{formatBDT(item.lineTotal, locale)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="grid gap-6 border-t border-line px-6 py-6 md:grid-cols-2 md:px-8">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">
-              {t("invoice.inWords")}
-            </p>
-            <p className="mt-2 rounded-xl border border-line bg-[#fbfcfb] px-4 py-3 text-sm font-semibold leading-relaxed">
-              {amountInWords(sale.grandTotal, locale === "en" ? "en" : "bn")}
-            </p>
-            {sale.note ? (
-              <p className="mt-4 text-sm text-muted">
-                <span className="font-semibold">{t("common.note")}: </span>
-                {sale.note}
-              </p>
-            ) : null}
-            {sale.payments?.length ? (
-              <div className="mt-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">
-                  {t("sales.paymentMethod")}
-                </p>
-                <ul className="mt-2 space-y-1 text-sm">
-                  {sale.payments.map((p, i) => (
-                    <li key={i} className="flex justify-between gap-4 border-b border-line py-1.5">
-                      <span className="capitalize">{p.method}</span>
-                      <span className="font-semibold">{formatBDT(p.amount, locale)}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-          </div>
-
-          <div className="rounded-xl border border-line bg-[var(--gp-bg)] p-4">
-            <SummaryRow label={t("common.subtotal")} value={formatBDT(sale.subtotal, locale)} />
-            <SummaryRow label={t("common.discount")} value={formatBDT(sale.discount, locale)} />
-            <SummaryRow label={t("common.tax")} value={formatBDT(sale.tax, locale)} />
-            <SummaryRow label={t("invoice.shipping")} value={formatBDT(sale.shipping, locale)} />
-            <SummaryRow
-              label={t("common.grandTotal")}
-              value={formatBDT(sale.grandTotal, locale)}
-              strong
-            />
-            <SummaryRow label={t("common.paid")} value={formatBDT(sale.paidAmount, locale)} />
-            <SummaryRow label={t("common.due")} value={formatBDT(sale.dueAmount, locale)} highlight />
-          </div>
-        </div>
-
-        <div className="grid gap-10 border-t border-line px-6 py-10 md:grid-cols-2 md:px-8">
-          <div>
-            <div className="mb-10 border-b border-line" />
-            <p className="text-sm font-semibold text-muted">{t("invoice.received")}</p>
-          </div>
-          <div>
-            <div className="mb-10 border-b border-line" />
-            <p className="text-sm font-semibold text-muted">{t("invoice.authorized")}</p>
-          </div>
-        </div>
-
-        <footer className="border-t border-line bg-[var(--gp-bg)] px-6 py-4 text-center text-sm text-muted md:px-8">
-          {t("invoice.thanks")} · {t("invoice.computerGenerated")}
-        </footer>
-      </article>
-    </div>
-  );
-}
-
-function SummaryRow({
-  label,
-  value,
-  strong,
-  highlight,
-}: {
-  label: string;
-  value: string;
-  strong?: boolean;
-  highlight?: boolean;
-}) {
-  return (
-    <div
-      className={`flex items-center justify-between gap-4 border-b border-line/80 py-2 text-sm last:border-0 ${
-        strong ? "font-bold text-[var(--gp-ink)]" : ""
-      } ${highlight ? "text-[var(--gp-warn)]" : ""}`}
-    >
-      <span>{label}</span>
-      <span className={strong ? "text-lg" : "font-semibold"}>{value}</span>
+      ) : null}
     </div>
   );
 }

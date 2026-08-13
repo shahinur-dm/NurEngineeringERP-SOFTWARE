@@ -6,7 +6,7 @@
   },
   "nav": {
     "dashboard": "Dashboard",
-    "pos": "POS Sale",
+    "pos": "POS",
     "sales": "Sales",
     "purchases": "Purchases",
     "products": "Products",
@@ -56,14 +56,14 @@
     "listPurchases": "Purchase List",
     "addPurchase": "Add Purchase",
     "purchaseReturns": "Purchase Returns",
-    "sell": "Sell / POS",
+    "sell": "Sell",
     "allSales": "All Sales",
     "addSale": "Add Sale",
     "listPos": "POS List",
     "addDraft": "Add Draft",
     "listDrafts": "Draft List",
     "addQuotation": "Add Quotation",
-    "listQuotations": "Quotation List",
+    "listQuotations": "Quotations",
     "sellReturns": "Sell Returns",
     "shipments": "Shipments",
     "discounts": "Discounts",
@@ -218,6 +218,7 @@
     "suppliers": "Suppliers",
     "employees": "Employees",
     "addCustomer": "Add Customer",
+    "ledger": "Customer Ledger",
     "addSupplier": "Add Supplier",
     "name": "Name",
     "mobile": "Mobile",
@@ -228,7 +229,8 @@
     "tin": "TIN",
     "creditLimit": "Credit limit",
     "balance": "Balance",
-    "type": "Type"
+    "type": "Type",
+    "txnType": "Type"
   },
   "sales": {
     "title": "Sales",
@@ -244,9 +246,22 @@
     "cheque": "Cheque",
     "credit": "Credit",
     "multiple": "Multiple",
+    "bank": "Bank",
     "statusFinal": "Final",
     "statusDraft": "Draft",
-    "statusQuotation": "Quotation"
+    "statusQuotation": "Quotation",
+    "paymentStatus": "Payment status",
+    "paymentPaid": "Paid",
+    "paymentPartial": "Partial Paid",
+    "paymentDue": "Due",
+    "recordPayment": "Record payment",
+    "paymentRecorded": "Payment recorded",
+    "convertToOrder": "Convert to Sales Order",
+    "referenceNo": "Reference No",
+    "quotationNo": "Quotation No",
+    "salesOrderNo": "Sales Order No",
+    "viewQuotation": "View Quotation",
+    "quotationPdf": "Quotation PDF"
   },
   "pos": {
     "title": "POS Sale",
@@ -257,7 +272,11 @@
     "items": "Items",
     "hold": "Hold",
     "customerWalkIn": "Walk-in customer",
-    "emptyCart": "Cart is empty — add products"
+    "emptyCart": "Cart is empty — add products",
+    "saleName": "Product Name",
+    "salePrice": "Price",
+    "saleDescription": "Description",
+    "amountReceived": "Amount received"
   },
   "purchases": {
     "title": "Purchases",
@@ -287,11 +306,20 @@
     "mushak": "Mushak",
     "challan": "Challan No",
     "printPdf": "Download PDF",
+    "viewInvoice": "View Invoice",
+    "printInvoice": "Print",
+    "invoicePdf": "Invoice PDF",
     "exportExcel": "Download Excel",
     "show": "Show",
     "mobile": "Mobile",
     "shipping": "Shipping",
-    "computerGenerated": "Computer generated invoice"
+    "computerGenerated": "Computer generated invoice",
+    "viewChallan": "View Delivery Challan",
+    "printChallan": "Print Delivery Challan",
+    "challanPdf": "Delivery Challan PDF",
+    "deliveryChallan": "Delivery Challan",
+    "salesOrder": "Sales Order",
+    "deliverTo": "Deliver To"
   },
   "reports": {
     "title": "Reports",

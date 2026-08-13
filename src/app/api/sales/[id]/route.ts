@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import { readSession } from "@/lib/auth";
-import { Sale, Business, Location } from "@/models";
+import { Sale, Business, Location, Shipment } from "@/models";
+import { paymentStatusFromAmounts } from "@/lib/sale-finance";
+import { nextQuotationNo, nextReferenceNo } from "@/lib/doc-numbers";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -12,18 +14,34 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
   const { id } = await ctx.params;
   await connectDB();
 
-  const sale = await Sale.findById(id).lean();
+  const sale = await Sale.findById(id);
   if (!sale) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
-  const [business, location] = await Promise.all([
+  if (sale.status === "quotation") {
+    let changed = false;
+    if (!sale.quotationNo) {
+      sale.quotationNo = await nextQuotationNo();
+      changed = true;
+    }
+    if (!sale.referenceNo) {
+      sale.referenceNo = await nextReferenceNo();
+      changed = true;
+    }
+    if (changed) await sale.save();
+  }
+
+  const [business, location, shipment] = await Promise.all([
     Business.findOne().lean(),
     sale.locationId ? Location.findById(sale.locationId).lean() : null,
+    Shipment.findOne({ saleId: id }).lean(),
   ]);
 
   return NextResponse.json({
-    data: sale,
+    data: sale.toObject ? sale.toObject() : sale,
     business,
     location,
+    shipment,
+    paymentStatus: paymentStatusFromAmounts(sale.grandTotal || 0, sale.paidAmount || 0),
   });
 }
 

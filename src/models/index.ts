@@ -177,9 +177,12 @@ ContactSchema.index({ type: 1, name: 1 });
 const SaleItemSchema = new Schema(
   {
     productId: { type: Schema.Types.ObjectId, ref: "Product" },
+    /** Sale-specific snapshot — does not rename Product Master */
     name: String,
     sku: String,
     unit: String,
+    description: String,
+    imageUrl: String,
     qty: { type: Number, required: true },
     bonusQty: { type: Number, default: 0 },
     unitPrice: { type: Number, required: true },
@@ -207,7 +210,15 @@ const PaymentSchema = new Schema(
 
 const SaleSchema = new Schema(
   {
-    invoiceNo: { type: String, required: true, unique: true },
+    invoiceNo: { type: String, unique: true, sparse: true },
+    quotationNo: { type: String, unique: true, sparse: true },
+    salesOrderNo: { type: String, unique: true, sparse: true },
+    /** Master reference shared across quotation → SO → invoice → challan */
+    referenceNo: { type: String, index: true },
+    poNo: String,
+    poDate: Date,
+    subject: String,
+    terms: String,
     status: {
       type: String,
       enum: ["draft", "quotation", "final", "suspended", "returned"],
@@ -543,7 +554,8 @@ const PurchaseReturnSchema = new Schema(
 const ShipmentSchema = new Schema(
   {
     shipmentNo: { type: String, required: true, unique: true },
-    saleId: { type: Schema.Types.ObjectId, ref: "Sale" },
+    saleId: { type: Schema.Types.ObjectId, ref: "Sale", index: true },
+    invoiceNo: String,
     customerName: String,
     status: {
       type: String,
@@ -552,6 +564,21 @@ const ShipmentSchema = new Schema(
     },
     shippingAddress: String,
     shippedDate: Date,
+    referenceNo: String,
+    items: {
+      type: [
+        {
+          productId: { type: Schema.Types.ObjectId, ref: "Product" },
+          name: String,
+          sku: String,
+          description: String,
+          imageUrl: String,
+          qty: Number,
+          unit: String,
+        },
+      ],
+      default: [],
+    },
   },
   { timestamps: true },
 );
@@ -743,6 +770,65 @@ export const Machine = models.Machine || model("Machine", MachineSchema);
 export const Technician = models.Technician || model("Technician", TechnicianSchema);
 export const ServiceJob = models.ServiceJob || model("ServiceJob", ServiceJobSchema);
 export const ActivityLog = models.ActivityLog || model("ActivityLog", ActivityLogSchema);
+
+// Hot-reload: compiled models keep the first schema. Patch new sale/challan fields.
+try {
+  const saleItems = Sale.schema.path("items") as mongoose.Schema.Types.DocumentArray | undefined;
+  if (saleItems?.schema && !saleItems.schema.path("description")) {
+    saleItems.schema.add({ description: String });
+  }
+  if (saleItems?.schema && !saleItems.schema.path("imageUrl")) {
+    saleItems.schema.add({ imageUrl: String });
+  }
+  for (const field of ["quotationNo", "referenceNo", "salesOrderNo", "poNo", "subject", "terms"] as const) {
+    if (!Sale.schema.path(field)) Sale.schema.add({ [field]: String });
+  }
+  if (!Sale.schema.path("poDate")) Sale.schema.add({ poDate: Date });
+  const invPath = Sale.schema.path("invoiceNo") as mongoose.SchemaType | undefined;
+  if (invPath) {
+    if (typeof invPath.required === "function") invPath.required(false);
+    (invPath as { isRequired?: boolean }).isRequired = false;
+    const validators = (invPath as { validators?: { type?: string }[] }).validators;
+    if (Array.isArray(validators)) {
+      (invPath as { validators: { type?: string }[] }).validators = validators.filter(
+        (v) => v.type !== "required",
+      );
+    }
+  }
+  if (!Shipment.schema.path("invoiceNo")) {
+    Shipment.schema.add({ invoiceNo: String });
+  }
+  if (!Shipment.schema.path("referenceNo")) {
+    Shipment.schema.add({ referenceNo: String });
+  }
+  if (!Shipment.schema.path("items")) {
+    Shipment.schema.add({
+      items: {
+        type: [
+          {
+            productId: { type: Schema.Types.ObjectId, ref: "Product" },
+            name: String,
+            sku: String,
+            description: String,
+            imageUrl: String,
+            qty: Number,
+            unit: String,
+          },
+        ],
+        default: [],
+      },
+    });
+  }
+  const shipItems = Shipment.schema.path("items") as mongoose.Schema.Types.DocumentArray | undefined;
+  if (shipItems?.schema && !shipItems.schema.path("description")) {
+    shipItems.schema.add({ description: String });
+  }
+  if (shipItems?.schema && !shipItems.schema.path("imageUrl")) {
+    shipItems.schema.add({ imageUrl: String });
+  }
+} catch (err) {
+  console.error("[models] schema patch skipped", err);
+}
 
 export async function nextSeq(key: string) {
   const doc = await Counter.findOneAndUpdate(

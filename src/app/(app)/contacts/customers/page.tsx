@@ -139,8 +139,8 @@ export default function CustomersPage() {
         title={t("contacts.customers")}
         subtitle={
           locale === "bn"
-            ? "নামে ক্লিক করে স্টেটমেন্ট দেখুন"
-            : "Click a name to open transaction statement"
+            ? "নামে ক্লিক করে গ্রাহক লেজার দেখুন"
+            : "Click a name to open the customer ledger"
         }
         actions={
           <button type="button" className="gp-btn gp-btn-primary" onClick={openCreate}>
@@ -168,7 +168,7 @@ export default function CustomersPage() {
       ) : rows.length === 0 ? (
         <EmptyState message={t("common.noData")} />
       ) : (
-        <div className="gp-table-wrap">
+        <div className="gp-table-wrap !overflow-x-auto">
           <table className="gp-table">
             <thead>
               <tr>
@@ -187,7 +187,7 @@ export default function CustomersPage() {
                       <Link
                         href={`/contacts/${c._id}/statement`}
                         className="font-semibold text-primary hover:underline"
-                        title={locale === "bn" ? "স্টেটমেন্ট দেখুন" : "View statement"}
+                          title={locale === "bn" ? "লেজার দেখুন" : "View ledger"}
                       >
                         {name}
                       </Link>
@@ -198,10 +198,11 @@ export default function CustomersPage() {
                       <div className="flex flex-wrap gap-1">
                         <Link
                           href={`/contacts/${c._id}/statement`}
-                          className="gp-btn gp-btn-ghost min-h-9 px-2.5"
-                          title={locale === "bn" ? "স্টেটমেন্ট" : "Statement"}
+                          className="gp-btn gp-btn-primary min-h-9 whitespace-nowrap px-2.5"
+                          title={t("contacts.ledger")}
                         >
                           <FileText className="h-4 w-4" />
+                          <span>{t("contacts.ledger")}</span>
                         </Link>
                         <button
                           type="button"

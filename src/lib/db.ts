@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose, { type ClientSession } from "mongoose";
 
 interface MongooseCache {
   conn: typeof mongoose | null;
@@ -29,12 +29,12 @@ async function resolveMongoUri() {
 
   if (cached.memoryUri) return cached.memoryUri;
 
-  const { MongoMemoryServer } = await import("mongodb-memory-server");
-  const mongod = await MongoMemoryServer.create({
-    instance: { dbName: "nur_engineering_erp" },
+  const { MongoMemoryReplSet } = await import("mongodb-memory-server");
+  const mongod = await MongoMemoryReplSet.create({
+    replSet: { count: 1, storageEngine: "wiredTiger" },
   });
   cached.memoryUri = mongod.getUri("nur_engineering_erp");
-  console.info("[db] Using in-memory MongoDB (no Docker required)");
+  console.info("[db] Using in-memory MongoDB replica set (transactions enabled)");
   return cached.memoryUri;
 }
 
@@ -112,4 +112,34 @@ export async function pruneEmptyCollectionsClusterWide() {
     }
   }
   return { dropped };
+}
+
+/** Use a transaction when the server supports it (Atlas / replica set). Standalone mongod falls back. */
+export async function runInTransaction<T>(
+  work: (session?: ClientSession) => Promise<T>,
+): Promise<T> {
+  const session = await mongoose.startSession();
+  try {
+    session.startTransaction();
+    const result = await work(session);
+    await session.commitTransaction();
+    return result;
+  } catch (err) {
+    try {
+      await session.abortTransaction();
+    } catch {
+      /* ignore */
+    }
+    const msg = err instanceof Error ? err.message : String(err);
+    const code =
+      err && typeof err === "object" && "code" in err
+        ? Number((err as { code: number }).code)
+        : 0;
+    if (code === 20 || /replica set|retryable writes|IllegalOperation/i.test(msg)) {
+      return work(undefined);
+    }
+    throw err;
+  } finally {
+    session.endSession();
+  }
 }

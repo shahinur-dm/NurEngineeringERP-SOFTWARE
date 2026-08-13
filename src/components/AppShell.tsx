@@ -61,26 +61,28 @@ export function AppShell({
     router.refresh();
   }
 
+  const initial = (userName || "A").trim().charAt(0).toUpperCase();
+
   const sidebarBody = (
     <>
-      <div className="border-b border-line px-5 py-5">
+      <div className="border-b border-white/10 px-4 py-4">
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--gp-primary)] text-white shadow-sm">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#2563eb] text-white">
               <Cpu className="h-5 w-5" />
             </div>
             <div className="min-w-0">
-              <p className="gp-sidebar-brand truncate text-lg font-bold leading-tight text-[var(--gp-ink)]">
+              <p className="gp-sidebar-brand truncate text-[0.95rem] font-bold leading-tight text-white">
                 {t("app.name")}
               </p>
-              <p className="mt-0.5 truncate text-[0.7rem] text-[var(--gp-sidebar-muted)]">
+              <p className="mt-0.5 truncate text-[0.68rem] text-[var(--gp-sidebar-muted)]">
                 {locale === "en" ? "EEE Equipment ERP" : "ইইই সরঞ্জাম ইআরপি"}
               </p>
             </div>
           </div>
           <button
             type="button"
-            className="gp-btn gp-btn-ghost min-h-9 px-2 lg:hidden"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-white/80 hover:bg-white/10 md:hidden"
             onClick={() => setMobileNav(false)}
             aria-label="Close menu"
           >
@@ -88,27 +90,27 @@ export function AppShell({
           </button>
         </div>
       </div>
+      <p className="px-4 pt-3 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-[var(--gp-sidebar-muted)]">
+        {locale === "bn" ? "মডিউল" : "Modules"}
+      </p>
       <NavSidebar />
-      <div className="space-y-2 border-t border-line bg-[var(--gp-sidebar-elevated)] p-3.5">
-        <div className="rounded-xl border border-line bg-[var(--gp-bg)] px-3 py-2.5">
-          <p className="text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-[var(--gp-sidebar-muted)]">
-            {locale === "bn" ? "ব্যবহারকারী" : "Signed in"}
-          </p>
-          <p className="mt-0.5 truncate text-sm font-semibold text-[var(--gp-ink)]">{userName}</p>
+      <div className="space-y-2 border-t border-white/10 bg-[var(--gp-sidebar-elevated)] p-3">
+        <div className="flex items-center gap-2.5 rounded-xl px-2 py-2">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#2563eb] text-sm font-bold text-white">
+            {initial}
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-white">{userName}</p>
+            <p className="text-[0.68rem] text-[var(--gp-sidebar-muted)]">
+              {locale === "bn" ? "প্রশাসক" : "Signed in"}
+            </p>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={switchLocale}
-          className="gp-btn gp-btn-ghost w-full justify-start"
-        >
+        <button type="button" onClick={switchLocale} className="erp-side-btn">
           <Languages className="h-4 w-4" />
           {locale === "bn" ? "English" : "বাংলা"}
         </button>
-        <button
-          type="button"
-          onClick={logout}
-          className="gp-btn gp-btn-primary w-full justify-start"
-        >
+        <button type="button" onClick={logout} className="erp-side-btn erp-side-btn-primary">
           <LogOut className="h-4 w-4" />
           {t("nav.logout")}
         </button>
@@ -117,44 +119,42 @@ export function AppShell({
   );
 
   return (
-    <div className="min-h-screen lg:grid lg:grid-cols-[260px_1fr]">
-      <aside className="hidden border-r border-line bg-[var(--gp-sidebar)] text-[var(--gp-sidebar-ink)] lg:block">
+    <div className="min-h-screen md:grid md:grid-cols-[260px_1fr]">
+      <aside className="hidden bg-[var(--gp-sidebar)] text-[var(--gp-sidebar-ink)] md:block">
         <div className="sticky top-0 flex h-screen flex-col">{sidebarBody}</div>
       </aside>
 
       {mobileNav ? (
-        <div className="fixed inset-0 z-40 lg:hidden">
+        <div className="fixed inset-0 z-40 md:hidden">
           <button
             type="button"
-            className="absolute inset-0 bg-black/40"
+            className="absolute inset-0 bg-black/50"
             aria-label="Close overlay"
             onClick={() => setMobileNav(false)}
           />
-          <aside className="absolute inset-y-0 left-0 flex w-[min(88vw,300px)] flex-col bg-[var(--gp-sidebar)] text-[var(--gp-sidebar-ink)] shadow-xl">
+          <aside className="absolute inset-y-0 left-0 flex w-[min(88vw,300px)] flex-col bg-[var(--gp-sidebar)] text-[var(--gp-sidebar-ink)] shadow-2xl">
             {sidebarBody}
           </aside>
         </div>
       ) : null}
 
       <div className="min-w-0">
-        <header className="sticky top-0 z-20 border-b border-line bg-white/85 px-4 py-3 backdrop-blur-md md:px-7">
+        <header className="sticky top-0 z-20 border-b border-line bg-white px-4 py-3 md:px-7">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-2">
               <button
                 type="button"
-                className="gp-btn gp-btn-ghost min-h-10 px-2.5 lg:hidden"
+                className="gp-btn gp-btn-ghost min-h-10 px-2.5 md:hidden"
                 onClick={() => setMobileNav(true)}
                 aria-label="Open menu"
               >
                 <Menu className="h-5 w-5" />
               </button>
               <div className="min-w-0">
-                <p className="text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-muted">
-                  {t("dashboard.welcome")}
+                <p className="truncate text-base font-bold text-[var(--gp-ink)] md:text-lg">
+                  {locale === "bn" ? `স্বাগতম, ${userName}` : `Welcome back, ${userName}`}
                 </p>
-                <p className="gp-display truncate text-lg font-bold text-[var(--gp-ink)] md:text-xl">
-                  {userName}
-                </p>
+                <p className="text-[0.75rem] text-muted">{t("dashboard.welcome")}</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -173,6 +173,12 @@ export function AppShell({
               <Link href="/reports/profit-loss" className="gp-btn gp-btn-ghost min-h-10">
                 <TrendingUp className="h-4 w-4" />
                 <span className="hidden sm:inline">{t("dashboard.todayProfit")}</span>
+              </Link>
+              <Link href="/sales/quotations" className="gp-btn gp-btn-ghost min-h-10 px-3 text-[0.95rem]">
+                {t("nav.listQuotations")}
+              </Link>
+              <Link href="/sales" className="gp-btn gp-btn-ghost min-h-10 px-3 text-[0.95rem]">
+                {t("nav.allSales")}
               </Link>
               <Link href="/pos" className="gp-btn gp-btn-primary min-h-10 px-4 text-[0.95rem]">
                 <ShoppingCart className="h-4 w-4" />

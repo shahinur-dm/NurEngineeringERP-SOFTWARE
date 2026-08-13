@@ -1,0 +1,459 @@
+"use client";
+
+import { paymentStatusFromAmounts } from "@/lib/sale-finance";
+import { amountInWords, formatDateBD } from "@/lib/utils";
+
+export type TradeDocKind = "bill" | "quotation" | "challan";
+
+export type TradeItem = {
+  name?: string;
+  sku?: string;
+  unit?: string;
+  description?: string;
+  imageUrl?: string;
+  qty?: number;
+  unitPrice?: number;
+  discount?: number;
+  lineTotal?: number;
+  remarks?: string;
+};
+
+export type TradeSale = {
+  _id?: string;
+  invoiceNo?: string;
+  quotationNo?: string;
+  salesOrderNo?: string;
+  referenceNo?: string;
+  poNo?: string;
+  poDate?: string;
+  subject?: string;
+  terms?: string;
+  status?: string;
+  customerName?: string;
+  customerMobile?: string;
+  customerAddress?: string;
+  items?: TradeItem[];
+  subtotal?: number;
+  discount?: number;
+  tax?: number;
+  shipping?: number;
+  grandTotal?: number;
+  paidAmount?: number;
+  dueAmount?: number;
+  note?: string;
+  soldByName?: string;
+  saleDate?: string;
+};
+
+export type TradeBusiness = {
+  name?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  logoUrl?: string;
+};
+
+export type TradeChallan = {
+  shipmentNo?: string;
+  shippedDate?: string;
+  items?: TradeItem[];
+};
+
+function dash(value?: string | number | null) {
+  if (value === 0) return "0";
+  if (value == null || value === "") return "";
+  return String(value);
+}
+
+function formatEnDate(value?: string) {
+  if (!value) return "";
+  return formatDateBD(value, "en");
+}
+
+function taka(n?: number) {
+  const v = Number(n) || 0;
+  return `${v.toLocaleString("en-IN", { maximumFractionDigits: 2 })}/-`;
+}
+
+function paymentLabel(grandTotal?: number, paidAmount?: number) {
+  const status = paymentStatusFromAmounts(grandTotal || 0, paidAmount || 0);
+  if (status === "paid") return "Paid";
+  if (status === "partial") return "Partial Paid";
+  return "Due";
+}
+
+function companyLetterhead(name?: string) {
+  const v = String(name || "").trim();
+  if (!v || /erp|\bpos\b/i.test(v) || /[^\u0000-\u007f]/.test(v)) {
+    return "Nur Engineering Solution";
+  }
+  return v;
+}
+
+function englishName(name?: string, fallback = "Md. Nurul Islam") {
+  const v = String(name || "").trim();
+  if (!v) return fallback;
+  if (/[^\u0000-\u007f]/.test(v)) return fallback;
+  if (/admin/i.test(v)) return fallback;
+  return v;
+}
+
+function wechatId(phone?: string) {
+  const digits = String(phone || "").replace(/\D/g, "");
+  return digits ? `nurul${digits.replace(/^880/, "")}` : "";
+}
+
+export function NesTradeDocument({
+  kind,
+  sale,
+  business,
+  challan,
+}: {
+  kind: TradeDocKind;
+  sale: TradeSale;
+  business?: TradeBusiness | null;
+  challan?: TradeChallan | null;
+  locationName?: string;
+}) {
+  const bizName = companyLetterhead(business?.name);
+  const bizAddress = business?.address || "";
+  const items = (kind === "challan" && challan?.items?.length ? challan.items : sale.items) || [];
+  const docDate = kind === "challan" ? challan?.shippedDate || sale.saleDate : sale.saleDate;
+  const terms = (sale.terms || "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const qtyTotal = items.reduce((a, i) => a + Number(i.qty || 0), 0);
+  const wechat = wechatId(business?.phone);
+  const signName = englishName(sale.soldByName);
+
+  const metaRows: { label: string; value: string }[] =
+    kind === "bill"
+      ? [
+          { label: "Bill No", value: dash(sale.invoiceNo) },
+          { label: "Challan No", value: dash(challan?.shipmentNo) },
+          { label: "Ref. No", value: dash(sale.referenceNo) },
+          { label: "PO/Order No", value: dash(sale.poNo || sale.salesOrderNo) },
+          { label: "PO/Order Date", value: formatEnDate(sale.poDate) },
+        ]
+      : kind === "challan"
+        ? [
+            { label: "Challan No", value: dash(challan?.shipmentNo) },
+            { label: "PI No", value: dash(sale.quotationNo) },
+            { label: "Ref. No", value: dash(sale.referenceNo) },
+            { label: "PO/Order No", value: dash(sale.poNo || sale.salesOrderNo) },
+            { label: "PO/Order Date", value: formatEnDate(sale.poDate) },
+          ]
+        : [
+            { label: "Date", value: formatEnDate(docDate) },
+            { label: "Quotation /PI No", value: dash(sale.quotationNo) },
+            { label: "Ref. No.", value: dash(sale.referenceNo) },
+          ];
+
+  const title = kind === "bill" ? "Bill" : kind === "challan" ? "Delivery Challan" : "";
+  const subject = sale.subject || (kind === "quotation" ? "" : sale.note) || "";
+  const defaultTerms = [
+    "Term of validity: 15 days.",
+    "Payment: 100% advance for order confirmation OR as per company policy.",
+    "Delivery area: Items delivered from stock area in Dhaka (customer's own arrangement).",
+    "Delivery Time: Ready stock item.",
+    "VAT, Tax etc.: Excluded.",
+  ];
+
+  return (
+    <article className={`nes-sheet nes-${kind}`}>
+      <div className="nes-watermark" aria-hidden>
+        Nur Engineering Solution
+      </div>
+
+      <header className="nes-head">
+        <div className="nes-logo">
+          {business?.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={business.logoUrl} alt="" />
+          ) : (
+            <span className="nes-logo-mark">
+              NES
+              <small>NUR ENGINEERING SOLUTION</small>
+            </span>
+          )}
+        </div>
+        <div className="nes-brand">
+          <p className="nes-company">{bizName}</p>
+          <p className="nes-tagline">Machine, Spare parts and Technical Service Provider</p>
+        </div>
+        <div className="nes-office">
+          {bizAddress ? (
+            <p>
+              <b>Office:</b> {bizAddress}
+            </p>
+          ) : null}
+          {business?.email ? (
+            <p>
+              <b>Email:</b> <span className="nes-mail">{business.email}</span>
+            </p>
+          ) : null}
+          {business?.phone ? (
+            <p>
+              <b>Mobile:</b> {business.phone}
+            </p>
+          ) : null}
+        </div>
+      </header>
+      <div className="nes-rule" />
+
+      {kind !== "quotation" ? (
+        <div className="nes-docband">
+          <p className="nes-date">
+            <b>Date:</b> {formatEnDate(docDate)}
+          </p>
+          <p className="nes-title">{title}</p>
+          <table className="nes-idbox">
+            <tbody>
+              {metaRows.map((row) => (
+                <tr key={row.label}>
+                  <th>{row.label}:</th>
+                  <td>{row.value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="nes-quote-top">
+          <div />
+          <table className="nes-idbox">
+            <tbody>
+              {metaRows.map((row) => (
+                <tr key={row.label}>
+                  <th>{row.label}:</th>
+                  <td>{row.value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div className="nes-party">
+        <p className="nes-to">
+          <b>To</b>
+          <br />
+          {sale.customerName || ""}
+          {sale.customerAddress ? (
+            <>
+              <br />
+              {sale.customerAddress}
+            </>
+          ) : null}
+        </p>
+      </div>
+
+      {subject ? (
+        <p className="nes-subject">
+          <b>Subject:</b> {subject}
+        </p>
+      ) : null}
+
+      {kind !== "quotation" ? (
+        <table className="nes-custbar">
+          <tbody>
+            <tr>
+              <td>
+                <b>Customer:</b> {sale.customerName || ""}
+              </td>
+              <td>
+                <b>Contact:</b> {sale.customerMobile || ""}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      ) : (
+        <div className="nes-intro">
+          <p>Dear Sir,</p>
+          <p>
+            Thank you for your inquiry. We are submitting herewith our quotation for the following
+            items / services.
+          </p>
+          <p>
+            We are a Machine, Spare parts and Technical Service Provider with expertise in PLC
+            automation, servo systems, robotics and industrial machinery.
+          </p>
+        </div>
+      )}
+
+      <p className="nes-items-label">{kind === "quotation" ? "Quotation" : "Items/Services:"}</p>
+      <table className="nes-grid">
+        <thead>
+          <tr>
+            <th className="c-sl">SL No.</th>
+            <th className="c-name">Item Name</th>
+            <th className="c-desc">Description</th>
+            <th className="c-qty">Quantity (Piece)</th>
+            {kind !== "challan" ? (
+              <>
+                <th className="c-price">Unit Price (Taka)</th>
+                <th className="c-total">Total Price (Taka)</th>
+              </>
+            ) : (
+              <th className="c-remarks">Remarks</th>
+            )}
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item, idx) => (
+            <tr key={idx}>
+              <td className="c-sl">{idx + 1}</td>
+              <td className="c-name">{item.name}</td>
+              <td className="c-desc">
+                <div className="nes-desc-wrap">
+                  <span>{item.description || ""}</span>
+                  {item.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={item.imageUrl} alt="" className="nes-prod-img" />
+                  ) : null}
+                </div>
+              </td>
+              <td className="c-qty">{item.qty ?? 0}</td>
+              {kind !== "challan" ? (
+                <>
+                  <td className="c-price">{Number(item.unitPrice || 0).toLocaleString("en-IN")}</td>
+                  <td className="c-total">{Number(item.lineTotal || 0).toLocaleString("en-IN")}</td>
+                </>
+              ) : (
+                <td className="c-remarks">{item.remarks || ""}</td>
+              )}
+            </tr>
+          ))}
+          {kind === "bill" && Number(sale.discount || 0) ? (
+            <tr>
+              <td colSpan={5} className="nes-total-lab">
+                Discount
+              </td>
+              <td className="c-total">{taka(sale.discount)}</td>
+            </tr>
+          ) : null}
+          {kind === "bill" && Number(sale.tax || 0) ? (
+            <tr>
+              <td colSpan={5} className="nes-total-lab">
+                Tax
+              </td>
+              <td className="c-total">{taka(sale.tax)}</td>
+            </tr>
+          ) : null}
+          {kind === "bill" && Number(sale.shipping || 0) ? (
+            <tr>
+              <td colSpan={5} className="nes-total-lab">
+                Shipping
+              </td>
+              <td className="c-total">{taka(sale.shipping)}</td>
+            </tr>
+          ) : null}
+          {kind !== "challan" ? (
+            <tr>
+              <td colSpan={5} className="nes-total-lab">
+                {kind === "quotation" ? "Total Price =" : "Total Bill ="}
+              </td>
+              <td className="c-total">
+                <b>{taka(sale.grandTotal)}</b>
+              </td>
+            </tr>
+          ) : (
+            <tr>
+              <td colSpan={3} className="nes-total-lab">
+                Total =
+              </td>
+              <td className="c-qty">
+                <b>{qtyTotal}</b>
+              </td>
+              <td />
+            </tr>
+          )}
+        </tbody>
+      </table>
+
+      {kind !== "challan" ? (
+        <p className="nes-words">
+          <b>In Word:</b> {amountInWords(sale.grandTotal || 0, "en")}
+        </p>
+      ) : null}
+
+      {kind === "bill" ? (
+        <p className="nes-payline">
+          <b>Paid Amount:</b> {taka(sale.paidAmount)} &nbsp;&nbsp;
+          <b>Due Amount:</b> {taka(sale.dueAmount)} &nbsp;&nbsp;
+          <b>Payment Status:</b> {paymentLabel(sale.grandTotal, sale.paidAmount)}
+        </p>
+      ) : null}
+
+      {kind === "quotation" ? (
+        <div className="nes-terms">
+          <p>
+            <b>Terms &amp; Conditions</b>
+          </p>
+          {(terms.length ? terms : defaultTerms).map((line) => (
+            <p key={line}>
+              <span className="nes-diamond">◆</span> {line.replace(/^[-•◆]\s*/, "")}
+            </p>
+          ))}
+          <p>Please sign back to us if you confirm this P.I/Quotation.</p>
+        </div>
+      ) : (
+        <p className="nes-note">
+          Already we have supplied these services/items with good condition to your company. Now
+          please check our bill and take necessary action to pay our bill accordingly. If you have
+          any confusion or have any query then please inform to us feel freely and we will support
+          you accordingly.
+          <span className="nes-note-sign">- {bizName}</span>
+        </p>
+      )}
+
+      {kind !== "quotation" ? (
+        <p className="nes-slogan">
+          <span>24/7 Best Deal, Best Service</span>
+        </p>
+      ) : null}
+
+      <div className="nes-signs">
+        <div>
+          <div className="nes-signline" />
+          <p>{kind === "quotation" ? "(Customer Signature)" : "(Receiver Signature)"}</p>
+        </div>
+        <div className="nes-sign-right">
+          <div className="nes-signline" />
+          <p>
+            <b>{signName}</b>
+            <br />
+            Proprietor, {bizName}
+          </p>
+        </div>
+      </div>
+
+      <footer className="nes-foot">
+        <p>
+          <b>Office Address :</b> {bizAddress || "—"}
+        </p>
+        <p>
+          {business?.phone ? (
+            <>
+              <b>Mobile/WhatsApp:</b> {business.phone}
+            </>
+          ) : null}
+          {wechat ? (
+            <>
+              {" "}
+              , <b>Wechat:</b> {wechat}
+            </>
+          ) : null}
+          {business?.email ? (
+            <>
+              {" "}
+              , <b>Email:</b> {business.email}
+            </>
+          ) : null}
+        </p>
+      </footer>
+    </article>
+  );
+}

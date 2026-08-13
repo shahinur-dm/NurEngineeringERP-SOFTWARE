@@ -25,6 +25,7 @@ export type NavItem = {
   labelKey: string;
   icon?: LucideIcon;
   moduleId?: string;
+  defaultOpen?: boolean;
   children?: NavItem[];
 };
 
@@ -32,24 +33,44 @@ export type NavItem = {
 export const NAV_TREE: NavItem[] = [
   { href: "/dashboard", labelKey: "nav.dashboard", icon: LayoutDashboard },
   {
+    labelKey: "nav.sell",
+    icon: ShoppingCart,
+    defaultOpen: true,
+    children: [
+      { href: "/pos", labelKey: "nav.pos", moduleId: "pos" },
+      { href: "/sales/quotations", labelKey: "nav.listQuotations", moduleId: "sales-quotes" },
+      { href: "/sales", labelKey: "nav.allSales", moduleId: "sales" },
+      { href: "/sales/add", labelKey: "nav.addSale", moduleId: "sales-add" },
+      { href: "/pos/list", labelKey: "nav.listPos", moduleId: "pos-list" },
+      { href: "/sales/drafts/add", labelKey: "nav.addDraft", moduleId: "sales-draft-add" },
+      { href: "/sales/drafts", labelKey: "nav.listDrafts", moduleId: "sales-drafts" },
+      { href: "/sales/quotations/add", labelKey: "nav.addQuotation", moduleId: "sales-quote-add" },
+      { href: "/sales/returns", labelKey: "nav.sellReturns", moduleId: "sell-returns" },
+      { href: "/sales/shipments", labelKey: "nav.shipments", moduleId: "shipments" },
+      { href: "/sales/discounts", labelKey: "nav.discounts", moduleId: "discounts" },
+      { href: "/sales/import", labelKey: "nav.importSales", moduleId: "import-sales" },
+    ],
+  },
+  {
+    labelKey: "nav.contacts",
+    icon: Contact,
+    defaultOpen: true,
+    children: [
+      { href: "/contacts/customers", labelKey: "nav.customers", moduleId: "customers" },
+      { href: "/contacts/suppliers", labelKey: "nav.suppliers", moduleId: "suppliers" },
+      { href: "/contacts/employees", labelKey: "nav.employees", moduleId: "employees" },
+      { href: "/contacts/payslips", labelKey: "nav.payslips", moduleId: "payslips" },
+      { href: "/contacts/groups", labelKey: "nav.customerGroups", moduleId: "customer-groups" },
+      { href: "/contacts/import", labelKey: "nav.importContacts", moduleId: "import-contacts" },
+    ],
+  },
+  {
     labelKey: "nav.usersMgmt",
     icon: Users,
     children: [
       { href: "/users", labelKey: "nav.users", moduleId: "users" },
       { href: "/roles", labelKey: "nav.roles", moduleId: "roles" },
       { href: "/commission-agents", labelKey: "nav.commissionAgents", moduleId: "commission-agents" },
-    ],
-  },
-  {
-    labelKey: "nav.contacts",
-    icon: Contact,
-    children: [
-      { href: "/contacts/suppliers", labelKey: "nav.suppliers", moduleId: "suppliers" },
-      { href: "/contacts/customers", labelKey: "nav.customers", moduleId: "customers" },
-      { href: "/contacts/employees", labelKey: "nav.employees", moduleId: "employees" },
-      { href: "/contacts/payslips", labelKey: "nav.payslips", moduleId: "payslips" },
-      { href: "/contacts/groups", labelKey: "nav.customerGroups", moduleId: "customer-groups" },
-      { href: "/contacts/import", labelKey: "nav.importContacts", moduleId: "import-contacts" },
     ],
   },
   {
@@ -87,24 +108,6 @@ export const NAV_TREE: NavItem[] = [
       { href: "/purchases", labelKey: "nav.listPurchases", moduleId: "purchases" },
       { href: "/purchases/add", labelKey: "nav.addPurchase", moduleId: "purchases-add" },
       { href: "/purchases/returns", labelKey: "nav.purchaseReturns", moduleId: "purchase-returns" },
-    ],
-  },
-  {
-    labelKey: "nav.sell",
-    icon: ShoppingCart,
-    children: [
-      { href: "/sales", labelKey: "nav.allSales", moduleId: "sales" },
-      { href: "/sales/add", labelKey: "nav.addSale", moduleId: "sales-add" },
-      { href: "/pos/list", labelKey: "nav.listPos", moduleId: "pos-list" },
-      { href: "/pos", labelKey: "nav.pos", moduleId: "pos" },
-      { href: "/sales/drafts/add", labelKey: "nav.addDraft", moduleId: "sales-draft-add" },
-      { href: "/sales/drafts", labelKey: "nav.listDrafts", moduleId: "sales-drafts" },
-      { href: "/sales/quotations/add", labelKey: "nav.addQuotation", moduleId: "sales-quote-add" },
-      { href: "/sales/quotations", labelKey: "nav.listQuotations", moduleId: "sales-quotes" },
-      { href: "/sales/returns", labelKey: "nav.sellReturns", moduleId: "sell-returns" },
-      { href: "/sales/shipments", labelKey: "nav.shipments", moduleId: "shipments" },
-      { href: "/sales/discounts", labelKey: "nav.discounts", moduleId: "discounts" },
-      { href: "/sales/import", labelKey: "nav.importSales", moduleId: "import-sales" },
     ],
   },
   {

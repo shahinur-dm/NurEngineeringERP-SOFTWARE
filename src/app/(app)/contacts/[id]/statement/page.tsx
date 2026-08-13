@@ -23,9 +23,12 @@ type Entry = {
   date: string;
   type: string;
   ref: string;
+  referenceNo?: string;
   description: string;
   debit: number;
   credit: number;
+  paidAmount?: number;
+  dueAmount?: number;
   balance: number;
   link?: string;
 };
@@ -75,8 +78,8 @@ export default function ContactStatementPage() {
 
   const title =
     locale === "bn"
-      ? `${contact ? (contact.nameBn || contact.name) : "…"} — স্টেটমেন্ট`
-      : `${contact ? contact.name : "…"} — Statement`;
+      ? `${contact ? (contact.nameBn || contact.name) : "…"} — গ্রাহক লেজার`
+      : `${contact ? contact.name : "…"} — Customer Ledger`;
 
   const backHref =
     contact?.type === "employee"
@@ -95,8 +98,8 @@ export default function ContactStatementPage() {
           contact
             ? `${contact.mobile || ""} · ${contact.type}`
             : locale === "bn"
-              ? "লেনদেন স্টেটমেন্ট"
-              : "Transaction statement"
+              ? "গ্রাহক লেজার / লেনদেন ইতিহাস"
+              : "Customer ledger / transaction history"
         }
         actions={
           <div className="flex flex-wrap gap-2 no-print">
@@ -188,17 +191,22 @@ export default function ContactStatementPage() {
                 <thead>
                   <tr>
                     <th>{t("common.date")}</th>
-                    <th>{locale === "bn" ? "ভাউচার" : "Voucher"}</th>
+                    <th>{t("contacts.txnType")}</th>
+                    <th>{locale === "bn" ? "ডকুমেন্ট নং" : "Document No"}</th>
+                    <th>{t("sales.referenceNo")}</th>
                     <th>{locale === "bn" ? "বিবরণ" : "Description"}</th>
                     <th>{locale === "bn" ? "ডেবিট" : "Debit"}</th>
                     <th>{locale === "bn" ? "ক্রেডিট" : "Credit"}</th>
+                    <th>{t("common.paid")}</th>
+                    <th>{t("common.due")}</th>
                     <th>{locale === "bn" ? "ব্যালেন্স" : "Balance"}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {entries.map((e, i) => (
-                    <tr key={`${e.ref}-${i}`}>
+                    <tr key={`${e.type}-${e.ref}-${i}`}>
                       <td className="whitespace-nowrap">{formatDateBD(e.date, locale)}</td>
+                      <td className="capitalize">{ledgerTypeLabel(e.type, locale)}</td>
                       <td>
                         {e.link && e.ref !== "—" ? (
                           <Link href={e.link} className="font-semibold text-primary hover:underline">
@@ -208,6 +216,7 @@ export default function ContactStatementPage() {
                           <span className="font-mono text-sm">{e.ref}</span>
                         )}
                       </td>
+                      <td className="font-mono text-sm">{e.referenceNo || "—"}</td>
                       <td>{e.description}</td>
                       <td className="gp-money">
                         {e.debit ? formatBDT(e.debit, locale) : "—"}
@@ -215,17 +224,25 @@ export default function ContactStatementPage() {
                       <td className="gp-money">
                         {e.credit ? formatBDT(e.credit, locale) : "—"}
                       </td>
+                      <td className="gp-money">
+                        {e.paidAmount ? formatBDT(e.paidAmount, locale) : "—"}
+                      </td>
+                      <td className="gp-money">
+                        {e.dueAmount ? formatBDT(e.dueAmount, locale) : "—"}
+                      </td>
                       <td className="gp-money font-bold">{formatBDT(e.balance, locale)}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr>
-                    <td colSpan={3} className="font-bold">
+                    <td colSpan={5} className="font-bold">
                       {locale === "bn" ? "মোট" : "Total"}
                     </td>
                     <td className="gp-money font-bold">{formatBDT(summary.totalDebit, locale)}</td>
                     <td className="gp-money font-bold">{formatBDT(summary.totalCredit, locale)}</td>
+                    <td className="gp-money">—</td>
+                    <td className="gp-money">—</td>
                     <td className="gp-money font-bold text-primary">
                       {formatBDT(summary.closingBalance, locale)}
                     </td>
@@ -238,4 +255,28 @@ export default function ContactStatementPage() {
       ) : null}
     </div>
   );
+}
+
+function ledgerTypeLabel(type: string, locale: string) {
+  const bn: Record<string, string> = {
+    opening: "প্রারম্ভিক",
+    quotation: "কোটেশন",
+    sales_order: "সেলস অর্ডার",
+    invoice: "ইনভয়েস",
+    payment: "পেমেন্ট",
+    sale: "বিক্রি",
+    service: "সার্ভিস",
+    purchase: "ক্রয়",
+  };
+  const en: Record<string, string> = {
+    opening: "Opening",
+    quotation: "Quotation",
+    sales_order: "Sales Order",
+    invoice: "Invoice",
+    payment: "Payment",
+    sale: "Sale",
+    service: "Service",
+    purchase: "Purchase",
+  };
+  return (locale === "bn" ? bn : en)[type] || type;
 }

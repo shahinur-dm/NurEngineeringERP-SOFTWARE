@@ -150,7 +150,7 @@ export default function DashboardPage() {
       </FilterBar>
 
       <div className="mb-8 space-y-4">
-        <h2 className="text-[0.8rem] font-bold uppercase tracking-wider text-muted">
+        <h2 className="mb-1 text-[0.72rem] font-bold uppercase tracking-[0.1em] text-muted">
           {locale === "bn" ? "প্রধান সারাংশ" : "Primary Overview"}
         </h2>
         <div className="grid auto-rows-fr gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -185,7 +185,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="mb-8 space-y-4">
-        <h2 className="text-[0.8rem] font-bold uppercase tracking-wider text-muted">
+        <h2 className="mb-1 text-[0.72rem] font-bold uppercase tracking-[0.1em] text-muted">
           {locale === "bn" ? "বকেয়া ও ফেরত" : "Due & Returns"}
         </h2>
         <div className="grid auto-rows-fr gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -233,7 +233,7 @@ export default function DashboardPage() {
                 <XAxis dataKey="date" tick={{ fontSize: 12, fill: "#6b7280" }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 12, fill: "#6b7280" }} axisLine={false} tickLine={false} />
                 <Tooltip formatter={(v) => formatBDT(Number(v || 0), locale)} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} />
-                <Line type="monotone" dataKey="total" stroke="#0284c7" strokeWidth={3} dot={false} activeDot={{ r: 6, fill: "#0284c7" }} />
+                <Line type="monotone" dataKey="total" stroke="#2563eb" strokeWidth={2.5} dot={false} activeDot={{ r: 5, fill: "#2563eb" }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -255,7 +255,7 @@ export default function DashboardPage() {
                   paddingAngle={5}
                 >
                   {(data?.charts?.expensesByCategory || []).map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={["#0284c7", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6"][index % 5]} />
+                    <Cell key={`cell-${index}`} fill={["#2563eb", "#f59e0b", "#059669", "#dc2626", "#7c3aed"][index % 5]} />
                   ))}
                 </Pie>
                 <Tooltip formatter={(v) => formatBDT(Number(v || 0), locale)} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} />
@@ -276,7 +276,7 @@ export default function DashboardPage() {
                 <XAxis dataKey="_id" tick={{ fontSize: 12, fill: "#6b7280" }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 12, fill: "#6b7280" }} axisLine={false} tickLine={false} />
                 <Tooltip formatter={(v) => formatBDT(Number(v || 0), locale)} cursor={{ fill: '#f3f4f6' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} />
-                <Bar dataKey="total" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={40} />
+                <Bar dataKey="total" fill="#2563eb" radius={[4, 4, 0, 0]} barSize={36} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -470,7 +470,7 @@ function WidgetCard({
 }) {
   const t = useTranslations();
   return (
-    <div className="gp-card flex h-full min-h-[220px] flex-col p-5 shadow-sm border border-line">
+    <div className="gp-card flex h-full min-h-[220px] flex-col p-5">
       <div className="mb-4 flex min-h-[2.25rem] items-center justify-between border-b border-line pb-3">
         <h3 className="text-[0.95rem] font-bold text-[var(--gp-ink)]">{title}</h3>
         {onViewAll ? (

@@ -9,11 +9,11 @@
   --gp-line: #e5e7eb; /* Gray-200 */
   --gp-line-strong: #d1d5db; /* Gray-300 */
   
-  /* Primary: Electric Cyan/Blue (Classic tech color) */
-  --gp-primary: #0284c7; /* Sky-600 */
-  --gp-primary-2: #0369a1; /* Sky-700 */
-  --gp-primary-soft: #f0f9ff;
-  --gp-primary-glow: rgba(2, 132, 199, 0.15);
+  /* Primary: corporate blue */
+  --gp-primary: #2563eb;
+  --gp-primary-2: #1d4ed8;
+  --gp-primary-soft: #eff6ff;
+  --gp-primary-glow: rgba(37, 99, 235, 0.16);
   
   /* Accent: Copper/Amber (Represents wires/metals) */
   --gp-accent: #f59e0b;
@@ -28,11 +28,11 @@
   --gp-info-soft: #eff6ff;
   
   /* Layout & Shadows (Sharp & Industrial) */
-  --gp-sidebar: #ffffff;
-  --gp-sidebar-elevated: #ffffff;
-  --gp-sidebar-ink: #1f2937;
-  --gp-sidebar-muted: #9ca3af;
-  --gp-sidebar-active: #f0f9ff;
+  --gp-sidebar: #0b1629;
+  --gp-sidebar-elevated: #111d33;
+  --gp-sidebar-ink: #e8eef7;
+  --gp-sidebar-muted: #93a0b5;
+  --gp-sidebar-active: #1a3a6a;
   --gp-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --gp-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
   --gp-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
@@ -607,7 +607,41 @@ h3,
   }
 }
 
+.pos-page .pos-cash {
+  background: #15803d;
+  border-color: #15803d;
+  color: #fff;
+}
+.pos-page .pos-cash:hover {
+  background: #166534;
+  border-color: #166534;
+  color: #fff;
+}
+.pos-page .pos-multipay {
+  background: #1e293b;
+  border-color: #1e293b;
+  color: #fff;
+}
+.pos-page .pos-multipay:hover {
+  background: #0f172a;
+  color: #fff;
+}
+.pos-page .pos-cancel {
+  background: var(--gp-danger);
+  border-color: var(--gp-danger);
+  color: #fff;
+}
+.pos-page .pos-cancel:hover {
+  background: #dc2626;
+  color: #fff;
+}
+
 @media print {
+  @page {
+    size: A4;
+    margin: 6mm;
+  }
+
   body {
     background: white !important;
   }
@@ -622,9 +656,394 @@ h3,
     padding: 0 !important;
   }
 
-  .invoice-sheet {
+  .invoice-sheet,
+  .nes-sheet {
     box-shadow: none !important;
     border: none !important;
     border-radius: 0 !important;
+  }
+
+  .nes-sheet {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+  }
+}
+
+.nes-sheet {
+  position: relative;
+  width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto;
+  padding: 8mm 10mm 0;
+  overflow: hidden;
+  background: #fff;
+  color: #111;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  line-height: 1.35;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.nes-watermark {
+  position: absolute;
+  top: 42%;
+  left: 50%;
+  z-index: 0;
+  width: 90%;
+  transform: translate(-50%, -50%) rotate(-32deg);
+  color: #9aa3ad;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  opacity: 0.14;
+  pointer-events: none;
+  text-align: center;
+}
+
+.nes-sheet > *:not(.nes-watermark) {
+  position: relative;
+  z-index: 1;
+}
+
+.nes-head {
+  display: grid;
+  grid-template-columns: 78px 1fr 220px;
+  gap: 8px;
+  align-items: start;
+}
+
+.nes-logo img,
+.nes-logo-mark {
+  width: 70px;
+  height: 70px;
+  object-fit: contain;
+}
+
+.nes-logo-mark {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid #1e5aa8;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #4aa3e8, #163f86);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  box-shadow: 0 0 0 2px #e8892c inset;
+}
+
+.nes-logo-mark small {
+  display: none;
+}
+
+.nes-brand {
+  text-align: center;
+  padding-top: 6px;
+}
+
+.nes-company {
+  margin: 0;
+  color: #1a4fa0;
+  font-size: 27px;
+  font-weight: 800;
+  line-height: 1.08;
+  text-shadow: 0.4px 0.4px 0 #111;
+}
+
+.nes-tagline {
+  margin: 5px 0 0;
+  color: #c45e12;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.nes-office {
+  border: 1px solid #333;
+  background: #d7eef8;
+  padding: 6px 8px;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.nes-quotation .nes-office {
+  background: #ececec;
+}
+
+.nes-office p {
+  margin: 0 0 2px;
+}
+
+.nes-mail {
+  color: #1a4fa0;
+  text-decoration: underline;
+}
+
+.nes-rule {
+  height: 4px;
+  margin: 8px 0 10px;
+  background: linear-gradient(#e8892c 0 2.4px, #111 2.4px 100%);
+}
+
+.nes-docband {
+  position: relative;
+  min-height: 92px;
+  margin-bottom: 8px;
+}
+
+.nes-date {
+  margin: 0;
+}
+
+.nes-title {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  margin: 0;
+  transform: translateX(-50%);
+  font-size: 20px;
+  font-weight: 800;
+  text-align: center;
+  text-decoration: underline;
+}
+
+.nes-docband .nes-idbox {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 230px;
+}
+
+.nes-quote-top {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 6px;
+}
+
+.nes-quote-top .nes-idbox {
+  width: 230px;
+}
+
+.nes-party {
+  width: 62%;
+}
+
+.nes-to {
+  margin: 0 0 8px;
+}
+
+.nes-subject {
+  margin: 0 0 8px;
+  width: 70%;
+}
+
+.nes-idbox {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.nes-idbox th,
+.nes-idbox td {
+  border: 1px solid #333;
+  padding: 4px 6px;
+  text-align: left;
+}
+
+.nes-idbox th {
+  width: 42%;
+  background: #cfe8f5;
+  font-weight: 700;
+}
+
+.nes-custbar {
+  width: 100%;
+  margin: 10px 0 8px;
+  border-collapse: collapse;
+}
+
+.nes-custbar td {
+  width: 50%;
+  border: 1px solid #333;
+  padding: 5px 8px;
+}
+
+.nes-intro,
+.nes-note,
+.nes-words,
+.nes-payline,
+.nes-terms {
+  margin: 8px 0;
+}
+
+.nes-items-label {
+  margin: 8px 0 4px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.nes-grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.nes-grid th,
+.nes-grid td {
+  border: 1px solid #222;
+  padding: 5px 6px;
+  vertical-align: top;
+}
+
+.nes-grid thead th {
+  background: #ead6b0;
+  font-weight: 700;
+  text-align: center;
+}
+
+.nes-grid .c-sl {
+  width: 48px;
+  text-align: center;
+}
+
+.nes-grid .c-qty,
+.nes-grid .c-price,
+.nes-grid .c-total {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.nes-desc-wrap {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.nes-prod-img {
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.nes-total-lab {
+  text-align: right;
+  font-weight: 700;
+}
+
+.nes-slogan {
+  margin: 14px 0;
+  text-align: center;
+}
+
+.nes-slogan span {
+  display: inline-block;
+  border: 1px solid #222;
+  padding: 4px 18px;
+  font-weight: 800;
+}
+
+.nes-signs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 28px;
+}
+
+.nes-signline {
+  width: 70%;
+  margin-bottom: 6px;
+  border-top: 1px solid #333;
+}
+
+.nes-sign-right {
+  text-align: right;
+}
+
+.nes-sign-right .nes-signline {
+  margin-left: auto;
+}
+
+.nes-intro p {
+  margin: 0 0 7px;
+}
+
+.nes-note-sign {
+  display: block;
+  margin-top: 6px;
+  text-align: right;
+}
+
+.nes-diamond {
+  color: #1a4fa0;
+}
+
+.nes-foot {
+  margin: 18px -10mm 0;
+  padding: 8px 12px 10px;
+  background: #8fc9b8;
+  font-size: 10px;
+  text-align: center;
+}
+
+.nes-foot p {
+  margin: 0 0 3px;
+}
+
+/* Shell / sidebar / login — visual only */
+.erp-nav-scroll {
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.erp-nav-scroll::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.erp-side-btn {
+  display: inline-flex;
+  width: 100%;
+  min-height: 40px;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: transparent;
+  padding: 0.45rem 0.75rem;
+  color: var(--gp-sidebar-ink);
+  font-weight: 500;
+}
+
+.erp-side-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.erp-side-btn-primary {
+  background: var(--gp-primary);
+  border-color: var(--gp-primary);
+  color: #fff;
+}
+
+.erp-side-btn-primary:hover {
+  background: var(--gp-primary-2);
+}
+
+.erp-login-grid {
+  display: grid;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+@media (min-width: 960px) {
+  .erp-login-grid {
+    grid-template-columns: minmax(280px, 1.05fr) minmax(320px, 1fr);
   }
 }

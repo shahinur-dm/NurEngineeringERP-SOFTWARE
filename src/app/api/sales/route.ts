@@ -1,15 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/lib/db";
+import { connectDB, runInTransaction } from "@/lib/db";
 import { readSession } from "@/lib/auth";
-import { Sale, Product, Contact, nextSeq, Business } from "@/models";
-import { generateDocNo } from "@/lib/utils";
-import mongoose from "mongoose";
+import { Sale, Product, Contact } from "@/models";
+import {
+  DEFAULT_QUOTATION_TERMS,
+  ensureSaleNumberIndexes,
+  nextInvoiceNo,
+  nextQuotationNo,
+  nextReferenceNo,
+  nextSalesOrderNo,
+} from "@/lib/doc-numbers";
+import { calcDueAmount, roundMoney } from "@/lib/sale-finance";
+import { ensureDeliveryChallan } from "@/lib/delivery-challan";
 
 export async function GET(req: NextRequest) {
   const session = await readSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   await connectDB();
+  await ensureSaleNumberIndexes();
   const { searchParams } = new URL(req.url);
   const from = searchParams.get("from");
   const to = searchParams.get("to");
@@ -38,6 +47,9 @@ export async function GET(req: NextRequest) {
   if (q) {
     filter.$or = [
       { invoiceNo: new RegExp(q, "i") },
+      { quotationNo: new RegExp(q, "i") },
+      { salesOrderNo: new RegExp(q, "i") },
+      { referenceNo: new RegExp(q, "i") },
       { customerName: new RegExp(q, "i") },
       { customerMobile: new RegExp(q, "i") },
     ];
@@ -78,10 +90,9 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   await connectDB();
+  await ensureSaleNumberIndexes();
   const body = await req.json();
-  const business = await Business.findOne();
-  const seq = await nextSeq("sale");
-  const invoiceNo = generateDocNo(business?.invoicePrefix || "DIT", seq);
+  const status = body.status || "final";
 
   const items = (body.items || []).map(
     (it: {
@@ -89,6 +100,8 @@ export async function POST(req: NextRequest) {
       name: string;
       sku?: string;
       unit?: string;
+      description?: string;
+      imageUrl?: string;
       qty: number;
       bonusQty?: number;
       unitPrice: number;
@@ -96,16 +109,18 @@ export async function POST(req: NextRequest) {
       taxPercent?: number;
     }) => {
       const qty = Number(it.qty);
-      const unitPrice = Number(it.unitPrice);
-      const discount = Number(it.discount || 0);
+      const unitPrice = roundMoney(it.unitPrice);
+      const discount = roundMoney(it.discount || 0);
       const taxPercent = Number(it.taxPercent || 0);
       const base = qty * unitPrice - discount;
-      const lineTotal = base + (base * taxPercent) / 100;
+      const lineTotal = roundMoney(base + (base * taxPercent) / 100);
       return {
         productId: it.productId,
-        name: it.name,
+        name: String(it.name || "").trim() || it.sku || "Item",
         sku: it.sku,
         unit: it.unit || "Pcs",
+        description: it.description != null ? String(it.description) : "",
+        imageUrl: it.imageUrl ? String(it.imageUrl) : "",
         qty,
         bonusQty: Number(it.bonusQty || 0),
         unitPrice,
@@ -116,78 +131,122 @@ export async function POST(req: NextRequest) {
     },
   );
 
-  const subtotal = items.reduce(
-    (a: number, i: { qty: number; unitPrice: number }) => a + i.qty * i.unitPrice,
-    0,
-  );
-  const discount = Number(body.discount || 0);
-  const tax = Number(body.tax || 0);
-  const shipping = Number(body.shipping || 0);
-  const grandTotal = subtotal - discount + tax + shipping;
-  const payments = body.payments || [];
-  const paidAmount = payments.reduce(
-    (a: number, p: { amount: number }) => a + Number(p.amount || 0),
-    0,
-  );
-  const dueAmount = Math.max(0, grandTotal - paidAmount);
-
-  const mongoSession = await mongoose.startSession();
-  mongoSession.startTransaction();
-  try {
-    const sale = await Sale.create(
-      [
-        {
-          invoiceNo,
-          status: body.status || "final",
-          locationId: body.locationId,
-          customerId: body.customerId || undefined,
-          customerName: body.customerName || "Walk-in Customer",
-          customerMobile: body.customerMobile,
-          customerAddress: body.customerAddress,
-          items,
-          subtotal,
-          discount,
-          tax,
-          shipping,
-          grandTotal,
-          paidAmount,
-          dueAmount,
-          payments,
-          note: body.note,
-          staffNote: body.staffNote,
-          soldBy: session.id,
-          soldByName: session.name,
-          saleDate: body.saleDate ? new Date(body.saleDate) : new Date(),
-        },
-      ],
-      { session: mongoSession },
-    );
-
-    if ((body.status || "final") === "final" && body.locationId) {
-      for (const it of items) {
-        const deduct = it.qty + (it.bonusQty || 0);
-        await Product.updateOne(
-          { _id: it.productId, "stocks.locationId": body.locationId },
-          { $inc: { "stocks.$.qty": -deduct } },
-          { session: mongoSession },
-        );
-      }
-      if (body.customerId && dueAmount > 0) {
-        await Contact.updateOne(
-          { _id: body.customerId },
-          { $inc: { balance: dueAmount } },
-          { session: mongoSession },
-        );
-      }
+  const missingImages = items.filter((it: { productId: string; imageUrl?: string }) => it.productId && !it.imageUrl);
+  if (missingImages.length) {
+    const masters = await Product.find({
+      _id: { $in: missingImages.map((it: { productId: string }) => it.productId) },
+    })
+      .select("imageUrl")
+      .lean();
+    const byId = new Map(masters.map((p) => [String(p._id), p.imageUrl || ""]));
+    for (const it of items) {
+      if (!it.imageUrl) it.imageUrl = byId.get(String(it.productId)) || "";
     }
+  }
 
-    await mongoSession.commitTransaction();
-    return NextResponse.json({ data: sale[0] }, { status: 201 });
+  const subtotal = roundMoney(
+    items.reduce(
+      (a: number, i: { qty: number; unitPrice: number }) => a + i.qty * i.unitPrice,
+      0,
+    ),
+  );
+  const discount = roundMoney(body.discount || 0);
+  const tax = roundMoney(body.tax || 0);
+  const shipping = roundMoney(body.shipping || 0);
+  const grandTotal = roundMoney(subtotal - discount + tax + shipping);
+  const payments = body.payments || [];
+  const paidAmount = roundMoney(
+    payments.reduce(
+      (a: number, p: { amount: number }) => a + Number(p.amount || 0),
+      0,
+    ),
+  );
+  const dueAmount = calcDueAmount(grandTotal, paidAmount);
+
+  const referenceNo = body.referenceNo || (await nextReferenceNo());
+  const quotationNo =
+    status === "quotation" ? body.quotationNo || (await nextQuotationNo()) : body.quotationNo || undefined;
+  const salesOrderNo =
+    status === "final" ? body.salesOrderNo || (await nextSalesOrderNo()) : body.salesOrderNo || undefined;
+  const invoiceNo =
+    status === "final" ? body.invoiceNo || (await nextInvoiceNo()) : body.invoiceNo || undefined;
+
+  let customerName = body.customerName || "Walk-in Customer";
+  let customerMobile = body.customerMobile || "";
+  let customerAddress = body.customerAddress || "";
+  if (body.customerId) {
+    const contact = await Contact.findById(body.customerId).lean();
+    if (contact) {
+      customerName = contact.name || customerName;
+      customerMobile = customerMobile || contact.mobile || "";
+      customerAddress = customerAddress || contact.address || "";
+    }
+  }
+
+  const payload: Record<string, unknown> = {
+    referenceNo,
+    poNo: body.poNo,
+    poDate: body.poDate ? new Date(body.poDate) : undefined,
+    subject: body.subject || body.note,
+    terms: status === "quotation" ? body.terms || DEFAULT_QUOTATION_TERMS : body.terms,
+    status,
+    locationId: body.locationId,
+    customerId: body.customerId || undefined,
+    customerName,
+    customerMobile,
+    customerAddress,
+    items,
+    subtotal,
+    discount,
+    tax,
+    shipping,
+    grandTotal,
+    paidAmount,
+    dueAmount,
+    payments,
+    note: body.note,
+    staffNote: body.staffNote,
+    soldBy: session.id,
+    soldByName: session.name,
+    saleDate: body.saleDate ? new Date(body.saleDate) : new Date(),
+  };
+  if (invoiceNo) payload.invoiceNo = invoiceNo;
+  if (quotationNo) payload.quotationNo = quotationNo;
+  if (salesOrderNo) payload.salesOrderNo = salesOrderNo;
+
+  try {
+    const created = await runInTransaction(async (mongoSession) => {
+      const sale = mongoSession
+        ? (await Sale.create([payload], { session: mongoSession }))[0]
+        : await Sale.create(payload);
+
+      if (status === "final") {
+        if (body.locationId) {
+          for (const it of items) {
+            const deduct = it.qty + (it.bonusQty || 0);
+            await Product.updateOne(
+              { _id: it.productId, "stocks.locationId": body.locationId },
+              { $inc: { "stocks.$.qty": -deduct } },
+              mongoSession ? { session: mongoSession } : {},
+            );
+          }
+        }
+        if (body.customerId && dueAmount > 0) {
+          await Contact.updateOne(
+            { _id: body.customerId },
+            { $inc: { balance: dueAmount } },
+            mongoSession ? { session: mongoSession } : {},
+          );
+        }
+        await ensureDeliveryChallan(sale, mongoSession);
+      }
+
+      return sale;
+    });
+
+    return NextResponse.json({ data: created }, { status: 201 });
   } catch (e) {
-    await mongoSession.abortTransaction();
     console.error(e);
     return NextResponse.json({ error: "failed" }, { status: 500 });
-  } finally {
-    mongoSession.endSession();
   }
 }

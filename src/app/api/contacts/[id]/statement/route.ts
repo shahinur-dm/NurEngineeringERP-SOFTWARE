@@ -9,9 +9,12 @@ type LedgerEntry = {
   date: string;
   type: string;
   ref: string;
+  referenceNo?: string;
   description: string;
   debit: number;
   credit: number;
+  paidAmount: number;
+  dueAmount: number;
   balance: number;
   link?: string;
 };
@@ -51,13 +54,15 @@ export async function GET(req: NextRequest, ctx: Ctx) {
     description: "Opening balance",
     debit: opening > 0 ? opening : 0,
     credit: opening < 0 ? Math.abs(opening) : 0,
+    paidAmount: 0,
+    dueAmount: opening > 0 ? opening : 0,
     balance: running,
   });
 
   if (isCustomer) {
     const saleFilter: Record<string, unknown> = {
       customerId: id,
-      status: { $in: ["final", "returned"] },
+      status: { $in: ["quotation", "final", "returned"] },
     };
     if (from || to) {
       saleFilter.saleDate = {};
@@ -71,19 +76,75 @@ export async function GET(req: NextRequest, ctx: Ctx) {
 
     const sales = await Sale.find(saleFilter).sort({ saleDate: 1 }).lean();
     for (const sale of sales) {
-      const debit = Number(sale.grandTotal || 0);
-      const credit = Number(sale.paidAmount || 0);
-      running = running + debit - credit;
+      const masterRef = sale.referenceNo || "";
+      if (sale.quotationNo) {
+        entries.push({
+          date: new Date(sale.saleDate || sale.createdAt).toISOString(),
+          type: "quotation",
+          ref: sale.quotationNo,
+          referenceNo: masterRef,
+          description: `Quotation · ${sale.quotationNo}`,
+          debit: 0,
+          credit: 0,
+          paidAmount: 0,
+          dueAmount: 0,
+          balance: running,
+          link: `/sales/${sale._id}/quotation`,
+        });
+      }
+      if (sale.status === "quotation") continue;
+
+      if (sale.salesOrderNo) {
+        entries.push({
+          date: new Date(sale.saleDate || sale.createdAt).toISOString(),
+          type: "sales_order",
+          ref: sale.salesOrderNo,
+          referenceNo: masterRef,
+          description: `Sales Order · ${sale.salesOrderNo}`,
+          debit: 0,
+          credit: 0,
+          paidAmount: 0,
+          dueAmount: 0,
+          balance: running,
+          link: `/sales/${sale._id}/invoice`,
+        });
+      }
+
+      const grand = Number(sale.grandTotal || 0);
       entries.push({
         date: new Date(sale.saleDate || sale.createdAt).toISOString(),
-        type: "sale",
+        type: "invoice",
         ref: sale.invoiceNo,
-        description: `Sale · ${sale.status}`,
-        debit,
-        credit,
+        referenceNo: masterRef,
+        description: `Invoice · ${sale.invoiceNo}`,
+        debit: grand,
+        credit: 0,
+        paidAmount: 0,
+        dueAmount: grand,
         balance: running,
         link: `/sales/${sale._id}/invoice`,
       });
+
+      const payments = Array.isArray(sale.payments) ? sale.payments : [];
+      let paidSoFar = 0;
+      for (const p of payments) {
+        const amt = Number(p.amount || 0);
+        if (!amt) continue;
+        paidSoFar += amt;
+        entries.push({
+          date: new Date(p.paidAt || sale.saleDate || sale.createdAt).toISOString(),
+          type: "payment",
+          ref: sale.invoiceNo,
+          referenceNo: masterRef,
+          description: `Receipt · ${p.method}`,
+          debit: 0,
+          credit: amt,
+          paidAmount: amt,
+          dueAmount: Math.max(0, grand - paidSoFar),
+          balance: running,
+          link: `/sales/${sale._id}/invoice`,
+        });
+      }
     }
 
     const jobFilter: Record<string, unknown> = {
@@ -112,6 +173,8 @@ export async function GET(req: NextRequest, ctx: Ctx) {
         description: `Service · ${job.status}`,
         debit,
         credit,
+        paidAmount: credit,
+        dueAmount: Math.max(0, debit - credit),
         balance: running,
         link: `/services/${job._id}/invoice`,
       });
@@ -143,6 +206,8 @@ export async function GET(req: NextRequest, ctx: Ctx) {
         description: `Purchase · ${purchase.status}`,
         debit,
         credit,
+        paidAmount: debit,
+        dueAmount: Math.max(0, credit - debit),
         balance: running,
         link: `/purchases`,
       });

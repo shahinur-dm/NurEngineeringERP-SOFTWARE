@@ -160,7 +160,8 @@ export const MODULE_REGISTRY: Record<string, ModuleDef> = {
     titleEn: "Quotations",
     apiPath: "/api/sales?status=quotation",
     columns: [
-      { key: "invoiceNo", labelBn: "ইনভয়েস", labelEn: "Invoice" },
+      { key: "quotationNo", labelBn: "কোটেশন নং", labelEn: "Quotation No" },
+      { key: "referenceNo", labelBn: "রেফারেন্স", labelEn: "Ref. No" },
       { key: "customerName", labelBn: "গ্রাহক", labelEn: "Customer" },
       { key: "grandTotal", labelBn: "মোট", labelEn: "Total", format: "money" },
     ],

@@ -5,14 +5,17 @@ import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { Pencil, Trash2 } from "lucide-react";
 import { EmptyState, Field, FilterBar, Modal, PageHeader } from "@/components/ui";
-import { InvoiceActions } from "@/components/InvoiceActions";
+import { InvoiceActions, PaymentStatusBadge } from "@/components/InvoiceActions";
 import { CrudForm } from "@/components/CrudForm";
 import { getCrudConfig } from "@/lib/crud-config";
 import { formatBDT, formatDateBD } from "@/lib/utils";
 
 type Sale = {
   _id: string;
-  invoiceNo: string;
+  invoiceNo?: string;
+  quotationNo?: string;
+  salesOrderNo?: string;
+  referenceNo?: string;
   customerName: string;
   customerId?: string;
   grandTotal: number;
@@ -75,9 +78,14 @@ export default function SalesPage() {
       <PageHeader
         title={t("sales.title")}
         actions={
-          <Link href="/pos" className="gp-btn gp-btn-primary">
-            {t("nav.pos")}
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/sales/quotations" className="gp-btn gp-btn-ghost">
+              {t("nav.listQuotations")}
+            </Link>
+            <Link href="/pos" className="gp-btn gp-btn-primary">
+              {t("nav.pos")}
+            </Link>
+          </div>
         }
       />
 
@@ -119,7 +127,7 @@ export default function SalesPage() {
         </div>
       </div>
 
-      <div className="gp-table-wrap overflow-auto">
+      <div className="gp-table-wrap !overflow-x-auto">
         {data.length === 0 ? (
           <EmptyState message={t("common.noData")} />
         ) : (
@@ -127,25 +135,47 @@ export default function SalesPage() {
             <thead>
               <tr>
                 <th>{t("sales.invoiceNo")}</th>
+                <th>{t("sales.quotationNo")}</th>
+                <th>{t("sales.referenceNo")}</th>
                 <th>{t("sales.customer")}</th>
                 <th>{t("common.date")}</th>
                 <th>{t("common.grandTotal")}</th>
                 <th>{t("common.due")}</th>
+                <th>{t("sales.paymentStatus")}</th>
                 <th>{t("common.status")}</th>
-                <th>{t("common.actions")}</th>
+                <th className="min-w-[14rem]">{t("common.actions")}</th>
               </tr>
             </thead>
             <tbody>
               {data.map((s) => (
                 <tr key={s._id}>
                   <td>
-                    <Link
-                      href={`/sales/${s._id}/invoice`}
-                      className="font-semibold text-primary hover:underline"
-                    >
-                      {s.invoiceNo}
-                    </Link>
+                    {s.status === "quotation" ? (
+                      <Link
+                        href={`/sales/${s._id}/quotation`}
+                        className="font-semibold text-primary hover:underline"
+                      >
+                        {s.quotationNo || "—"}
+                      </Link>
+                    ) : (
+                      <Link
+                        href={`/sales/${s._id}/invoice`}
+                        className="font-semibold text-primary hover:underline"
+                      >
+                        {s.invoiceNo || "—"}
+                      </Link>
+                    )}
                   </td>
+                  <td>
+                    {s.quotationNo ? (
+                      <Link href={`/sales/${s._id}/quotation`} className="text-primary hover:underline">
+                        {s.quotationNo}
+                      </Link>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className="font-mono text-sm">{s.referenceNo || "—"}</td>
                   <td>
                     {s.customerId ? (
                       <Link
@@ -162,11 +192,14 @@ export default function SalesPage() {
                   <td className="font-bold">{formatBDT(s.grandTotal, locale)}</td>
                   <td>{formatBDT(s.dueAmount, locale)}</td>
                   <td>
-                    <span className="gp-badge gp-badge-success capitalize">{s.status}</span>
+                    <PaymentStatusBadge grandTotal={s.grandTotal} paidAmount={s.paidAmount} />
                   </td>
                   <td>
-                    <div className="flex flex-wrap items-center gap-1">
-                      <InvoiceActions saleId={s._id} compact />
+                    <span className="gp-badge gp-badge-success capitalize">{s.status}</span>
+                  </td>
+                  <td className="min-w-[14rem] align-top">
+                    <div className="flex flex-col items-stretch gap-1">
+                      <InvoiceActions saleId={s._id} saleStatus={s.status} compact />
                       <button
                         type="button"
                         className="gp-btn gp-btn-ghost min-h-9 px-2"
