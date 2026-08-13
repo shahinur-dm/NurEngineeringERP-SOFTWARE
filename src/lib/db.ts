@@ -1,4 +1,7 @@
+import dns from "node:dns";
 import mongoose, { type ClientSession } from "mongoose";
+
+dns.setDefaultResultOrder("ipv4first");
 
 interface MongooseCache {
   conn: typeof mongoose | null;
@@ -47,6 +50,8 @@ export async function connectDB() {
       return mongoose.connect(uri, {
         bufferCommands: false,
         dbName: "nur_engineering_erp",
+        family: 4,
+        serverSelectionTimeoutMS: 12_000,
       });
     })();
   }

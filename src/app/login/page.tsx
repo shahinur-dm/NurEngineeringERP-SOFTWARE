@@ -27,11 +27,13 @@ export default function LoginPage() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(
-          data.error === "invalid" || res.status === 401
-            ? t("auth.invalid")
-            : t("common.error"),
-        );
+        if (data.error === "invalid" || res.status === 401) {
+          setError(t("auth.invalid"));
+        } else if (data.error === "db" || res.status === 503) {
+          setError(t("auth.dbError"));
+        } else {
+          setError(t("common.error"));
+        }
         return;
       }
       void fetch("/api/seed", {

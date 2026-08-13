@@ -109,6 +109,7 @@
     "login": "Sign in",
     "loggingIn": "Signing in...",
     "invalid": "Invalid email or password",
+    "dbError": "Could not connect to the database. Check the MongoDB Atlas connection.",
     "demoHint": "Demo: admin@ditpharma.bd / admin123"
   },
   "dashboard": {

@@ -81,6 +81,10 @@ export async function POST(req: NextRequest) {
     return applySessionCookie(res, token);
   } catch (e) {
     console.error(e);
+    const msg = e instanceof Error ? e.message : String(e);
+    if (/ENOTFOUND|querySrv|ECONNREFUSED|MongoServerSelection|authentication failed|bad auth/i.test(msg)) {
+      return NextResponse.json({ error: "db" }, { status: 503 });
+    }
     return NextResponse.json({ error: "server" }, { status: 500 });
   }
 }
