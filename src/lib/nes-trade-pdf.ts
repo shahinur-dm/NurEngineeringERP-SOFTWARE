@@ -1,4 +1,4 @@
-import { jsPDF } from "jspdf";
+import { GState, jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { amountInWords, formatDateBD } from "@/lib/utils";
 import { paymentStatusFromAmounts } from "@/lib/sale-finance";
@@ -116,12 +116,12 @@ export async function buildTradePdf(opts: {
   const images = await Promise.all(items.map((it) => loadImageDataUrl(it.imageUrl)));
 
   try {
-    doc.setGState(new doc.GState({ opacity: 0.12 }));
+    doc.setGState(new GState({ opacity: 0.12 }));
     doc.setFont("helvetica", "bold");
     doc.setFontSize(26);
     doc.setTextColor(150);
     doc.text("Nur Engineering Solution", pageW / 2, 145, { align: "center", angle: 32 });
-    doc.setGState(new doc.GState({ opacity: 1 }));
+    doc.setGState(new GState({ opacity: 1 }));
   } catch {
     /* watermark optional */
   }
