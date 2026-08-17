@@ -14,6 +14,7 @@ export async function GET(
 
   const { id } = await ctx.params;
   const format = new URL(req.url).searchParams.get("format") || "pdf";
+  const headerFooter = new URL(req.url).searchParams.get("hf") !== "0";
 
   await connectDB();
   const sale = await Sale.findById(id).lean();
@@ -37,6 +38,7 @@ export async function GET(
     business,
     challanNo: challan.shipmentNo,
     challanItems: items,
+    headerFooter,
   });
   const pdf = doc.output("arraybuffer");
   return new NextResponse(pdf, {

@@ -6,13 +6,14 @@ import { buildTradePdf } from "@/lib/nes-trade-pdf";
 import { nextQuotationNo, nextReferenceNo } from "@/lib/doc-numbers";
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   ctx: { params: Promise<{ id: string }> },
 ) {
   const session = await readSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const { id } = await ctx.params;
+  const headerFooter = new URL(req.url).searchParams.get("hf") !== "0";
   await connectDB();
   const saleDoc = await Sale.findById(id);
   const business = await Business.findOne().lean();
@@ -32,7 +33,7 @@ export async function GET(
   }
 
   const sale = saleDoc.toObject();
-  const doc = await buildTradePdf({ kind: "quotation", sale, business });
+  const doc = await buildTradePdf({ kind: "quotation", sale, business, headerFooter });
   const pdf = doc.output("arraybuffer");
   return new NextResponse(pdf, {
     headers: {

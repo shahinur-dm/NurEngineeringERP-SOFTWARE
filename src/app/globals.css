@@ -356,10 +356,25 @@ h3,
   min-height: 38px;
   border: 1px solid var(--gp-line-strong);
   border-radius: 10px;
-  padding: 0.45rem 0.8rem;
+  padding-block: 0.45rem;
+  padding-inline: 0.8rem;
   background: #fafbfc;
   color: var(--gp-ink);
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+/* Overlay icons sit inside the field; extra side padding keeps text clear of them. */
+.gp-input.gp-input-icon-left {
+  padding-left: 2.75rem;
+}
+
+.gp-input.gp-input-icon-right {
+  padding-right: 2.5rem;
+}
+
+.gp-input.gp-input-icon-both {
+  padding-left: 2.75rem;
+  padding-right: 2.85rem;
 }
 
 .gp-input::placeholder {
@@ -413,6 +428,19 @@ h3,
 
 .gp-table tbody tr:last-child td {
   border-bottom: none;
+}
+
+/* Compact list used on Quotations — does not change other tables */
+.gp-table-compact th,
+.gp-table-compact td {
+  padding: 0.3rem 0.65rem;
+  line-height: 1.25;
+  border-bottom: 1px solid var(--gp-line);
+  vertical-align: middle;
+}
+
+.gp-table-compact tbody td {
+  height: 52px;
 }
 
 /* Product list — supplier price chips inside table */
@@ -639,7 +667,7 @@ h3,
 @media print {
   @page {
     size: A4;
-    margin: 6mm;
+    margin: 0;
   }
 
   body {
@@ -665,16 +693,27 @@ h3,
 
   .nes-sheet {
     width: 210mm;
+    height: 297mm;
     min-height: 297mm;
+    max-height: 297mm;
     margin: 0 auto;
+    page-break-after: always;
+    page-break-inside: avoid;
+    overflow: hidden;
+  }
+
+  .nes-sheet:last-of-type {
+    page-break-after: auto;
   }
 }
 
 .nes-sheet {
   position: relative;
+  display: flex;
+  flex-direction: column;
   width: 210mm;
   min-height: 297mm;
-  margin: 0 auto;
+  margin: 0 auto 8mm;
   padding: 8mm 10mm 0;
   overflow: hidden;
   background: #fff;
@@ -683,6 +722,12 @@ h3,
   font-size: 12px;
   line-height: 1.35;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  page-break-after: always;
+}
+
+.nes-sheet:last-of-type {
+  page-break-after: auto;
+  margin-bottom: 0;
 }
 
 .nes-watermark {
@@ -982,11 +1027,19 @@ h3,
 }
 
 .nes-foot {
-  margin: 18px -10mm 0;
+  margin: auto -10mm 0;
   padding: 8px 12px 10px;
   background: #8fc9b8;
   font-size: 10px;
   text-align: center;
+  flex-shrink: 0;
+}
+
+.nes-no-chrome .nes-head,
+.nes-no-chrome .nes-foot,
+.nes-no-chrome .nes-rule,
+.nes-no-chrome .nes-office {
+  display: none !important;
 }
 
 .nes-foot p {

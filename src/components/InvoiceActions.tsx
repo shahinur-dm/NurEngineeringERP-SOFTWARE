@@ -26,16 +26,49 @@ export function PaymentStatusBadge({
   return <span className={cn(paymentStatusBadgeClass(status), "capitalize")}>{label}</span>;
 }
 
+export function DocumentExportBar({
+  printBase,
+  pdfHref,
+}: {
+  printBase: string;
+  pdfHref: string;
+}) {
+  function withQuery(url: string, extra: string) {
+    return url.includes("?") ? `${url}&${extra}` : `${url}?${extra}`;
+  }
+  const btn = "gp-btn gp-btn-ghost min-h-10 px-3 text-sm";
+  return (
+    <>
+      <Link href={withQuery(printBase, "print=1")} className={btn}>
+        Print with Header & Footer
+      </Link>
+      <Link href={withQuery(printBase, "print=1&hf=0")} className={btn}>
+        Print without Header & Footer
+      </Link>
+      <a href={pdfHref} target="_blank" rel="noreferrer" className={btn}>
+        PDF with Header & Footer
+      </a>
+      <a href={withQuery(pdfHref, "hf=0")} target="_blank" rel="noreferrer" className={btn}>
+        PDF without Header & Footer
+      </a>
+    </>
+  );
+}
+
 export function InvoiceActions({
   saleId,
   compact,
+  inline,
   showPrint,
+  hidePrintPdf,
   saleStatus,
   className,
 }: {
   saleId: string;
   compact?: boolean;
+  inline?: boolean;
   showPrint?: boolean;
+  hidePrintPdf?: boolean;
   saleStatus?: string;
   className?: string;
 }) {
@@ -49,16 +82,20 @@ export function InvoiceActions({
   const challanView = `/sales/${saleId}/challan`;
   const challanPdf = `/api/sales/${saleId}/challan?format=pdf&locale=en`;
   const isQuotation = saleStatus === "quotation";
+  const stacked = compact && !inline;
 
-  const btn = compact
+  const btn = stacked
     ? "gp-btn gp-btn-ghost min-h-9 w-full justify-start whitespace-nowrap px-2.5 text-sm"
-    : "gp-btn gp-btn-ghost min-h-10 px-3 text-sm whitespace-nowrap";
+    : inline
+      ? "gp-btn gp-btn-ghost min-h-8 px-2 text-xs whitespace-nowrap"
+      : "gp-btn gp-btn-ghost min-h-10 px-3 text-sm whitespace-nowrap";
 
   async function convert() {
     setBusy(true);
     try {
       const res = await fetch(`/api/sales/${saleId}/finalize`, { method: "POST" });
-      if (res.ok) router.push(`/sales/${saleId}/invoice`);
+      const json = await res.json().catch(() => ({}));
+      if (res.ok) router.push(`/sales/${json.data?._id || saleId}/invoice`);
     } finally {
       setBusy(false);
     }
@@ -72,7 +109,10 @@ export function InvoiceActions({
   return (
     <div
       className={cn(
-        compact ? "flex min-w-[13rem] flex-col items-stretch gap-1" : "flex flex-wrap items-center gap-1.5",
+        stacked
+          ? "flex min-w-[13rem] flex-col items-stretch gap-1"
+          : "flex flex-wrap items-center gap-1.5",
+        inline && "gap-1",
         className,
       )}
     >
@@ -82,7 +122,7 @@ export function InvoiceActions({
             <Eye className="h-4 w-4" />
             <span>View</span>
           </Link>
-          {showPrint ? (
+          {hidePrintPdf ? null : showPrint ? (
             <button type="button" className={btn} onClick={() => window.print()} title="Print">
               <Printer className="h-4 w-4" />
               <span>Print</span>
@@ -93,15 +133,19 @@ export function InvoiceActions({
               <span>Print</span>
             </Link>
           )}
+          {hidePrintPdf ? null : (
           <a href={quotationPdf} target="_blank" rel="noreferrer" className={btn} title="PDF">
             <FileText className="h-4 w-4 text-[var(--gp-info)]" />
             <span>PDF</span>
           </a>
+          )}
           <button
             type="button"
             className={cn(
-              "gp-btn gp-btn-primary min-h-9 px-2.5 text-sm",
-              compact && "w-full justify-start",
+              inline
+                ? "gp-btn gp-btn-primary min-h-8 px-2 text-xs whitespace-nowrap"
+                : "gp-btn gp-btn-primary min-h-9 px-2.5 text-sm",
+              stacked && "w-full justify-start",
             )}
             disabled={busy}
             onClick={() => void convert()}
@@ -117,7 +161,7 @@ export function InvoiceActions({
             <Eye className="h-4 w-4" />
             <span>View Invoice</span>
           </Link>
-          {showPrint ? (
+          {hidePrintPdf ? null : showPrint ? (
             <button type="button" className={btn} onClick={() => window.print()} title="Print">
               <Printer className="h-4 w-4" />
               <span>Print</span>
@@ -128,10 +172,12 @@ export function InvoiceActions({
               <span>Print</span>
             </Link>
           )}
+          {hidePrintPdf ? null : (
           <a href={pdfHref} target="_blank" rel="noreferrer" className={btn} title="Invoice PDF">
             <FileText className="h-4 w-4 text-[var(--gp-danger)]" />
             <span>Invoice PDF</span>
           </a>
+          )}
           <Link href={challanView} className={btn} title="View Delivery Challan">
             <Truck className="h-4 w-4" />
             <span>View Delivery Challan</span>

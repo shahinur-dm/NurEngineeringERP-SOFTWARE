@@ -103,8 +103,10 @@ export async function buildTradePdf(opts: {
   business?: TradePdfBusiness | null;
   challanNo?: string;
   challanItems?: Item[];
+  headerFooter?: boolean;
 }) {
   const { kind, sale, business } = opts;
+  const headerFooter = opts.headerFooter !== false;
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
@@ -115,72 +117,65 @@ export async function buildTradePdf(opts: {
   const boxW = 62;
   const images = await Promise.all(items.map((it) => loadImageDataUrl(it.imageUrl)));
 
-  try {
-    doc.setGState(new GState({ opacity: 0.12 }));
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(26);
-    doc.setTextColor(150);
-    doc.text("Nur Engineering Solution", pageW / 2, 145, { align: "center", angle: 32 });
-    doc.setGState(new GState({ opacity: 1 }));
-  } catch {
-    /* watermark optional */
-  }
-  doc.setTextColor(20);
+  const logoData = headerFooter && business?.logoUrl ? await loadImageDataUrl(business.logoUrl) : null;
 
-  if (business?.logoUrl) {
-    const logo = await loadImageDataUrl(business.logoUrl);
-    if (logo) {
+  function drawLetterhead() {
+    if (!headerFooter) return;
+    if (logoData) {
       try {
-        doc.addImage(logo, "JPEG", m, 9, 18, 18);
+        doc.addImage(logoData, "JPEG", m, 9, 18, 18);
       } catch {
         /* skip */
       }
+    } else {
+      doc.setFillColor(22, 63, 134);
+      doc.circle(m + 9, 18, 9, "F");
+      doc.setDrawColor(232, 137, 44);
+      doc.setLineWidth(0.8);
+      doc.circle(m + 9, 18, 7.2, "S");
+      doc.setTextColor(255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.text("NES", m + 9, 19.4, { align: "center" });
+      doc.setTextColor(20);
     }
-  } else {
-    doc.setFillColor(22, 63, 134);
-    doc.circle(m + 9, 18, 9, "F");
-    doc.setDrawColor(232, 137, 44);
-    doc.setLineWidth(0.8);
-    doc.circle(m + 9, 18, 7.2, "S");
-    doc.setTextColor(255);
+
     doc.setFont("helvetica", "bold");
+    doc.setTextColor(26, 79, 160);
+    doc.setFontSize(17);
+    doc.text(bizName, pageW / 2, 16, { align: "center" });
+    doc.setTextColor(196, 94, 18);
+    doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
-    doc.text("NES", m + 9, 19.4, { align: "center" });
+    doc.text("Machine, Spare parts and Technical Service Provider", pageW / 2, 21.5, { align: "center" });
     doc.setTextColor(20);
+
+    const officeFill = kind === "quotation" ? [236, 236, 236] : [215, 238, 248];
+    doc.setFillColor(officeFill[0], officeFill[1], officeFill[2]);
+    doc.setDrawColor(51);
+    doc.rect(pageW - m - boxW, 8, boxW, 20, "FD");
+    doc.setFontSize(7);
+    const officeLines = [
+      business?.address ? `Office: ${business.address}` : "",
+      business?.email ? `Email: ${business.email}` : "",
+      business?.phone ? `Mobile: ${business.phone}` : "",
+    ].filter(Boolean);
+    let oy = 12;
+    officeLines.forEach((line) => {
+      doc.text(line, pageW - m - boxW + 2, oy, { maxWidth: boxW - 4 });
+      oy += 4.4;
+    });
+
+    doc.setDrawColor(232, 137, 44);
+    doc.setLineWidth(1.1);
+    doc.line(m, 30, pageW - m, 30);
+    doc.setDrawColor(0);
+    doc.setLineWidth(0.25);
+    doc.line(m, 31.3, pageW - m, 31.3);
   }
 
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(26, 79, 160);
-  doc.setFontSize(17);
-  doc.text(bizName, pageW / 2, 16, { align: "center" });
-  doc.setTextColor(196, 94, 18);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.text("Machine, Spare parts and Technical Service Provider", pageW / 2, 21.5, { align: "center" });
+  drawLetterhead();
   doc.setTextColor(20);
-
-  const officeFill = kind === "quotation" ? [236, 236, 236] : [215, 238, 248];
-  doc.setFillColor(officeFill[0], officeFill[1], officeFill[2]);
-  doc.setDrawColor(51);
-  doc.rect(pageW - m - boxW, 8, boxW, 20, "FD");
-  doc.setFontSize(7);
-  const officeLines = [
-    business?.address ? `Office: ${business.address}` : "",
-    business?.email ? `Email: ${business.email}` : "",
-    business?.phone ? `Mobile: ${business.phone}` : "",
-  ].filter(Boolean);
-  let oy = 12;
-  officeLines.forEach((line) => {
-    doc.text(line, pageW - m - boxW + 2, oy, { maxWidth: boxW - 4 });
-    oy += 4.4;
-  });
-
-  doc.setDrawColor(232, 137, 44);
-  doc.setLineWidth(1.1);
-  doc.line(m, 30, pageW - m, 30);
-  doc.setDrawColor(0);
-  doc.setLineWidth(0.25);
-  doc.line(m, 31.3, pageW - m, 31.3);
 
   const meta: [string, string][] =
     kind === "bill"
@@ -206,7 +201,7 @@ export async function buildTradePdf(opts: {
           ];
 
   autoTable(doc, {
-    startY: 34,
+    startY: headerFooter ? 34 : 12,
     margin: { left: pageW - m - boxW, right: m },
     tableWidth: boxW,
     theme: "grid",
@@ -295,7 +290,7 @@ export async function buildTradePdf(opts: {
       ? [["SL No.", "Item Name", "Description", "Quantity (Piece)", "Remarks"]]
       : [["SL No.", "Item Name", "Description", "Quantity (Piece)", "Unit Price (Taka)", "Total Price (Taka)"]];
 
-  const body = items.map((item, idx) => {
+  const itemRows = items.map((item, idx) => {
     if (kind === "challan") {
       return [idx + 1, item.name || "", item.description || "", String(item.qty ?? 0), item.remarks || ""];
     }
@@ -308,52 +303,75 @@ export async function buildTradePdf(opts: {
       Number(item.lineTotal || 0).toLocaleString("en-IN"),
     ];
   });
-
+  const totalRows: (string | number)[][] = [];
   if (kind === "bill") {
-    if (Number(sale.discount || 0)) body.push(["", "", "", "", "Discount", taka(sale.discount)]);
-    if (Number(sale.tax || 0)) body.push(["", "", "", "", "Tax", taka(sale.tax)]);
-    if (Number(sale.shipping || 0)) body.push(["", "", "", "", "Shipping", taka(sale.shipping)]);
+    if (Number(sale.discount || 0)) totalRows.push(["", "", "", "", "Discount", taka(sale.discount)]);
+    if (Number(sale.tax || 0)) totalRows.push(["", "", "", "", "Tax", taka(sale.tax)]);
+    if (Number(sale.shipping || 0)) totalRows.push(["", "", "", "", "Shipping", taka(sale.shipping)]);
   }
   if (kind !== "challan") {
-    body.push(["", "", "", "", kind === "quotation" ? "Total Price =" : "Total Bill =", taka(sale.grandTotal)]);
+    totalRows.push(["", "", "", "", kind === "quotation" ? "Total Price =" : "Total Bill =", taka(sale.grandTotal)]);
   } else {
     const qtyTotal = items.reduce((a, i) => a + Number(i.qty || 0), 0);
-    body.push(["", "", "Total =", String(qtyTotal), ""]);
+    totalRows.push(["", "", "Total =", String(qtyTotal), ""]);
   }
 
-  autoTable(doc, {
-    startY: y,
+  const PAGE_ROWS = 10;
+  const tableOpts = {
     head,
-    body,
-    margin: { left: m, right: m },
-    styles: { fontSize: 8, cellPadding: 2, valign: "top", minCellHeight: 14, lineColor: 30, lineWidth: 0.2 },
-    headStyles: { fillColor: [234, 214, 176], textColor: 20, fontStyle: "bold", halign: "center" },
-    columnStyles:
-      kind === "challan"
-        ? { 0: { cellWidth: 16, halign: "center" }, 2: { cellWidth: 70 }, 3: { halign: "center" } }
-        : {
-            0: { cellWidth: 14, halign: "center" },
-            2: { cellWidth: 58 },
-            3: { halign: "center" },
-            4: { halign: "center" },
-            5: { halign: "center" },
-          },
-    didDrawCell: (data) => {
-      if (data.section !== "body" || data.column.index !== 2) return;
-      const img = images[data.row.index];
-      if (!img) return;
-      try {
-        const x = data.cell.x + data.cell.width - 13;
-        const iy = data.cell.y + 1.5;
-        doc.addImage(img, "JPEG", x, iy, 11, 11);
-      } catch {
-        /* skip broken images */
-      }
-    },
-  });
+    margin: { left: m, right: m, bottom: headerFooter ? 20 : 10 },
+    styles: { fontSize: 8, cellPadding: 2, valign: "top" as const, minCellHeight: 14, lineColor: 30, lineWidth: 0.2 },
+    headStyles: { fillColor: [234, 214, 176] as [number, number, number], textColor: 20, fontStyle: "bold" as const, halign: "center" as const },
+    columnStyles: (kind === "challan"
+      ? { 0: { cellWidth: 16, halign: "center" as const }, 2: { cellWidth: 70 }, 3: { halign: "center" as const } }
+      : {
+          0: { cellWidth: 14, halign: "center" as const },
+          2: { cellWidth: 58 },
+          3: { halign: "center" as const },
+          4: { halign: "center" as const },
+          5: { halign: "center" as const },
+        }) as Record<string, { cellWidth?: number; halign?: "center" }>,
+  };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  y = ((doc as any).lastAutoTable?.finalY || y) + 6;
+  const chunks: typeof itemRows[] = [];
+  for (let i = 0; i < Math.max(itemRows.length, 1); i += PAGE_ROWS) {
+    chunks.push(itemRows.slice(i, i + PAGE_ROWS));
+  }
+  if (!chunks.length) chunks.push([]);
+
+  chunks.forEach((chunk, pageIdx) => {
+    if (pageIdx > 0) {
+      doc.addPage();
+      drawLetterhead();
+      y = headerFooter ? 36 : 14;
+    }
+    const isLast = pageIdx === chunks.length - 1;
+    autoTable(doc, {
+      ...tableOpts,
+      startY: y,
+      body: isLast ? [...chunk, ...totalRows] : chunk,
+      didDrawCell: (data) => {
+        if (data.section !== "body" || data.column.index !== 2) return;
+        const img = images[pageIdx * PAGE_ROWS + data.row.index];
+        if (!img) return;
+        try {
+          const x = data.cell.x + data.cell.width - 13;
+          const iy = data.cell.y + 1.5;
+          doc.addImage(img, "JPEG", x, iy, 11, 11);
+        } catch {
+          /* skip */
+        }
+      },
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    y = ((doc as any).lastAutoTable?.finalY || y) + 6;
+  });
+  const footerReserve = headerFooter ? 22 : 12;
+  if (y > pageH - footerReserve - 48) {
+    doc.addPage();
+    drawLetterhead();
+    y = headerFooter ? 36 : 14;
+  }
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
 
@@ -428,28 +446,42 @@ export async function buildTradePdf(opts: {
   doc.text(`Proprietor, ${bizName}`, pageW - m, y + 9, { align: "right" });
 
   const wechat = wechatId(business?.phone);
-  doc.setFillColor(143, 201, 184);
-  doc.rect(0, pageH - 16, pageW, 16, "F");
-  doc.setFontSize(7);
-  doc.setTextColor(20);
-  doc.text(
-    `Office Address : ${business?.address || ""}`,
-    pageW / 2,
-    pageH - 10.5,
-    { align: "center", maxWidth: pageW - 16 },
-  );
-  doc.text(
-    [
-      business?.phone ? `Mobile/WhatsApp: ${business.phone}` : "",
-      wechat ? `Wechat: ${wechat}` : "",
-      business?.email ? `Email: ${business.email}` : "",
-    ]
-      .filter(Boolean)
-      .join("  ,  "),
-    pageW / 2,
-    pageH - 6,
-    { align: "center", maxWidth: pageW - 16 },
-  );
+  const pages = doc.getNumberOfPages();
+  for (let p = 1; p <= pages; p++) {
+    doc.setPage(p);
+    try {
+      doc.setGState(new GState({ opacity: 0.12 }));
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(26);
+      doc.setTextColor(150);
+      doc.text("Nur Engineering Solution", pageW / 2, 145, { align: "center", angle: 32 });
+      doc.setGState(new GState({ opacity: 1 }));
+    } catch {
+      /* watermark optional */
+    }
+    doc.setTextColor(20);
+    if (!headerFooter) continue;
+    doc.setFillColor(143, 201, 184);
+    doc.rect(0, pageH - 16, pageW, 16, "F");
+    doc.setFontSize(7);
+    doc.setTextColor(20);
+    doc.text(`Office Address : ${business?.address || ""}`, pageW / 2, pageH - 10.5, {
+      align: "center",
+      maxWidth: pageW - 16,
+    });
+    doc.text(
+      [
+        business?.phone ? `Mobile/WhatsApp: ${business.phone}` : "",
+        wechat ? `Wechat: ${wechat}` : "",
+        business?.email ? `Email: ${business.email}` : "",
+      ]
+        .filter(Boolean)
+        .join("  ,  "),
+      pageW / 2,
+      pageH - 6,
+      { align: "center", maxWidth: pageW - 16 },
+    );
+  }
 
   return doc;
 }

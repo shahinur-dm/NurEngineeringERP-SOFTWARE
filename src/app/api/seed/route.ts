@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB, pruneOrphanCollections, pruneEmptyCollectionsClusterWide } from "@/lib/db";
 import { readSession, hashPassword } from "@/lib/auth";
+import { ensureDemoAdminUser } from "@/lib/demo-admin";
 import {
   ACCOUNTS,
   BRANDS,
@@ -56,8 +57,6 @@ import {
   ServiceJob,
 } from "@/models";
 
-const DEMO_ADMIN_ALIASES = [DEMO_ADMIN.email, "admin@greenpharma.bd"];
-
 async function wipeAllDemoData() {
   const emptyResult = await pruneEmptyCollectionsClusterWide();
   const pruneResult = await pruneOrphanCollections();
@@ -104,30 +103,6 @@ async function wipeAllDemoData() {
   };
 }
 
-async function ensureDemoAdmin(locationId?: unknown) {
-  const passwordHash = await hashPassword(DEMO_ADMIN.password);
-  let admin = await User.findOne({ email: { $in: DEMO_ADMIN_ALIASES } });
-  if (!admin) {
-    admin = await User.create({
-      name: DEMO_ADMIN.name,
-      email: DEMO_ADMIN.email,
-      passwordHash,
-      role: "admin",
-      phone: DEMO_ADMIN.phone,
-      locale: "bn",
-      isActive: true,
-      ...(locationId ? { locationIds: [locationId] } : {}),
-    });
-  } else {
-    admin.email = DEMO_ADMIN.email;
-    admin.passwordHash = passwordHash;
-    admin.isActive = true;
-    admin.name = DEMO_ADMIN.name;
-    if (locationId) admin.locationIds = [locationId as never];
-    await admin.save();
-  }
-  return admin;
-}
 
 function pick<T>(arr: readonly T[] | T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]!;
@@ -245,7 +220,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (existing && !force) {
-      if (session) await ensureDemoAdmin(undefined);
+      if (session) await ensureDemoAdminUser(undefined);
       return NextResponse.json({
         ok: true,
         seeded: false,
@@ -507,7 +482,7 @@ export async function POST(req: NextRequest) {
       LEDGER_ACCOUNTS.map((a) => ({ ...a, openingBalance: 0, balance: 0, isActive: true })),
     );
 
-    const admin = await ensureDemoAdmin(hq._id);
+    const admin = await ensureDemoAdminUser(hq._id);
     const pwd = admin.passwordHash;
     await User.insertMany([
       {

@@ -10,6 +10,15 @@ export const DEMO_ADMIN = {
   phone: "01700000000",
 };
 
+/** Legacy + username aliases that must still unlock the demo admin. */
+export const DEMO_ADMIN_ALIASES = [
+  DEMO_ADMIN.email,
+  "admin@greenpharma.bd",
+  "admin@nureng.bd",
+  "admin@nurengineering.bd",
+  "admin",
+];
+
 /** Fixed catalog suppliers used on product cards (stable mobiles = stable identity) */
 export const CATALOG_SUPPLIERS = [
   {

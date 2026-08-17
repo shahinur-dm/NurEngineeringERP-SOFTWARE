@@ -38,9 +38,71 @@ export async function POST(_req: NextRequest, ctx: Ctx) {
   const referenceNo = existing.referenceNo || (await nextReferenceNo());
   const salesOrderNo = existing.salesOrderNo || (await nextSalesOrderNo());
   const invoiceNo = existing.invoiceNo || (await nextInvoiceNo());
+  const cloneQuotation = existing.status === "quotation";
 
   try {
     const sale = await runInTransaction(async (mongoSession) => {
+      if (cloneQuotation) {
+        const payload = {
+          invoiceNo,
+          quotationNo: existing.quotationNo,
+          salesOrderNo,
+          referenceNo,
+          poNo: existing.poNo,
+          poDate: existing.poDate,
+          pfNo: existing.pfNo,
+          challanNo: existing.challanNo,
+          binNo: existing.binNo,
+          subject: existing.subject,
+          terms: existing.terms,
+          status: "final" as const,
+          locationId: existing.locationId,
+          customerId: existing.customerId,
+          customerName: existing.customerName,
+          customerMobile: existing.customerMobile,
+          customerAddress: existing.customerAddress,
+          customerEmail: existing.customerEmail,
+          items: existing.items,
+          subtotal: existing.subtotal,
+          discount: existing.discount,
+          tax: existing.tax,
+          shipping: existing.shipping,
+          grandTotal: existing.grandTotal,
+          paidAmount: existing.paidAmount,
+          dueAmount: calcDueAmount(existing.grandTotal || 0, existing.paidAmount || 0),
+          payments: existing.payments,
+          note: existing.note,
+          staffNote: existing.staffNote,
+          soldBy: existing.soldBy,
+          soldByName: existing.soldByName,
+          saleDate: new Date(),
+          sourceQuotationId: existing._id,
+        };
+        const created = mongoSession
+          ? (await Sale.create([payload], { session: mongoSession }))[0]
+          : await Sale.create(payload);
+        if (created.locationId) {
+          for (const it of created.items || []) {
+            const deduct = Number(it.qty || 0) + Number(it.bonusQty || 0);
+            if (!it.productId || deduct <= 0) continue;
+            await Product.updateOne(
+              { _id: it.productId, "stocks.locationId": created.locationId },
+              { $inc: { "stocks.$.qty": -deduct } },
+              mongoSession ? { session: mongoSession } : {},
+            );
+          }
+        }
+        if (created.customerId && created.dueAmount > 0) {
+          await Contact.updateOne(
+            { _id: created.customerId },
+            { $inc: { balance: created.dueAmount } },
+            mongoSession ? { session: mongoSession } : {},
+          );
+        }
+        await ensureDeliveryChallan(created, mongoSession);
+        return created;
+      }
+
       const doc = mongoSession
         ? await Sale.findById(id).session(mongoSession)
         : await Sale.findById(id);

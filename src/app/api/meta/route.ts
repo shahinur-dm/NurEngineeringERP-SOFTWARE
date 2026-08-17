@@ -96,6 +96,7 @@ export async function PUT(req: NextRequest) {
         "purchasePrefix",
         "defaultLocale",
         "stockMethod",
+        "logoUrl",
       ]) {
         if (body[key] != null) $set[key] = body[key];
       }

@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { ArrowLeft, Printer } from "lucide-react";
-import { InvoiceActions } from "@/components/InvoiceActions";
+import { ArrowLeft } from "lucide-react";
+import { DocumentExportBar, InvoiceActions } from "@/components/InvoiceActions";
 import { NesTradeDocument } from "@/components/NesTradeDocument";
-import { EmptyState } from "@/components/ui";
+import { EmptyState, Field } from "@/components/ui";
 
 type ChallanItem = {
   name?: string;
@@ -59,12 +59,16 @@ type BusinessDoc = {
 export default function DeliveryChallanPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
+  const router = useRouter();
   const t = useTranslations();
   const [challan, setChallan] = useState<ChallanDoc | null>(null);
   const [sale, setSale] = useState<SaleDoc | null>(null);
   const [business, setBusiness] = useState<BusinessDoc | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [showChrome, setShowChrome] = useState(true);
+  const [quoteLookup, setQuoteLookup] = useState("");
+  const [lookupMsg, setLookupMsg] = useState("");
 
   useEffect(() => {
     async function load() {
@@ -88,6 +92,30 @@ export default function DeliveryChallanPage() {
     }
     if (id) void load();
   }, [id, t]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setShowChrome(new URLSearchParams(window.location.search).get("hf") !== "0");
+  }, []);
+
+  async function loadQuotationChallan() {
+    const no = quoteLookup.trim().toUpperCase();
+    if (!no) return;
+    setLookupMsg("");
+    try {
+      const res = await fetch(`/api/sales?quotationNo=${encodeURIComponent(no)}&status=quotation&limit=1`);
+      const json = await res.json();
+      const quote = json.data?.[0];
+      if (!quote?._id) {
+        setLookupMsg("Quotation not found");
+        return;
+      }
+      if (String(quote._id) === String(id)) return;
+      router.push(`/sales/${quote._id}/challan`);
+    } catch {
+      setLookupMsg(t("common.error"));
+    }
+  }
 
   useEffect(() => {
     if (loading || !challan || !sale) return;
@@ -132,18 +160,27 @@ export default function DeliveryChallanPage() {
           </div>
         </div>
         <div className="flex flex-wrap gap-1.5">
-          <InvoiceActions saleId={sale._id} saleStatus={sale.status} />
-          <a href={pdfHref} target="_blank" rel="noreferrer" className="gp-btn gp-btn-ghost min-h-10 px-3">
-            <Printer className="h-4 w-4" />
-            {t("invoice.printChallan")}
-          </a>
-          <button type="button" className="gp-btn gp-btn-primary" onClick={() => window.print()}>
-            {t("common.print")}
-          </button>
+          <DocumentExportBar printBase={`/sales/${sale._id}/challan`} pdfHref={pdfHref} />
+          <InvoiceActions saleId={sale._id} saleStatus={sale.status} hidePrintPdf />
         </div>
       </div>
 
-      <NesTradeDocument kind="challan" sale={sale} business={business} challan={challan} />
+      <div className="no-print mx-auto mb-4 flex max-w-[210mm] flex-wrap items-end gap-2">
+        <Field label={t("pos.quotationPiNo")}>
+          <input
+            className="gp-input"
+            value={quoteLookup}
+            onChange={(e) => setQuoteLookup(e.target.value.toUpperCase())}
+            placeholder="NES202600001"
+          />
+        </Field>
+        <button type="button" className="gp-btn gp-btn-ghost min-h-10 px-3" onClick={() => void loadQuotationChallan()}>
+          {t("pos.loadQuotation")}
+        </button>
+        {lookupMsg ? <p className="text-sm text-muted">{lookupMsg}</p> : null}
+      </div>
+
+      <NesTradeDocument kind="challan" sale={sale} business={business} challan={challan} showChrome={showChrome} />
     </div>
   );
 }

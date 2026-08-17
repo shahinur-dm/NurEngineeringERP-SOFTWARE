@@ -211,10 +211,10 @@ const PaymentSchema = new Schema(
 const SaleSchema = new Schema(
   {
     invoiceNo: { type: String, unique: true, sparse: true },
-    quotationNo: { type: String, unique: true, sparse: true },
+    quotationNo: { type: String },
     salesOrderNo: { type: String, unique: true, sparse: true },
     /** Master reference shared across quotation → SO → invoice → challan */
-    referenceNo: { type: String, index: true },
+    referenceNo: { type: String },
     poNo: String,
     poDate: Date,
     subject: String,
@@ -229,6 +229,11 @@ const SaleSchema = new Schema(
     customerName: String,
     customerMobile: String,
     customerAddress: String,
+    customerEmail: String,
+    pfNo: String,
+    challanNo: String,
+    binNo: String,
+    sourceQuotationId: { type: Schema.Types.ObjectId, ref: "Sale" },
     items: [SaleItemSchema],
     subtotal: { type: Number, default: 0 },
     discount: { type: Number, default: 0 },
@@ -780,8 +785,22 @@ try {
   if (saleItems?.schema && !saleItems.schema.path("imageUrl")) {
     saleItems.schema.add({ imageUrl: String });
   }
-  for (const field of ["quotationNo", "referenceNo", "salesOrderNo", "poNo", "subject", "terms"] as const) {
+  for (const field of [
+    "quotationNo",
+    "referenceNo",
+    "salesOrderNo",
+    "poNo",
+    "subject",
+    "terms",
+    "customerEmail",
+    "pfNo",
+    "challanNo",
+    "binNo",
+  ] as const) {
     if (!Sale.schema.path(field)) Sale.schema.add({ [field]: String });
+  }
+  if (!Sale.schema.path("sourceQuotationId")) {
+    Sale.schema.add({ sourceQuotationId: { type: Schema.Types.ObjectId, ref: "Sale" } });
   }
   if (!Sale.schema.path("poDate")) Sale.schema.add({ poDate: Date });
   const invPath = Sale.schema.path("invoiceNo") as mongoose.SchemaType | undefined;
@@ -830,7 +849,17 @@ try {
   console.error("[models] schema patch skipped", err);
 }
 
-export async function nextSeq(key: string) {
+export async function nextSeq(key: string, startAfter = 0) {
+  if (startAfter > 0) {
+    const exists = await Counter.findOne({ key });
+    if (!exists) {
+      try {
+        await Counter.create({ key, seq: startAfter });
+      } catch {
+        /* concurrent insert */
+      }
+    }
+  }
   const doc = await Counter.findOneAndUpdate(
     { key },
     { $inc: { seq: 1 } },

@@ -6,18 +6,32 @@ import { useTranslations } from "next-intl";
 import { ChevronDown } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
-import { NAV_TREE, type NavItem } from "@/lib/navigation";
+import { NAV_TREE, flattenNav, type NavItem } from "@/lib/navigation";
+
+const NAV_HREFS = flattenNav().map((n) => n.href);
+
+/** Longest matching href wins so /sales and /sales/quotations cannot both be active. */
+function isNavActive(href: string | undefined, pathname: string) {
+  if (!href) return false;
+  if (pathname === href) return true;
+  if (href === "/") return false;
+  if (!pathname.startsWith(`${href}/`)) return false;
+  return !NAV_HREFS.some(
+    (other) =>
+      other !== href &&
+      other.startsWith(`${href}/`) &&
+      (pathname === other || pathname.startsWith(`${other}/`)),
+  );
+}
 
 function childIsActive(item: NavItem, pathname: string) {
-  return !!item.children?.some(
-    (c) => c.href && (pathname === c.href || pathname.startsWith(c.href + "/")),
-  );
+  return !!item.children?.some((c) => isNavActive(c.href, pathname));
 }
 
 function NavLeaf({ item, pathname }: { item: NavItem; pathname: string }) {
   const t = useTranslations();
   const Icon = item.icon;
-  const active = item.href === pathname || (item.href !== "/" && pathname.startsWith(item.href + "/"));
+  const active = isNavActive(item.href, pathname);
   return (
     <Link
       href={item.href!}
@@ -78,7 +92,7 @@ function NavGroup({
         <div className="ml-4 mt-0.5 space-y-0.5 border-l border-white/10 pl-2">
           {item.children?.map((child) => {
             if (!child.href) return null;
-            const active = pathname === child.href || pathname.startsWith(child.href + "/");
+            const active = isNavActive(child.href, pathname);
             return (
               <Link
                 key={child.href}

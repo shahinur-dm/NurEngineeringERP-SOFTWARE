@@ -109,12 +109,14 @@ export function NesTradeDocument({
   sale,
   business,
   challan,
+  showChrome = true,
 }: {
   kind: TradeDocKind;
   sale: TradeSale;
   business?: TradeBusiness | null;
   challan?: TradeChallan | null;
   locationName?: string;
+  showChrome?: boolean;
 }) {
   const bizName = companyLetterhead(business?.name);
   const bizAddress = business?.address || "";
@@ -127,6 +129,12 @@ export function NesTradeDocument({
   const qtyTotal = items.reduce((a, i) => a + Number(i.qty || 0), 0);
   const wechat = wechatId(business?.phone);
   const signName = englishName(sale.soldByName);
+  const ITEMS_PER_PAGE = 10;
+  const itemPages: TradeItem[][] = [];
+  for (let i = 0; i < items.length; i += ITEMS_PER_PAGE) {
+    itemPages.push(items.slice(i, i + ITEMS_PER_PAGE));
+  }
+  if (!itemPages.length) itemPages.push([]);
 
   const metaRows: { label: string; value: string }[] =
     kind === "bill"
@@ -162,7 +170,15 @@ export function NesTradeDocument({
   ];
 
   return (
-    <article className={`nes-sheet nes-${kind}`}>
+    <>
+      {itemPages.map((pageItems, pageIdx) => {
+        const isLast = pageIdx === itemPages.length - 1;
+        const slOffset = pageIdx * ITEMS_PER_PAGE;
+        return (
+    <article
+      key={pageIdx}
+      className={`nes-sheet nes-${kind}${showChrome ? "" : " nes-no-chrome"}`}
+    >
       <div className="nes-watermark" aria-hidden>
         Nur Engineering Solution
       </div>
@@ -203,7 +219,8 @@ export function NesTradeDocument({
       </header>
       <div className="nes-rule" />
 
-      {kind !== "quotation" ? (
+      {pageIdx === 0 ? (
+        kind !== "quotation" ? (
         <div className="nes-docband">
           <p className="nes-date">
             <b>Date:</b> {formatEnDate(docDate)}
@@ -234,8 +251,10 @@ export function NesTradeDocument({
             </tbody>
           </table>
         </div>
-      )}
+      )
+      ) : null}
 
+      {pageIdx === 0 ? (
       <div className="nes-party">
         <p className="nes-to">
           <b>To</b>
@@ -249,14 +268,16 @@ export function NesTradeDocument({
           ) : null}
         </p>
       </div>
+      ) : null}
 
-      {subject ? (
+      {pageIdx === 0 && subject ? (
         <p className="nes-subject">
           <b>Subject:</b> {subject}
         </p>
       ) : null}
 
-      {kind !== "quotation" ? (
+      {pageIdx === 0 ? (
+        kind !== "quotation" ? (
         <table className="nes-custbar">
           <tbody>
             <tr>
@@ -281,7 +302,8 @@ export function NesTradeDocument({
             automation, servo systems, robotics and industrial machinery.
           </p>
         </div>
-      )}
+      )
+      ) : null}
 
       <p className="nes-items-label">{kind === "quotation" ? "Quotation" : "Items/Services:"}</p>
       <table className="nes-grid">
@@ -302,9 +324,9 @@ export function NesTradeDocument({
           </tr>
         </thead>
         <tbody>
-          {items.map((item, idx) => (
-            <tr key={idx}>
-              <td className="c-sl">{idx + 1}</td>
+          {pageItems.map((item, idx) => (
+            <tr key={`${slOffset}-${idx}`}>
+              <td className="c-sl">{slOffset + idx + 1}</td>
               <td className="c-name">{item.name}</td>
               <td className="c-desc">
                 <div className="nes-desc-wrap">
@@ -326,7 +348,7 @@ export function NesTradeDocument({
               )}
             </tr>
           ))}
-          {kind === "bill" && Number(sale.discount || 0) ? (
+          {isLast && kind === "bill" && Number(sale.discount || 0) ? (
             <tr>
               <td colSpan={5} className="nes-total-lab">
                 Discount
@@ -334,7 +356,7 @@ export function NesTradeDocument({
               <td className="c-total">{taka(sale.discount)}</td>
             </tr>
           ) : null}
-          {kind === "bill" && Number(sale.tax || 0) ? (
+          {isLast && kind === "bill" && Number(sale.tax || 0) ? (
             <tr>
               <td colSpan={5} className="nes-total-lab">
                 Tax
@@ -342,7 +364,7 @@ export function NesTradeDocument({
               <td className="c-total">{taka(sale.tax)}</td>
             </tr>
           ) : null}
-          {kind === "bill" && Number(sale.shipping || 0) ? (
+          {isLast && kind === "bill" && Number(sale.shipping || 0) ? (
             <tr>
               <td colSpan={5} className="nes-total-lab">
                 Shipping
@@ -350,7 +372,7 @@ export function NesTradeDocument({
               <td className="c-total">{taka(sale.shipping)}</td>
             </tr>
           ) : null}
-          {kind !== "challan" ? (
+          {isLast && kind !== "challan" ? (
             <tr>
               <td colSpan={5} className="nes-total-lab">
                 {kind === "quotation" ? "Total Price =" : "Total Bill ="}
@@ -359,7 +381,7 @@ export function NesTradeDocument({
                 <b>{taka(sale.grandTotal)}</b>
               </td>
             </tr>
-          ) : (
+          ) : isLast ? (
             <tr>
               <td colSpan={3} className="nes-total-lab">
                 Total =
@@ -369,17 +391,17 @@ export function NesTradeDocument({
               </td>
               <td />
             </tr>
-          )}
+          ) : null}
         </tbody>
       </table>
 
-      {kind !== "challan" ? (
+      {isLast && kind !== "challan" ? (
         <p className="nes-words">
           <b>In Word:</b> {amountInWords(sale.grandTotal || 0, "en")}
         </p>
       ) : null}
 
-      {kind === "bill" ? (
+      {isLast && kind === "bill" ? (
         <p className="nes-payline">
           <b>Paid Amount:</b> {taka(sale.paidAmount)} &nbsp;&nbsp;
           <b>Due Amount:</b> {taka(sale.dueAmount)} &nbsp;&nbsp;
@@ -387,7 +409,7 @@ export function NesTradeDocument({
         </p>
       ) : null}
 
-      {kind === "quotation" ? (
+      {isLast && kind === "quotation" ? (
         <div className="nes-terms">
           <p>
             <b>Terms &amp; Conditions</b>
@@ -399,7 +421,7 @@ export function NesTradeDocument({
           ))}
           <p>Please sign back to us if you confirm this P.I/Quotation.</p>
         </div>
-      ) : (
+      ) : isLast ? (
         <p className="nes-note">
           Already we have supplied these services/items with good condition to your company. Now
           please check our bill and take necessary action to pay our bill accordingly. If you have
@@ -407,14 +429,15 @@ export function NesTradeDocument({
           you accordingly.
           <span className="nes-note-sign">- {bizName}</span>
         </p>
-      )}
+      ) : null}
 
-      {kind !== "quotation" ? (
+      {isLast && kind !== "quotation" ? (
         <p className="nes-slogan">
           <span>24/7 Best Deal, Best Service</span>
         </p>
       ) : null}
 
+      {isLast ? (
       <div className="nes-signs">
         <div>
           <div className="nes-signline" />
@@ -429,6 +452,7 @@ export function NesTradeDocument({
           </p>
         </div>
       </div>
+      ) : null}
 
       <footer className="nes-foot">
         <p>
@@ -455,5 +479,8 @@ export function NesTradeDocument({
         </p>
       </footer>
     </article>
+        );
+      })}
+    </>
   );
 }

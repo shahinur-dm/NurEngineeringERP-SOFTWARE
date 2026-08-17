@@ -44,11 +44,22 @@ type Customer = {
   nameBn?: string;
   mobile?: string;
   address?: string;
+  email?: string;
+  bin?: string;
 };
 
 type CartItem = Product & { qty: number; bonusQty: number; saleDescription: string };
 
 type Named = { _id: string; name: string; nameBn?: string };
+
+type PayRow = { id: string; method: string; amount: number };
+
+const PRODUCT_PAGE_SIZE = 6;
+const PAY_METHODS = ["cash", "card", "bank", "bkash", "nagad", "rocket", "cheque", "credit"] as const;
+
+function newPayRow(method = "cash", amount = 0): PayRow {
+  return { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, method, amount };
+}
 
 export default function PosPage() {
   const t = useTranslations();
@@ -60,13 +71,25 @@ export default function PosPage() {
   const [locations, setLocations] = useState<{ _id: string; name: string }[]>([]);
   const [locationId, setLocationId] = useState("");
   const [customerId, setCustomerId] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [customerAddress, setCustomerAddress] = useState("");
+  const [customerMobile, setCustomerMobile] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [pfNo, setPfNo] = useState("");
+  const [refNo, setRefNo] = useState("");
+  const [challanNo, setChallanNo] = useState("");
+  const [binNo, setBinNo] = useState("");
+  const [quoteLookup, setQuoteLookup] = useState("");
+  const [sourceQuotationId, setSourceQuotationId] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [brandName, setBrandName] = useState("");
   const [filterOpen, setFilterOpen] = useState<"category" | "brand" | null>(null);
   const [q, setQ] = useState("");
   const debouncedQ = useDebouncedValue(q, 250);
+  const [productPage, setProductPage] = useState(1);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [payMethod, setPayMethod] = useState("cash");
+  const [payRows, setPayRows] = useState<PayRow[]>(() => [newPayRow("cash", 0)]);
   const [discount, setDiscount] = useState(0);
   const [tax, setTax] = useState(0);
   const [shipping, setShipping] = useState(0);
@@ -138,16 +161,43 @@ export default function PosPage() {
     if (!gridRef.current || !products.length) return;
     const cards = gridRef.current.querySelectorAll<HTMLElement>("[data-pos-card]");
     animateStagger(cards, { y: 12, stagger: 0.03 });
-  }, [products]);
+  }, [products, productPage]);
 
   useEffect(() => {
     searchRef.current?.focus();
   }, []);
 
+  useEffect(() => {
+    setProductPage(1);
+  }, [debouncedQ, categoryId, brandName]);
+
+  useEffect(() => {
+    const c = customers.find((x) => x._id === customerId);
+    if (!c) {
+      setCustomerName("");
+      setCustomerAddress("");
+      setCustomerMobile("");
+      setCustomerEmail("");
+      return;
+    }
+    setCustomerName(locale === "bn" && c.nameBn ? c.nameBn : c.name);
+    setCustomerAddress(c.address || "");
+    setCustomerMobile(c.mobile || "");
+    setCustomerEmail(c.email || "");
+    if (c.bin) setBinNo(c.bin);
+  }, [customerId, customers, locale]);
+
   const visibleProducts = useMemo(() => {
     if (!brandName) return products;
     return products.filter((p) => (p.brand || "") === brandName);
   }, [products, brandName]);
+
+  const productPages = Math.ceil(visibleProducts.length / PRODUCT_PAGE_SIZE);
+  const safeProductPage = Math.min(productPage, Math.max(1, productPages));
+  const pagedProducts = visibleProducts.slice(
+    (safeProductPage - 1) * PRODUCT_PAGE_SIZE,
+    safeProductPage * PRODUCT_PAGE_SIZE,
+  );
 
   const subtotal = useMemo(
     () => cart.reduce((a, i) => a + i.qty * i.sellPrice, 0),
@@ -155,6 +205,11 @@ export default function PosPage() {
   );
   const itemCount = useMemo(() => cart.reduce((a, i) => a + i.qty, 0), [cart]);
   const grandTotal = Math.max(0, subtotal - discount + tax + shipping);
+  const collectedPaid = payRows.reduce(
+    (a, r) => (r.method === "credit" ? a : a + Math.max(0, Number(r.amount) || 0)),
+    0,
+  );
+  const remainingDue = Math.max(0, grandTotal - collectedPaid);
   const effectivePaid =
     payMethod === "credit" ? 0 : paidReceived == null ? grandTotal : Math.max(0, paidReceived);
 
@@ -180,6 +235,78 @@ export default function PosPage() {
 
   function removeLine(id: string) {
     setCart((prev) => prev.filter((x) => x._id !== id));
+  }
+
+  function updatePayRow(id: string, patch: Partial<PayRow>) {
+    setPayRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  }
+
+  function addPayRow() {
+    setPayRows((prev) => [...prev, newPayRow("cash", 0)]);
+  }
+
+  function removePayRow(id: string) {
+    setPayRows((prev) => (prev.length <= 1 ? prev : prev.filter((r) => r.id !== id)));
+  }
+
+  async function loadQuotationByNo() {
+    const no = quoteLookup.trim().toUpperCase();
+    if (!no) return;
+    try {
+      const res = await fetch(`/api/sales?quotationNo=${encodeURIComponent(no)}&status=quotation&limit=1`);
+      const json = await res.json();
+      const quote = json.data?.[0];
+      if (!quote) {
+        setMessage(locale === "bn" ? "কোটেশন পাওয়া যায়নি" : "Quotation not found");
+        return;
+      }
+      setSourceQuotationId(String(quote._id));
+      setCustomerId(quote.customerId ? String(quote.customerId) : "");
+      setCustomerName(quote.customerName || "");
+      setCustomerAddress(quote.customerAddress || "");
+      setCustomerMobile(quote.customerMobile || "");
+      setCustomerEmail(quote.customerEmail || "");
+      setPfNo(quote.pfNo || quote.poNo || "");
+      setRefNo(quote.referenceNo || "");
+      setChallanNo(quote.challanNo || "");
+      setBinNo(quote.binNo || "");
+      setDiscount(Number(quote.discount || 0));
+      setTax(Number(quote.tax || 0));
+      setShipping(Number(quote.shipping || 0));
+      setCart(
+        (quote.items || []).map(
+          (it: {
+            productId?: string;
+            name?: string;
+            sku?: string;
+            unit?: string;
+            description?: string;
+            imageUrl?: string;
+            qty?: number;
+            bonusQty?: number;
+            unitPrice?: number;
+          }) => ({
+            _id: String(it.productId || `${quote._id}-${it.sku || it.name}`),
+            name: it.name || "",
+            sku: it.sku || "",
+            unit: it.unit || "Pcs",
+            sellPrice: Number(it.unitPrice || 0),
+            imageUrl: it.imageUrl || "",
+            description: it.description || "",
+            qty: Number(it.qty || 1),
+            bonusQty: Number(it.bonusQty || 0),
+            saleDescription: it.description || "",
+          }),
+        ),
+      );
+      setMessage(
+        locale === "bn"
+          ? `কোটেশন লোড: ${quote.quotationNo}`
+          : `Loaded quotation: ${quote.quotationNo}`,
+      );
+    } catch {
+      setMessage(t("common.error"));
+    }
   }
 
   function addToCart(p: Product) {
@@ -238,6 +365,12 @@ export default function PosPage() {
     setTax(0);
     setShipping(0);
     setPaidReceived(null);
+    setPayRows([newPayRow("cash", 0)]);
+    setPfNo("");
+    setRefNo("");
+    setChallanNo("");
+    setSourceQuotationId("");
+    setQuoteLookup("");
     setMessage("");
     searchRef.current?.focus();
   }
@@ -246,6 +379,7 @@ export default function PosPage() {
     status?: string;
     method?: string;
     fullPay?: boolean;
+    usePayRows?: boolean;
   }) {
     if (!cart.length || !locationId) {
       setMessage(
@@ -258,24 +392,43 @@ export default function PosPage() {
     const status = opts?.status || "final";
     const method = opts?.method || payMethod;
     setPayMethod(method);
-    setBusy(true);
-    setMessage("");
-    try {
+
+    let payments: { method: string; amount: number }[] = [];
+    if (status === "final" && opts?.usePayRows) {
+      if (collectedPaid - grandTotal > 0.009) {
+        setMessage(t("pos.overpayment"));
+        return;
+      }
+      payments = payRows
+        .filter((r) => Number(r.amount) > 0)
+        .map((r) => ({ method: r.method, amount: Number(r.amount) }));
+    } else {
       const paid =
         status !== "final" || method === "credit"
           ? 0
           : opts?.fullPay
             ? grandTotal
             : Math.min(effectivePaid, grandTotal);
+      payments = paid > 0 ? [{ method, amount: paid }] : [];
+    }
+
+    setBusy(true);
+    setMessage("");
+    try {
       const res = await fetch("/api/sales", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           locationId,
           customerId: customerId || undefined,
-          customerName: selectedCustomer ? selectedCustomer.name : "Walk-in Customer",
-          customerMobile: selectedCustomer?.mobile,
-          customerAddress: selectedCustomer?.address,
+          customerName: customerName.trim() || selectedCustomer?.name || "Walk-in Customer",
+          customerMobile: customerMobile.trim() || selectedCustomer?.mobile,
+          customerAddress: customerAddress.trim() || selectedCustomer?.address,
+          customerEmail: customerEmail.trim() || undefined,
+          pfNo: pfNo.trim() || undefined,
+          challanNo: challanNo.trim() || undefined,
+          binNo: binNo.trim() || undefined,
+          sourceQuotationId: status === "final" && sourceQuotationId ? sourceQuotationId : undefined,
           status,
           discount,
           tax,
@@ -291,11 +444,14 @@ export default function PosPage() {
             description: i.saleDescription || "",
             imageUrl: i.imageUrl || "",
           })),
-          payments: paid > 0 ? [{ method, amount: paid }] : [],
+          payments,
         }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "fail");
+      if (!res.ok) {
+        if (json.error === "overpayment") throw new Error("overpayment");
+        throw new Error(json.error || "fail");
+      }
       resetCart();
       const docLabel =
         status === "quotation"
@@ -314,8 +470,8 @@ export default function PosPage() {
             : `/sales/${json.data._id}/invoice`;
         window.open(path, "_blank");
       }
-    } catch {
-      setMessage(t("common.error"));
+    } catch (err) {
+      setMessage(err instanceof Error && err.message === "overpayment" ? t("pos.overpayment") : t("common.error"));
     } finally {
       setBusy(false);
     }
@@ -427,7 +583,7 @@ export default function PosPage() {
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
               <input
                 ref={searchRef}
-                className="gp-input pl-9"
+                className="gp-input gp-input-icon-left"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 onKeyDown={(e) => {
@@ -451,13 +607,79 @@ export default function PosPage() {
             </button>
           </div>
 
+          <p className="mt-3 text-sm font-bold uppercase tracking-[0.06em] text-[var(--gp-ink)]">
+            {t("pos.documentTitle")}
+          </p>
+          <div className="mt-2 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+            <Field label={t("pos.quotationPiNo")}>
+              <input
+                className="gp-input"
+                value={quoteLookup}
+                onChange={(e) => setQuoteLookup(e.target.value.toUpperCase())}
+                placeholder="NES202600001"
+              />
+            </Field>
+            <div className="flex items-end">
+              <button type="button" className="gp-btn gp-btn-ghost min-h-10 px-3" onClick={() => void loadQuotationByNo()}>
+                {t("pos.loadQuotation")}
+              </button>
+            </div>
+          </div>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            <Field label={t("pos.customerName")}>
+              <input
+                className="gp-input"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+              />
+            </Field>
+            <Field label={t("pos.contactNo")}>
+              <input
+                className="gp-input"
+                value={customerMobile}
+                onChange={(e) => setCustomerMobile(e.target.value)}
+              />
+            </Field>
+            <Field label={t("contacts.address")}>
+              <input
+                className="gp-input"
+                value={customerAddress}
+                onChange={(e) => setCustomerAddress(e.target.value)}
+              />
+            </Field>
+            <Field label={t("contacts.email")}>
+              <input
+                className="gp-input"
+                type="email"
+                value={customerEmail}
+                onChange={(e) => setCustomerEmail(e.target.value)}
+              />
+            </Field>
+          </div>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            <Field label={t("pos.pfNo")}>
+              <input className="gp-input" value={pfNo} onChange={(e) => setPfNo(e.target.value)} />
+            </Field>
+            <Field label={t("pos.refNo")}>
+              <input className="gp-input" value={refNo} readOnly placeholder={t("pos.autoGenerated")} />
+            </Field>
+            <Field label={t("pos.challanNo")}>
+              <input className="gp-input" value={challanNo} onChange={(e) => setChallanNo(e.target.value)} />
+            </Field>
+            <Field label={t("pos.binNo")}>
+              <input className="gp-input" value={binNo} onChange={(e) => setBinNo(e.target.value)} />
+            </Field>
+          </div>
+
           <div className="mt-3 min-h-0 flex-1 overflow-auto">
             <table className="gp-table">
               <thead>
                 <tr>
-                  <th>{t("products.name")}</th>
-                  <th className="w-28">{t("common.quantity")}</th>
-                  <th className="w-32">{t("common.subtotal")}</th>
+                  <th>{t("pos.itemName")}</th>
+                  <th>{t("pos.specification")}</th>
+                  <th className="w-24">{t("pos.itemQty")}</th>
+                  <th className="w-28">{t("pos.unitPrice")}</th>
+                  <th className="w-28">{t("pos.totalPrice")}</th>
                   <th className="w-12">
                     <X className="mx-auto h-4 w-4" />
                   </th>
@@ -466,71 +688,60 @@ export default function PosPage() {
               <tbody>
                 {cart.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="py-10 text-center text-muted">
+                    <td colSpan={6} className="py-10 text-center text-muted">
                       {t("pos.emptyCart")}
-                      <span className="mt-2 block text-sm font-semibold text-[var(--gp-ink)]">
-                        Product Name · Price · Description
-                      </span>
                     </td>
                   </tr>
                 ) : (
                   cart.map((i) => (
                     <tr key={i._id}>
                       <td className="align-top">
-                        <div className="min-w-[16rem] space-y-1.5 py-1">
-                          <Field label={t("pos.saleName")}>
-                            <input
-                              className="gp-input"
-                              value={i.name}
-                              onChange={(e) => updateLine(i._id, { name: e.target.value })}
-                            />
-                          </Field>
-                          <Field label={t("pos.salePrice")}>
-                            <input
-                              type="number"
-                              min={0}
-                              step="0.01"
-                              className="gp-input"
-                              value={i.sellPrice}
-                              onChange={(e) =>
-                                updateLine(i._id, {
-                                  sellPrice: Math.max(0, Number(e.target.value || 0)),
-                                })
-                              }
-                            />
-                          </Field>
-                          <Field label={t("pos.saleDescription")}>
-                            <input
-                              className="gp-input"
-                              value={i.saleDescription}
-                              onChange={(e) =>
-                                updateLine(i._id, { saleDescription: e.target.value })
-                              }
-                              placeholder={t("pos.saleDescription")}
-                            />
-                          </Field>
-                          <p className="text-[0.7rem] text-muted">SKU: {i.sku}</p>
-                        </div>
+                        <input
+                          className="gp-input min-w-[8rem]"
+                          value={i.name}
+                          onChange={(e) => updateLine(i._id, { name: e.target.value })}
+                        />
+                        <p className="mt-1 text-[0.7rem] text-muted">SKU: {i.sku}</p>
                       </td>
                       <td className="align-top">
-                        <Field label={t("common.quantity")}>
-                          <input
-                            type="number"
-                            min={1}
-                            className="gp-input"
-                            value={i.qty}
-                            onChange={(e) =>
-                              setQty(i._id, Number(e.target.value || 0), Number(i.locationQty ?? 0))
-                            }
-                          />
-                        </Field>
+                        <input
+                          className="gp-input min-w-[8rem]"
+                          value={i.saleDescription}
+                          onChange={(e) => updateLine(i._id, { saleDescription: e.target.value })}
+                          placeholder={t("pos.specification")}
+                        />
                       </td>
-                      <td className="align-top pt-7">
+                      <td className="align-top">
+                        <input
+                          type="number"
+                          min={1}
+                          className="gp-input"
+                          value={i.qty}
+                          onChange={(e) =>
+                            setQty(i._id, Number(e.target.value || 0), Number(i.locationQty ?? 0))
+                          }
+                        />
+                      </td>
+                      <td className="align-top">
+                        <input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          className="gp-input"
+                          value={i.sellPrice}
+                          onChange={(e) =>
+                            updateLine(i._id, {
+                              sellPrice: Math.max(0, Number(e.target.value || 0)),
+                            })
+                          }
+                        />
+                      </td>
+                      <td className="align-top pt-2">
                         <span className="gp-money font-bold">
                           {formatBDT(i.qty * i.sellPrice, locale)}
                         </span>
                       </td>
-                      <td className="align-top pt-6">
+                      <td className="align-top">
                         <button
                           type="button"
                           className="gp-btn gp-btn-danger min-h-9 min-w-9 px-0"
@@ -563,7 +774,7 @@ export default function PosPage() {
                   <input
                     type="number"
                     min={0}
-                    className="gp-input pr-8"
+                    className="gp-input gp-input-icon-right"
                     value={discount}
                     onChange={(e) => setDiscount(Number(e.target.value || 0))}
                   />
@@ -575,7 +786,7 @@ export default function PosPage() {
                   <input
                     type="number"
                     min={0}
-                    className="gp-input pr-8"
+                    className="gp-input gp-input-icon-right"
                     value={tax}
                     onChange={(e) => setTax(Number(e.target.value || 0))}
                   />
@@ -587,7 +798,7 @@ export default function PosPage() {
                   <input
                     type="number"
                     min={0}
-                    className="gp-input pr-8"
+                    className="gp-input gp-input-icon-right"
                     value={shipping}
                     onChange={(e) => setShipping(Number(e.target.value || 0))}
                   />
@@ -595,17 +806,72 @@ export default function PosPage() {
                 </div>
               </Field>
             </div>
-            <Field label={t("pos.amountReceived")}>
-              <input
-                type="number"
-                min={0}
-                step="0.01"
-                className="gp-input"
-                disabled={payMethod === "credit"}
-                value={payMethod === "credit" ? 0 : paidReceived ?? grandTotal}
-                onChange={(e) => setPaidReceived(Number(e.target.value || 0))}
-              />
-            </Field>
+            <div className="space-y-2">
+              <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">
+                {t("pos.multiplePayment")}
+              </p>
+              {payRows.map((row, idx) => (
+                <div key={row.id} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-end gap-2">
+                  <Field label={`${t("sales.paymentMethod")} ${idx + 1}`}>
+                    <select
+                      className="gp-input"
+                      value={row.method}
+                      onChange={(e) => updatePayRow(row.id, { method: e.target.value })}
+                    >
+                      {PAY_METHODS.map((m) => (
+                        <option key={m} value={m}>
+                          {t(`sales.${m}`)}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label={t("common.amount")}>
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      className="gp-input"
+                      value={row.amount || ""}
+                      onChange={(e) =>
+                        updatePayRow(row.id, { amount: Math.max(0, Number(e.target.value || 0)) })
+                      }
+                    />
+                  </Field>
+                  <button
+                    type="button"
+                    className="gp-btn gp-btn-danger mb-[1px] min-h-10 min-w-10 px-0"
+                    disabled={payRows.length <= 1}
+                    onClick={() => removePayRow(row.id)}
+                    aria-label={t("common.delete")}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+              <button type="button" className="gp-btn gp-btn-ghost min-h-10 px-3 text-sm" onClick={addPayRow}>
+                <Plus className="h-4 w-4" />
+                {t("pos.addPayment")}
+              </button>
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line bg-[#f8fafc] px-3 py-2">
+                <span>
+                  {t("pos.totalPayable")}:{" "}
+                  <b className="gp-money">{formatBDT(grandTotal, locale)}</b>
+                </span>
+                <span>
+                  {t("pos.totalPaid")}:{" "}
+                  <b className="gp-money">{formatBDT(collectedPaid, locale)}</b>
+                </span>
+                <span>
+                  {t("sales.paymentDue")}:{" "}
+                  <b className="gp-money text-[var(--gp-danger)]">{formatBDT(remainingDue, locale)}</b>
+                </span>
+              </div>
+              {collectedPaid - grandTotal > 0.009 ? (
+                <p className="rounded-xl border border-[#f5c2c2] bg-[#fef2f2] px-3 py-2 text-sm font-semibold text-danger">
+                  {t("pos.overpayment")}
+                </p>
+              ) : null}
+            </div>
           </div>
         </section>
 
@@ -692,50 +958,77 @@ export default function PosPage() {
               {locale === "bn" ? "কোনো পণ্য পাওয়া যায়নি" : "No products found"}
             </p>
           ) : (
-            <div
-              ref={gridRef}
-              className={`grid gap-3 sm:grid-cols-2 lg:grid-cols-3 ${loadingProducts ? "opacity-60" : ""}`}
-            >
-              {visibleProducts.map((p) => {
-                const stock = Number(p.locationQty ?? 0);
-                const out = stock <= 0;
-                return (
-                  <button
-                    key={p._id}
-                    type="button"
-                    data-pos-card
-                    disabled={out}
-                    onClick={() => addToCart(p)}
-                    className="gp-card-interactive group p-3.5 text-left disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <div className="mb-2.5 flex items-start justify-between gap-2">
-                      {p.imageUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={p.imageUrl}
-                          alt=""
-                          className="h-10 w-10 rounded-lg border border-line object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--gp-primary-soft)] text-[var(--gp-primary)] transition group-hover:bg-[var(--gp-primary)] group-hover:text-white">
-                          <Cpu className="h-4 w-4" />
-                        </div>
-                      )}
-                      <span className={`gp-stock-pill ${out ? "opacity-60" : ""}`}>
-                        {stock} {p.unit || "Pcs"}
-                      </span>
-                    </div>
-                    <p className="text-[0.92rem] font-semibold leading-snug text-[var(--gp-ink)]">
-                      {locale === "bn" && p.nameBn ? p.nameBn : p.name}
-                    </p>
-                    <p className="mt-1 text-xs text-muted">({p.sku})</p>
-                    <p className="gp-money mt-2.5 text-lg text-primary">
-                      {formatBDT(p.sellPrice, locale)}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
+            <>
+              <div
+                ref={gridRef}
+                className={`grid grid-cols-2 gap-3 sm:grid-cols-3 ${loadingProducts ? "opacity-60" : ""}`}
+              >
+                {pagedProducts.map((p) => {
+                  const stock = Number(p.locationQty ?? 0);
+                  const out = stock <= 0;
+                  return (
+                    <button
+                      key={p._id}
+                      type="button"
+                      data-pos-card
+                      disabled={out}
+                      onClick={() => addToCart(p)}
+                      className="gp-card-interactive group p-3.5 text-left disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <div className="mb-2.5 flex items-start justify-between gap-2">
+                        {p.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={p.imageUrl}
+                            alt=""
+                            className="h-10 w-10 rounded-lg border border-line object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--gp-primary-soft)] text-[var(--gp-primary)] transition group-hover:bg-[var(--gp-primary)] group-hover:text-white">
+                            <Cpu className="h-4 w-4" />
+                          </div>
+                        )}
+                        <span className={`gp-stock-pill ${out ? "opacity-60" : ""}`}>
+                          {stock} {p.unit || "Pcs"}
+                        </span>
+                      </div>
+                      <p className="text-[0.92rem] font-semibold leading-snug text-[var(--gp-ink)]">
+                        {locale === "bn" && p.nameBn ? p.nameBn : p.name}
+                      </p>
+                      <p className="mt-1 text-xs text-muted">({p.sku})</p>
+                      <p className="gp-money mt-2.5 text-lg text-primary">
+                        {formatBDT(p.sellPrice, locale)}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+              {productPages > 1 ? (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {Array.from({ length: productPages }, (_, i) => i + 1).map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      className={`gp-btn min-h-9 min-w-9 px-2.5 text-sm ${
+                        n === safeProductPage ? "gp-btn-primary" : "gp-btn-ghost"
+                      }`}
+                      onClick={() => setProductPage(n)}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                  {safeProductPage < productPages ? (
+                    <button
+                      type="button"
+                      className="gp-btn gp-btn-ghost min-h-9 px-3 text-sm"
+                      onClick={() => setProductPage((p) => Math.min(productPages, p + 1))}
+                    >
+                      {t("pos.next")}
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+            </>
           )}
         </section>
       </div>
@@ -791,8 +1084,8 @@ export default function PosPage() {
           <button
             type="button"
             className="gp-btn pos-multipay min-h-12 min-w-[9rem] px-4"
-            disabled={busy || !cart.length || !locationId}
-            onClick={() => void checkout({ method: payMethod === "credit" ? "cash" : payMethod })}
+            disabled={busy || !cart.length || !locationId || collectedPaid - grandTotal > 0.009}
+            onClick={() => void checkout({ usePayRows: true })}
           >
             <Wallet className="h-4 w-4" />
             {t("sales.multiple")}

@@ -4,8 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { ArrowLeft, FileCheck } from "lucide-react";
-import { InvoiceActions } from "@/components/InvoiceActions";
+import { ArrowLeft, FileCheck, Truck } from "lucide-react";
+import { DocumentExportBar } from "@/components/InvoiceActions";
 import { NesTradeDocument } from "@/components/NesTradeDocument";
 import { EmptyState } from "@/components/ui";
 
@@ -65,6 +65,7 @@ export default function QuotationViewPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [showChrome, setShowChrome] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -91,6 +92,11 @@ export default function QuotationViewPage() {
   }, [id, load]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    setShowChrome(new URLSearchParams(window.location.search).get("hf") !== "0");
+  }, []);
+
+  useEffect(() => {
     if (loading || !sale) return;
     if (typeof window === "undefined") return;
     if (new URLSearchParams(window.location.search).get("print") !== "1") return;
@@ -105,7 +111,7 @@ export default function QuotationViewPage() {
       const res = await fetch(`/api/sales/${sale._id}/finalize`, { method: "POST" });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "fail");
-      router.push(`/sales/${sale._id}/invoice`);
+      router.push(`/sales/${json.data?._id || sale._id}/invoice`);
     } catch {
       setError(t("common.error"));
     } finally {
@@ -148,10 +154,11 @@ export default function QuotationViewPage() {
           </div>
         </div>
         <div className="flex flex-wrap gap-1.5">
-          <InvoiceActions saleId={sale._id} saleStatus={sale.status} showPrint />
-          <a href={pdfHref} target="_blank" rel="noreferrer" className="gp-btn gp-btn-ghost min-h-10 px-3">
-            {t("common.exportPdf")}
-          </a>
+          <DocumentExportBar printBase={`/sales/${sale._id}/quotation`} pdfHref={pdfHref} />
+          <Link href={`/sales/${sale._id}/challan`} className="gp-btn gp-btn-ghost min-h-10 px-3">
+            <Truck className="h-4 w-4" />
+            {t("invoice.deliveryChallan")}
+          </Link>
           {sale.status === "quotation" ? (
             <button
               type="button"
@@ -170,7 +177,13 @@ export default function QuotationViewPage() {
         </div>
       </div>
 
-      <NesTradeDocument kind="quotation" sale={sale} business={business} locationName={locationName} />
+      <NesTradeDocument
+        kind="quotation"
+        sale={sale}
+        business={business}
+        locationName={locationName}
+        showChrome={showChrome}
+      />
     </div>
   );
 }

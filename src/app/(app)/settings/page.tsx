@@ -15,6 +15,7 @@ type Business = {
   tin?: string;
   currency?: string;
   invoicePrefix?: string;
+  logoUrl?: string;
 };
 
 type LocationRow = {
@@ -223,6 +224,28 @@ export default function SettingsPage() {
               />
             </Field>
           </div>
+          <Field label={locale === "bn" ? "প্রিন্ট/পিডিএফ লোগো" : "Document print/PDF logo"}>
+            <input
+              className="gp-input"
+              value={business.logoUrl || ""}
+              onChange={(e) => setBusiness((b) => ({ ...b, logoUrl: e.target.value }))}
+              placeholder="https://..."
+            />
+            <input
+              type="file"
+              accept="image/*"
+              className="mt-2 text-sm"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = () => {
+                  setBusiness((b) => ({ ...b, logoUrl: String(reader.result || "") }));
+                };
+                reader.readAsDataURL(file);
+              }}
+            />
+          </Field>
           <button type="submit" className="gp-btn gp-btn-primary w-full" disabled={saving}>
             {saving ? t("app.loading") : t("common.save")}
           </button>

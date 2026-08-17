@@ -54,6 +54,8 @@ export async function GET(req: NextRequest) {
       { customerMobile: new RegExp(q, "i") },
     ];
   }
+  const quotationNo = searchParams.get("quotationNo")?.trim();
+  if (quotationNo) filter.quotationNo = quotationNo.toUpperCase();
 
   const [data, total, aggregates] = await Promise.all([
     Sale.find(filter)
@@ -154,18 +156,37 @@ export async function POST(req: NextRequest) {
   const tax = roundMoney(body.tax || 0);
   const shipping = roundMoney(body.shipping || 0);
   const grandTotal = roundMoney(subtotal - discount + tax + shipping);
-  const payments = body.payments || [];
-  const paidAmount = roundMoney(
-    payments.reduce(
-      (a: number, p: { amount: number }) => a + Number(p.amount || 0),
-      0,
-    ),
+  const payments = (body.payments || []).filter(
+    (p: { amount?: number }) => Number(p.amount || 0) > 0,
   );
+  const paidAmount = roundMoney(
+    payments.reduce((a: number, p: { amount: number; method?: string }) => {
+      if (p.method === "credit") return a;
+      return a + Number(p.amount || 0);
+    }, 0),
+  );
+  if (paidAmount - grandTotal > 0.009) {
+    return NextResponse.json({ error: "overpayment" }, { status: 400 });
+  }
   const dueAmount = calcDueAmount(grandTotal, paidAmount);
 
-  const referenceNo = body.referenceNo || (await nextReferenceNo());
-  const quotationNo =
-    status === "quotation" ? body.quotationNo || (await nextQuotationNo()) : body.quotationNo || undefined;
+  let referenceNo: string;
+  let quotationNo: string | undefined;
+  let sourceQuotationId = body.sourceQuotationId || undefined;
+  if (sourceQuotationId) {
+    const source = await Sale.findById(sourceQuotationId).lean();
+    if (!source || source.status !== "quotation") {
+      return NextResponse.json({ error: "quotation_not_found" }, { status: 404 });
+    }
+    quotationNo = source.quotationNo;
+    referenceNo = source.referenceNo || (await nextReferenceNo());
+  } else if (status === "quotation") {
+    quotationNo = await nextQuotationNo();
+    referenceNo = await nextReferenceNo();
+  } else {
+    referenceNo = await nextReferenceNo();
+    quotationNo = undefined;
+  }
   const salesOrderNo =
     status === "final" ? body.salesOrderNo || (await nextSalesOrderNo()) : body.salesOrderNo || undefined;
   const invoiceNo =
@@ -174,18 +195,26 @@ export async function POST(req: NextRequest) {
   let customerName = body.customerName || "Walk-in Customer";
   let customerMobile = body.customerMobile || "";
   let customerAddress = body.customerAddress || "";
+  let customerEmail = body.customerEmail || "";
+  let binNo = body.binNo || "";
   if (body.customerId) {
     const contact = await Contact.findById(body.customerId).lean();
     if (contact) {
-      customerName = contact.name || customerName;
-      customerMobile = customerMobile || contact.mobile || "";
-      customerAddress = customerAddress || contact.address || "";
+      customerName = body.customerName || contact.name || customerName;
+      customerMobile = body.customerMobile || contact.mobile || "";
+      customerAddress = body.customerAddress || contact.address || "";
+      customerEmail = body.customerEmail || contact.email || "";
+      binNo = body.binNo || contact.bin || "";
     }
   }
 
   const payload: Record<string, unknown> = {
     referenceNo,
-    poNo: body.poNo,
+    poNo: body.poNo || body.pfNo,
+    pfNo: body.pfNo || body.poNo,
+    challanNo: body.challanNo,
+    binNo,
+    customerEmail,
     poDate: body.poDate ? new Date(body.poDate) : undefined,
     subject: body.subject || body.note,
     terms: status === "quotation" ? body.terms || DEFAULT_QUOTATION_TERMS : body.terms,
@@ -209,6 +238,7 @@ export async function POST(req: NextRequest) {
     soldBy: session.id,
     soldByName: session.name,
     saleDate: body.saleDate ? new Date(body.saleDate) : new Date(),
+    sourceQuotationId,
   };
   if (invoiceNo) payload.invoiceNo = invoiceNo;
   if (quotationNo) payload.quotationNo = quotationNo;

@@ -15,15 +15,14 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
+  async function signIn(nextEmail: string, nextPassword: string) {
     setLoading(true);
     setError("");
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: nextEmail, password: nextPassword }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -50,10 +49,17 @@ export default function LoginPage() {
     }
   }
 
+  function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    void signIn(email, password);
+  }
+
   function fillDemo() {
-    setEmail("admin@ditpharma.bd");
-    setPassword("admin123");
-    setError("");
+    const demoEmail = "admin@ditpharma.bd";
+    const demoPassword = "admin123";
+    setEmail(demoEmail);
+    setPassword(demoPassword);
+    void signIn(demoEmail, demoPassword);
   }
 
   const features = [
@@ -152,7 +158,7 @@ export default function LoginPage() {
               <span className="relative block">
                 <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
                 <input
-                  className="gp-input pl-10 text-base"
+                  className="gp-input gp-input-icon-left text-base"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   autoComplete="username"
@@ -168,7 +174,7 @@ export default function LoginPage() {
                 <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
                 <input
                   type={showPassword ? "text" : "password"}
-                  className="gp-input px-10 text-base"
+                  className="gp-input gp-input-icon-both text-base"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete="current-password"

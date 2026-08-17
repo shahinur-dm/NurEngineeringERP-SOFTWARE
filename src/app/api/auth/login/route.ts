@@ -1,16 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import {
-  createSessionToken,
-  applySessionCookie,
-  verifyPassword,
-  hashPassword,
-} from "@/lib/auth";
-import { User } from "@/models";
-
-const DEMO_PASSWORD = "admin123";
-const DEMO_ADMIN_EMAIL = "admin@ditpharma.bd";
-const DEMO_ADMIN_ALIASES = [DEMO_ADMIN_EMAIL, "admin@greenpharma.bd"];
+import { createSessionToken, applySessionCookie } from "@/lib/auth";
+import { resolveLoginUser } from "@/lib/demo-admin";
 
 export async function POST(req: NextRequest) {
   try {
@@ -23,41 +14,14 @@ export async function POST(req: NextRequest) {
     }
 
     await connectDB();
-    let user = await User.findOne({ email });
-
-    // Legacy rename: DB may still have admin@greenpharma.bd while UI uses ditpharma.
-    if (!user && DEMO_ADMIN_ALIASES.includes(email)) {
-      user = await User.findOne({ email: { $in: DEMO_ADMIN_ALIASES } });
-    }
+    const user = await resolveLoginUser(email, password);
 
     if (!user) {
-      const count = await User.countDocuments();
-      if (count === 0 && DEMO_ADMIN_ALIASES.includes(email)) {
-        user = await User.create({
-          name: "Admin",
-          email: DEMO_ADMIN_EMAIL,
-          passwordHash: await hashPassword(DEMO_PASSWORD),
-          role: "admin",
-          locale: "bn",
-        });
-      }
-    }
-
-    if (!user || !(await verifyPassword(password, user.passwordHash))) {
       return NextResponse.json({ error: "invalid" }, { status: 401 });
     }
 
     if (!user.isActive) {
       return NextResponse.json({ error: "inactive" }, { status: 403 });
-    }
-
-    // Keep demo admin on the canonical email after a successful login.
-    if (
-      DEMO_ADMIN_ALIASES.includes(user.email) &&
-      user.email !== DEMO_ADMIN_EMAIL
-    ) {
-      user.email = DEMO_ADMIN_EMAIL;
-      await user.save();
     }
 
     const token = await createSessionToken({
