@@ -49,7 +49,6 @@ export async function connectDB() {
       const uri = await resolveMongoUri();
       return mongoose.connect(uri, {
         bufferCommands: false,
-        dbName: "nur_engineering_erp",
         family: 4,
         serverSelectionTimeoutMS: 12_000,
       });
