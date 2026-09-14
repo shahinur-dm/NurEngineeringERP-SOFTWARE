@@ -49,7 +49,7 @@ export function KpiCard({
       data-animate="card"
       onClick={onClick}
       className={cn(
-        "gp-card gp-kpi-card w-full min-h-[140px] p-5 text-left transition-shadow hover:shadow-md flex flex-col",
+        "gp-card gp-kpi-card flex min-h-[118px] w-full flex-col p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md",
         onClick && "cursor-pointer",
       )}
     >
@@ -76,11 +76,11 @@ export function KpiCard({
           <span className="h-10 w-10 shrink-0" aria-hidden />
         )}
       </div>
-      <div className="mt-auto pt-3">
-        <p className="gp-money text-2xl leading-none tracking-tight text-[var(--gp-ink)] md:text-[1.7rem]">
+      <div className="mt-auto pt-2">
+        <p className="gp-money text-2xl leading-none tracking-tight text-[var(--gp-ink)] md:text-[1.6rem]">
           {typeof value === "number" ? formatBDT(value) : value}
         </p>
-        <p className="mt-2 min-h-[1.125rem] text-xs font-medium text-muted">
+        <p className="mt-1.5 min-h-[1rem] text-xs font-medium text-muted">
           {hint || "\u00A0"}
         </p>
       </div>

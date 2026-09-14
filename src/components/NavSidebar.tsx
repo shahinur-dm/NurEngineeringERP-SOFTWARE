@@ -36,14 +36,14 @@ function NavLeaf({ item, pathname }: { item: NavItem; pathname: string }) {
     <Link
       href={item.href!}
       className={cn(
-        "flex min-h-10 items-center gap-2.5 rounded-lg px-2.5 text-[0.88rem] font-medium transition-colors duration-150",
+        "group flex min-h-10 items-center gap-3 rounded-lg border border-transparent px-3 text-[0.84rem] font-medium tracking-[-0.005em] transition-all duration-150",
           active
-          ? "bg-[#14b8a6] text-white"
-          : "text-[var(--gp-sidebar-ink)] hover:bg-white/10 hover:text-white",
+          ? "border-white/10 bg-[#2563eb] text-white shadow-sm"
+          : "text-[#b8c2d3] hover:border-white/5 hover:bg-white/[0.07] hover:text-white",
       )}
     >
       {Icon ? (
-        <Icon className={cn("h-[1.05rem] w-[1.05rem] shrink-0", active ? "text-white" : "text-[var(--gp-sidebar-muted)]")} />
+        <Icon className={cn("h-4 w-4 shrink-0 stroke-[1.7]", active ? "text-white" : "text-[#8491a7] group-hover:text-[#c7d2e3]")} />
       ) : null}
       <span className="truncate">{t(item.labelKey)}</span>
     </Link>
@@ -71,17 +71,17 @@ function NavGroup({
         type="button"
         onClick={onToggle}
         className={cn(
-          "flex w-full min-h-10 items-center gap-2.5 rounded-lg px-2.5 text-left text-[0.88rem] font-medium transition-colors duration-150",
+          "flex min-h-10 w-full items-center gap-3 rounded-lg border border-transparent px-3 text-left text-[0.84rem] font-medium tracking-[-0.005em] transition-all duration-150",
           childActive || open
-            ? "bg-white/10 text-white"
-            : "text-[var(--gp-sidebar-ink)] hover:bg-white/10 hover:text-white",
+            ? "border-white/5 bg-white/10 text-white"
+            : "text-[#b8c2d3] hover:border-white/5 hover:bg-white/[0.07] hover:text-white",
         )}
       >
         {Icon ? (
           <Icon
             className={cn(
-              "h-[1.05rem] w-[1.05rem] shrink-0",
-              childActive || open ? "text-[#5eead4]" : "text-[var(--gp-sidebar-muted)]",
+              "h-4 w-4 shrink-0 stroke-[1.7]",
+              childActive || open ? "text-[#60a5fa]" : "text-[#8491a7]",
             )}
           />
         ) : null}
@@ -89,22 +89,26 @@ function NavGroup({
         <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 opacity-50 transition-transform duration-150", open && "rotate-180")} />
       </button>
       {open ? (
-        <div className="ml-4 mt-0.5 space-y-0.5 border-l border-white/10 pl-2">
+        <div className="ml-[1.15rem] mt-1 space-y-0.5 border-l border-white/10 pl-2.5">
           {item.children?.map((child) => {
             if (!child.href) return null;
             const active = isNavActive(child.href, pathname);
+            const ChildIcon = child.icon || item.icon;
             return (
               <Link
                 key={child.href}
                 href={child.href}
                 className={cn(
-                  "block rounded-md px-2.5 py-1.5 text-[0.82rem] font-medium transition-colors duration-150",
+                  "flex min-h-8 items-center gap-2.5 rounded-md border border-transparent px-2.5 py-1.5 text-[0.79rem] font-medium tracking-[-0.005em] transition-all duration-150",
                   active
-                    ? "bg-[#14b8a6] text-white"
-                    : "text-[var(--gp-sidebar-muted)] hover:bg-white/10 hover:text-white",
+                    ? "border-white/10 bg-[#2563eb] text-white shadow-sm"
+                    : "text-[#94a1b5] hover:border-white/5 hover:bg-white/[0.07] hover:text-[#e5eaf2]",
                 )}
               >
-                {t(child.labelKey)}
+                {ChildIcon ? (
+                  <ChildIcon className={cn("h-3.5 w-3.5 shrink-0 stroke-[1.7]", active ? "text-white" : "text-[#738198]")} />
+                ) : null}
+                <span className="truncate">{t(child.labelKey)}</span>
               </Link>
             );
           })}
@@ -125,7 +129,7 @@ export function NavSidebar() {
   }, [pathname, activeGroup]);
 
   return (
-    <nav className="erp-nav-scroll flex-1 space-y-0.5 px-2.5 py-3">
+    <nav className="erp-nav-scroll flex-1 space-y-1 overflow-y-auto px-2.5 py-3">
       {NAV_TREE.map((item) => {
         if (!item.children?.length) {
           return <NavLeaf key={item.labelKey} item={item} pathname={pathname} />;

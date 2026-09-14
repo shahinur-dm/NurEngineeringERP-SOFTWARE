@@ -35,6 +35,23 @@ export async function POST(_req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ error: "cannot_finalize" }, { status: 400 });
   }
 
+  if (existing.status === "quotation") {
+    const converted = await Sale.findOne({
+      sourceQuotationId: existing._id,
+      status: "final",
+    });
+    if (converted) {
+      await ensureDeliveryChallan(converted);
+      return NextResponse.json({
+        data: converted,
+        paymentStatus: paymentStatusFromAmounts(
+          converted.grandTotal || 0,
+          converted.paidAmount || 0,
+        ),
+      });
+    }
+  }
+
   const referenceNo = existing.referenceNo || (await nextReferenceNo());
   const salesOrderNo = existing.salesOrderNo || (await nextSalesOrderNo());
   const invoiceNo = existing.invoiceNo || (await nextInvoiceNo());

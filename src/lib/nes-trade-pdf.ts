@@ -397,6 +397,22 @@ export async function buildTradePdf(opts: {
   }
 
   doc.setFont("helvetica", "normal");
+  const savedTermLines = (sale.terms || "").split("\n").filter((line) => line.trim());
+  if (kind !== "quotation" && savedTermLines.length) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.text("Terms & Conditions", m, y);
+    y += 5;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    savedTermLines.forEach((line) => {
+      doc.text(`◆  ${line.replace(/^[-•◆]\s*/, "").trim()}`, m, y, {
+        maxWidth: pageW - m * 2,
+      });
+      y += 4.2;
+    });
+    y += 4;
+  }
   if (kind === "quotation") {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);

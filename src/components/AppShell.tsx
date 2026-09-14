@@ -1,22 +1,15 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import {
-  ShoppingCart,
   LogOut,
   Languages,
-  Calculator,
-  TrendingUp,
-  Calendar,
   Cpu,
   Menu,
-  X,
 } from "lucide-react";
 import { NavSidebar } from "@/components/NavSidebar";
-import { CalculatorModal } from "@/components/CalculatorModal";
 
 export function AppShell({
   children,
@@ -29,21 +22,20 @@ export function AppShell({
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
-  const [calcOpen, setCalcOpen] = useState(false);
-  const [mobileNav, setMobileNav] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
 
   useEffect(() => {
-    setMobileNav(false);
+    setNavOpen(false);
   }, [pathname]);
 
   useEffect(() => {
-    if (!mobileNav) return;
+    if (!navOpen) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prev;
     };
-  }, [mobileNav]);
+  }, [navOpen]);
 
   async function switchLocale() {
     const next = locale === "bn" ? "en" : "bn";
@@ -82,11 +74,11 @@ export function AppShell({
           </div>
           <button
             type="button"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-white/80 hover:bg-white/10 md:hidden"
-            onClick={() => setMobileNav(false)}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/10"
+            onClick={() => setNavOpen(false)}
             aria-label="Close menu"
           >
-            <X className="h-5 w-5" />
+            <Menu className="h-5 w-5" />
           </button>
         </div>
       </div>
@@ -119,77 +111,33 @@ export function AppShell({
   );
 
   return (
-    <div className="min-h-screen md:grid md:grid-cols-[260px_1fr]">
-      <aside className="hidden bg-[var(--gp-sidebar)] text-[var(--gp-sidebar-ink)] md:block">
-        <div className="sticky top-0 flex h-screen flex-col">{sidebarBody}</div>
-      </aside>
-
-      {mobileNav ? (
-        <div className="fixed inset-0 z-40 md:hidden">
+    <div className="min-h-screen">
+      {navOpen ? (
+        <div className="fixed inset-0 z-40">
           <button
             type="button"
-            className="absolute inset-0 bg-black/50"
+            className="absolute inset-0 bg-black/45"
             aria-label="Close overlay"
-            onClick={() => setMobileNav(false)}
+            onClick={() => setNavOpen(false)}
           />
-          <aside className="absolute inset-y-0 left-0 flex w-[min(88vw,300px)] flex-col bg-[var(--gp-sidebar)] text-[var(--gp-sidebar-ink)] shadow-2xl">
+          <aside className="absolute inset-y-0 left-0 flex w-[min(88vw,260px)] flex-col bg-[var(--gp-sidebar)] text-[var(--gp-sidebar-ink)] shadow-2xl">
             {sidebarBody}
           </aside>
         </div>
       ) : null}
 
-      <div className="min-w-0">
-        <header className="sticky top-0 z-20 border-b border-line bg-white px-4 py-3 md:px-7">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-2">
-              <button
-                type="button"
-                className="gp-btn gp-btn-ghost min-h-10 px-2.5 md:hidden"
-                onClick={() => setMobileNav(true)}
-                aria-label="Open menu"
-              >
-                <Menu className="h-5 w-5" />
-              </button>
-              <div className="min-w-0">
-                <p className="truncate text-base font-bold text-[var(--gp-ink)] md:text-lg">
-                  {locale === "bn" ? `স্বাগতম, ${userName}` : `Welcome back, ${userName}`}
-                </p>
-                <p className="text-[0.75rem] text-muted">{t("dashboard.welcome")}</p>
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Link href="/calendar" className="gp-btn gp-btn-ghost min-h-10">
-                <Calendar className="h-4 w-4" />
-                <span className="hidden sm:inline">{t("nav.calendar")}</span>
-              </Link>
-              <button
-                type="button"
-                className="gp-btn gp-btn-ghost min-h-10"
-                onClick={() => setCalcOpen(true)}
-                aria-label={locale === "bn" ? "ক্যালকুলেটর" : "Calculator"}
-              >
-                <Calculator className="h-4 w-4" />
-              </button>
-              <Link href="/reports/profit-loss" className="gp-btn gp-btn-ghost min-h-10">
-                <TrendingUp className="h-4 w-4" />
-                <span className="hidden sm:inline">{t("dashboard.todayProfit")}</span>
-              </Link>
-              <Link href="/sales/quotations" className="gp-btn gp-btn-ghost min-h-10 px-3 text-[0.95rem]">
-                {t("nav.listQuotations")}
-              </Link>
-              <Link href="/sales" className="gp-btn gp-btn-ghost min-h-10 px-3 text-[0.95rem]">
-                {t("nav.allSales")}
-              </Link>
-              <Link href="/pos" className="gp-btn gp-btn-primary min-h-10 px-4 text-[0.95rem]">
-                <ShoppingCart className="h-4 w-4" />
-                {t("nav.pos")}
-              </Link>
-            </div>
-          </div>
-        </header>
-        <main className="px-4 py-5 md:px-7 md:py-7">{children}</main>
-      </div>
-      <CalculatorModal open={calcOpen} onClose={() => setCalcOpen(false)} />
+      <button
+        type="button"
+        className="fixed left-3 top-3 z-30 inline-flex h-10 w-10 items-center justify-center rounded-lg border border-line bg-white text-[var(--gp-ink)] shadow-sm transition-colors hover:bg-[var(--gp-primary-soft)]"
+        onClick={() => setNavOpen((open) => !open)}
+        aria-label={navOpen ? "Close menu" : "Open menu"}
+        aria-expanded={navOpen}
+      >
+        <Menu className="h-5 w-5" />
+      </button>
+      <main className="min-w-0 px-3 pb-4 pt-3 pl-16 sm:px-4 sm:pl-16 lg:px-5 lg:pl-16">
+        {children}
+      </main>
     </div>
   );
 }

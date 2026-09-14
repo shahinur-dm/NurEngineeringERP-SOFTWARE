@@ -110,7 +110,7 @@ export default function DashboardPage() {
   const widgets = data?.widgets;
 
   return (
-    <div className="pb-10">
+    <div className="pb-4">
       <PageHeader title={t("dashboard.title")} subtitle={t("dashboard.clickBreakdown")} />
 
       <FilterBar>
@@ -149,11 +149,11 @@ export default function DashboardPage() {
         </div>
       </FilterBar>
 
-      <div className="mb-8 space-y-4">
+      <div className="mb-5 space-y-2.5">
         <h2 className="mb-1 text-[0.72rem] font-bold uppercase tracking-[0.1em] text-muted">
           {locale === "bn" ? "প্রধান সারাংশ" : "Primary Overview"}
         </h2>
-        <div className="grid auto-rows-fr gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid auto-rows-fr gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <KpiCard
             label={t("dashboard.totalSales")}
             value={data?.kpis.totalSales || 0}
@@ -184,11 +184,11 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="mb-8 space-y-4">
+      <div className="mb-5 space-y-2.5">
         <h2 className="mb-1 text-[0.72rem] font-bold uppercase tracking-[0.1em] text-muted">
           {locale === "bn" ? "বকেয়া ও ফেরত" : "Due & Returns"}
         </h2>
-        <div className="grid auto-rows-fr gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid auto-rows-fr gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <KpiCard
             label={t("dashboard.invoiceDue")}
             value={data?.kpis.invoiceDue || 0}
@@ -221,12 +221,12 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="mt-8 grid gap-5 xl:grid-cols-3">
-        <div className="gp-card p-5 xl:col-span-2 shadow-sm border border-line">
-          <h2 className="mb-4 text-lg font-bold text-[var(--gp-ink)]">
+      <div className="mt-5 grid gap-4 xl:grid-cols-3">
+        <div className="gp-card border border-line p-4 shadow-sm xl:col-span-2">
+          <h2 className="mb-3 text-lg font-bold text-[var(--gp-ink)]">
             {t("dashboard.salesTrend")}
           </h2>
-          <div className="h-72">
+          <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
@@ -239,9 +239,9 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="gp-card p-5 shadow-sm border border-line">
-          <h2 className="mb-4 text-lg font-bold text-[var(--gp-ink)]">Expense Breakdown</h2>
-          <div className="h-72">
+        <div className="gp-card border border-line p-4 shadow-sm">
+          <h2 className="mb-3 text-lg font-bold text-[var(--gp-ink)]">Expense Breakdown</h2>
+          <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -266,10 +266,10 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="mt-6 grid gap-5 xl:grid-cols-3">
-        <div className="gp-card p-5 xl:col-span-2 shadow-sm border border-line">
-          <h2 className="mb-4 text-lg font-bold text-[var(--gp-ink)]">Sales by Status</h2>
-          <div className="h-72">
+      <div className="mt-4 grid gap-4 xl:grid-cols-3">
+        <div className="gp-card border border-line p-4 shadow-sm xl:col-span-2">
+          <h2 className="mb-3 text-lg font-bold text-[var(--gp-ink)]">Sales by Status</h2>
+          <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data?.charts?.salesByStatus || []} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
@@ -282,8 +282,8 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="gp-card p-5 shadow-sm border border-line">
-          <div className="mb-4 flex items-center justify-between">
+        <div className="gp-card border border-line p-4 shadow-sm">
+          <div className="mb-3 flex items-center justify-between">
             <h2 className="text-lg font-bold text-[var(--gp-ink)] flex items-center gap-2">
               <Package className="w-5 h-5 text-warn" />
               {t("dashboard.stockAlerts")}
@@ -292,12 +292,12 @@ export default function DashboardPage() {
               {t("common.view")} →
             </Link>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-2">
             {(data?.lowStock || []).length === 0 ? (
               <EmptyState message={t("common.noData")} />
             ) : (
               data?.lowStock.map((p) => (
-                <div key={p.sku} className="rounded-xl border border-line px-3 py-3 hover:bg-[#fafbfc] transition">
+                <div key={p.sku} className="rounded-lg border border-line px-3 py-2.5 transition hover:bg-[#fafbfc]">
                   <p className="font-bold text-sm text-[var(--gp-ink)]">{locale === "bn" && p.nameBn ? p.nameBn : p.name}</p>
                   <p className="text-xs text-muted mt-0.5">
                     SKU: {p.sku} · QTY: <span className="text-danger font-bold">{p.qty}</span>
@@ -309,7 +309,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="mt-8 grid auto-rows-fr gap-4 lg:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-5 grid auto-rows-fr gap-3 lg:grid-cols-2 xl:grid-cols-3">
         <WidgetCard
           title={t("dashboard.salesPaymentDue")}
           href="/reports/sell-payment"
@@ -384,8 +384,8 @@ export default function DashboardPage() {
         </WidgetCard>
       </div>
 
-      <div className="gp-card mt-8 overflow-auto p-5 shadow-sm border-line">
-        <div className="mb-4 flex items-center justify-between">
+      <div className="gp-card mt-5 overflow-auto border-line p-4 shadow-sm">
+        <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-bold text-[var(--gp-ink)]">{t("dashboard.recentSales")}</h2>
           <Link href="/sales" className="text-sm font-semibold text-primary hover:underline">
             {t("nav.allSales")} →
@@ -470,8 +470,8 @@ function WidgetCard({
 }) {
   const t = useTranslations();
   return (
-    <div className="gp-card flex h-full min-h-[220px] flex-col p-5">
-      <div className="mb-4 flex min-h-[2.25rem] items-center justify-between border-b border-line pb-3">
+    <div className="gp-card flex h-full min-h-[185px] flex-col p-4">
+      <div className="mb-3 flex min-h-[2rem] items-center justify-between border-b border-line pb-2.5">
         <h3 className="text-[0.95rem] font-bold text-[var(--gp-ink)]">{title}</h3>
         {onViewAll ? (
           <button type="button" className="text-sm font-semibold text-primary hover:underline" onClick={onViewAll}>
@@ -490,7 +490,7 @@ function WidgetCard({
 
 function WidgetRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between rounded-lg border border-line bg-[#fbfcfb] px-3 py-2.5 text-sm hover:border-[color-mix(in_oklab,var(--gp-primary)_30%,white)] transition">
+    <div className="flex items-center justify-between rounded-lg border border-line bg-[#fbfcfb] px-3 py-2 text-sm transition hover:border-[color-mix(in_oklab,var(--gp-primary)_30%,white)]">
       <span className="font-medium text-[var(--gp-ink)]">{label}</span>
       <span className="gp-money text-[var(--gp-primary)] font-bold">{value}</span>
     </div>

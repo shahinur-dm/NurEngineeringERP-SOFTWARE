@@ -6,7 +6,7 @@
   },
   "nav": {
     "dashboard": "ড্যাশবোর্ড",
-    "pos": "POS",
+    "pos": "Quotation",
     "sales": "বিক্রি",
     "purchases": "ক্রয়",
     "products": "পণ্য",
@@ -63,7 +63,7 @@
     "addDraft": "খসড়া যোগ",
     "listDrafts": "খসড়া তালিকা",
     "addQuotation": "কোটেশন যোগ",
-    "listQuotations": "Quotations",
+    "listQuotations": "Quotations List",
     "sellReturns": "বিক্রি ফেরত",
     "shipments": "শিপমেন্ট",
     "discounts": "ছাড়",

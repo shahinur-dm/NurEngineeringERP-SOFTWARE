@@ -4,62 +4,32 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import {
-  Calculator,
-  Clock,
-  Cpu,
-  CreditCard,
-  FileText,
-  LayoutGrid,
-  Pause,
-  Pencil,
-  Plus,
-  Search,
-  UserPlus,
-  Wallet,
-  X,
+  CalendarDays, FileText, Grid2X2, ImageIcon, MapPin, PackagePlus, Plus,
+  Search, Trash2, Upload, UserPlus, Wallet, X,
 } from "lucide-react";
 import { Field, Modal } from "@/components/ui";
-import { CalculatorModal } from "@/components/CalculatorModal";
-import { formatBDT, formatDateBD } from "@/lib/utils";
-import { animateStagger } from "@/lib/gsap";
+import { formatBDT } from "@/lib/utils";
 import { useDebouncedValue } from "@/lib/hooks";
 
 type Product = {
-  _id: string;
-  name: string;
-  nameBn?: string;
-  sku: string;
-  sellPrice: number;
-  unit?: string;
-  locationQty?: number;
-  imageUrl?: string;
-  description?: string;
-  brand?: string;
-  categoryId?: string;
+  _id: string; name: string; nameBn?: string; sku: string; sellPrice: number;
+  unit?: string; locationQty?: number; imageUrl?: string; description?: string;
+  brand?: string; categoryId?: string;
 };
-
 type Customer = {
-  _id: string;
-  name: string;
-  nameBn?: string;
-  mobile?: string;
-  address?: string;
-  email?: string;
-  bin?: string;
+  _id: string; name: string; nameBn?: string; mobile?: string; address?: string;
+  email?: string; bin?: string;
 };
-
-type CartItem = Product & { qty: number; bonusQty: number; saleDescription: string };
-
 type Named = { _id: string; name: string; nameBn?: string };
-
+type CartItem = Product & {
+  qty: number; bonusQty: number; saleDescription: string; lineDiscount: number;
+};
 type PayRow = { id: string; method: string; amount: number };
 
-const PRODUCT_PAGE_SIZE = 6;
-const PAY_METHODS = ["cash", "card", "bank", "bkash", "nagad", "rocket", "cheque", "credit"] as const;
-
-function newPayRow(method = "cash", amount = 0): PayRow {
-  return { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, method, amount };
-}
+const PAGE_SIZE = 20;
+const METHODS = ["cash", "card", "bank", "bkash", "nagad", "rocket", "cheque", "credit"] as const;
+const today = () => new Date().toISOString().slice(0, 10);
+const payRow = (): PayRow => ({ id: `${Date.now()}-${Math.random()}`, method: "cash", amount: 0 });
 
 export default function PosPage() {
   const t = useTranslations();
@@ -68,1098 +38,335 @@ export default function PosPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [categories, setCategories] = useState<Named[]>([]);
   const [brands, setBrands] = useState<Named[]>([]);
-  const [locations, setLocations] = useState<{ _id: string; name: string }[]>([]);
   const [locationId, setLocationId] = useState("");
   const [customerId, setCustomerId] = useState("");
+  const [customerQuery, setCustomerQuery] = useState("");
   const [customerName, setCustomerName] = useState("");
-  const [customerAddress, setCustomerAddress] = useState("");
   const [customerMobile, setCustomerMobile] = useState("");
+  const [customerAddress, setCustomerAddress] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
-  const [pfNo, setPfNo] = useState("");
-  const [refNo, setRefNo] = useState("");
-  const [challanNo, setChallanNo] = useState("");
-  const [binNo, setBinNo] = useState("");
-  const [quoteLookup, setQuoteLookup] = useState("");
+  const [saleDate, setSaleDate] = useState(today);
+  const [quotationNo, setQuotationNo] = useState("");
+  const [referenceNo, setReferenceNo] = useState("");
   const [sourceQuotationId, setSourceQuotationId] = useState("");
-  const [categoryId, setCategoryId] = useState("");
   const [brandName, setBrandName] = useState("");
-  const [filterOpen, setFilterOpen] = useState<"category" | "brand" | null>(null);
-  const [q, setQ] = useState("");
-  const debouncedQ = useDebouncedValue(q, 250);
-  const [productPage, setProductPage] = useState(1);
+  const [categoryId, setCategoryId] = useState("");
+  const [search, setSearch] = useState("");
+  const [productResultsOpen, setProductResultsOpen] = useState(false);
+  const query = useDebouncedValue(search, 250);
+  const [page, setPage] = useState(1);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [payMethod, setPayMethod] = useState("cash");
-  const [payRows, setPayRows] = useState<PayRow[]>(() => [newPayRow("cash", 0)]);
-  const [discount, setDiscount] = useState(0);
-  const [tax, setTax] = useState(0);
-  const [shipping, setShipping] = useState(0);
-  const [paidReceived, setPaidReceived] = useState<number | null>(null);
+  const [note, setNote] = useState("");
+  const [savedTerms, setSavedTerms] = useState<string[]>([]);
+  const [savedTermQuery, setSavedTermQuery] = useState("");
+  const [discountValue, setDiscountValue] = useState(0);
+  const [discountType, setDiscountType] = useState<"percentage" | "fixed">("percentage");
+  const [payRows, setPayRows] = useState<PayRow[]>([payRow()]);
   const [busy, setBusy] = useState(false);
-  const [loadingProducts, setLoadingProducts] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
-  const [calcOpen, setCalcOpen] = useState(false);
+  const [customerMenu, setCustomerMenu] = useState(false);
   const [custOpen, setCustOpen] = useState(false);
   const [newCust, setNewCust] = useState({ name: "", mobile: "" });
-  const [now, setNow] = useState(() => new Date());
-  const gridRef = useRef<HTMLDivElement>(null);
-  const searchRef = useRef<HTMLInputElement>(null);
   const productsRef = useRef<Product[]>([]);
 
+  useEffect(() => { productsRef.current = products; }, [products]);
   useEffect(() => {
-    productsRef.current = products;
-  }, [products]);
-
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(new Date()), 30000);
-    return () => window.clearInterval(id);
-  }, []);
-
-  useEffect(() => {
-    fetch("/api/meta")
-      .then((r) => r.json())
-      .then((d) => {
-        setLocations(d.locations || []);
-        if (d.locations?.[0]?._id) setLocationId(String(d.locations[0]._id));
-      })
-      .catch(() => setLocations([]));
-    fetch("/api/contacts?type=customer&limit=200")
-      .then((r) => r.json())
-      .then((d) => setCustomers(d.data || []))
-      .catch(() => setCustomers([]));
-    fetch("/api/modules/categories?limit=200")
-      .then((r) => r.json())
-      .then((d) => setCategories(d.data || []))
-      .catch(() => setCategories([]));
-    fetch("/api/modules/brands?limit=200")
-      .then((r) => r.json())
-      .then((d) => setBrands(d.data || []))
-      .catch(() => setBrands([]));
-  }, []);
+    Promise.all([
+      fetch("/api/meta").then((r) => r.json()),
+      fetch("/api/contacts?type=customer&limit=200").then((r) => r.json()),
+      fetch("/api/modules/categories?limit=200").then((r) => r.json()),
+      fetch("/api/modules/brands?limit=200").then((r) => r.json()),
+      fetch("/api/sales?status=quotation&limit=200").then((r) => r.json()),
+    ]).then(([m, c, cat, b, quotations]) => {
+      setLocationId(String(m.locations?.[0]?._id || ""));
+      setCustomers(c.data || []); setCategories(cat.data || []); setBrands(b.data || []);
+      setSavedTerms(
+        [...new Set<string>(
+          (quotations.data || [])
+            .map((quotation: { terms?: string }) => quotation.terms?.trim())
+            .filter((value: string | undefined): value is string => Boolean(value)),
+        )],
+      );
+    }).catch(() => setMessage(t("common.error")));
+  }, [t]);
 
   const loadProducts = useCallback(async () => {
-    setLoadingProducts(true);
     try {
-      const qs = new URLSearchParams({ limit: "120" });
-      if (debouncedQ) qs.set("q", debouncedQ);
+      const qs = new URLSearchParams({ limit: "200" });
+      if (query) qs.set("q", query);
       if (locationId) qs.set("locationId", locationId);
       if (categoryId) qs.set("categoryId", categoryId);
-      const res = await fetch(`/api/products?${qs}`);
-      const d = await res.json();
-      setProducts(d.data || []);
-    } catch {
-      setProducts([]);
-    } finally {
-      setLoadingProducts(false);
-    }
-  }, [debouncedQ, locationId, categoryId]);
-
+      const json = await fetch(`/api/products?${qs}`).then((r) => r.json());
+      setProducts(json.data || []);
+    } catch { setProducts([]); } finally { setLoading(false); }
+  }, [query, locationId, categoryId]);
   useEffect(() => {
-    void loadProducts();
-  }, [loadProducts]);
-
-  useEffect(() => {
-    if (!gridRef.current || !products.length) return;
-    const cards = gridRef.current.querySelectorAll<HTMLElement>("[data-pos-card]");
-    animateStagger(cards, { y: 12, stagger: 0.03 });
-  }, [products, productPage]);
-
-  useEffect(() => {
-    searchRef.current?.focus();
-  }, []);
-
-  useEffect(() => {
-    setProductPage(1);
-  }, [debouncedQ, categoryId, brandName]);
-
-  useEffect(() => {
-    const c = customers.find((x) => x._id === customerId);
-    if (!c) {
-      setCustomerName("");
-      setCustomerAddress("");
-      setCustomerMobile("");
-      setCustomerEmail("");
-      return;
-    }
-    setCustomerName(locale === "bn" && c.nameBn ? c.nameBn : c.name);
-    setCustomerAddress(c.address || "");
-    setCustomerMobile(c.mobile || "");
-    setCustomerEmail(c.email || "");
-    if (c.bin) setBinNo(c.bin);
-  }, [customerId, customers, locale]);
-
-  const visibleProducts = useMemo(() => {
-    if (!brandName) return products;
-    return products.filter((p) => (p.brand || "") === brandName);
-  }, [products, brandName]);
-
-  const productPages = Math.ceil(visibleProducts.length / PRODUCT_PAGE_SIZE);
-  const safeProductPage = Math.min(productPage, Math.max(1, productPages));
-  const pagedProducts = visibleProducts.slice(
-    (safeProductPage - 1) * PRODUCT_PAGE_SIZE,
-    safeProductPage * PRODUCT_PAGE_SIZE,
-  );
-
-  const subtotal = useMemo(
-    () => cart.reduce((a, i) => a + i.qty * i.sellPrice, 0),
-    [cart],
-  );
-  const itemCount = useMemo(() => cart.reduce((a, i) => a + i.qty, 0), [cart]);
-  const grandTotal = Math.max(0, subtotal - discount + tax + shipping);
-  const collectedPaid = payRows.reduce(
-    (a, r) => (r.method === "credit" ? a : a + Math.max(0, Number(r.amount) || 0)),
-    0,
-  );
-  const remainingDue = Math.max(0, grandTotal - collectedPaid);
-  const effectivePaid =
-    payMethod === "credit" ? 0 : paidReceived == null ? grandTotal : Math.max(0, paidReceived);
-
-  const selectedCustomer = customers.find((c) => c._id === customerId);
-  const locationName = locations.find((l) => l._id === locationId)?.name || "";
-
-  function updateLine(id: string, patch: Partial<CartItem>) {
-    setCart((prev) => prev.map((x) => (x._id === id ? { ...x, ...patch } : x)));
-  }
-
-  function setQty(id: string, qty: number, stock: number) {
-    const next = Math.max(0, Number(qty) || 0);
-    if (stock > 0 && next > stock) {
-      setMessage(
-        locale === "bn" ? `স্টক অপর্যাপ্ত — হাতে ${stock}` : `Insufficient stock — available ${stock}`,
-      );
-      return;
-    }
-    setCart((prev) =>
-      prev.map((x) => (x._id === id ? { ...x, qty: next } : x)).filter((x) => x.qty > 0),
-    );
-  }
-
-  function removeLine(id: string) {
-    setCart((prev) => prev.filter((x) => x._id !== id));
-  }
-
-  function updatePayRow(id: string, patch: Partial<PayRow>) {
-    setPayRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
-  }
-
-  function addPayRow() {
-    setPayRows((prev) => [...prev, newPayRow("cash", 0)]);
-  }
-
-  function removePayRow(id: string) {
-    setPayRows((prev) => (prev.length <= 1 ? prev : prev.filter((r) => r.id !== id)));
-  }
-
-  async function loadQuotationByNo() {
-    const no = quoteLookup.trim().toUpperCase();
-    if (!no) return;
-    try {
-      const res = await fetch(`/api/sales?quotationNo=${encodeURIComponent(no)}&status=quotation&limit=1`);
-      const json = await res.json();
-      const quote = json.data?.[0];
-      if (!quote) {
-        setMessage(locale === "bn" ? "কোটেশন পাওয়া যায়নি" : "Quotation not found");
-        return;
-      }
-      setSourceQuotationId(String(quote._id));
-      setCustomerId(quote.customerId ? String(quote.customerId) : "");
-      setCustomerName(quote.customerName || "");
-      setCustomerAddress(quote.customerAddress || "");
-      setCustomerMobile(quote.customerMobile || "");
-      setCustomerEmail(quote.customerEmail || "");
-      setPfNo(quote.pfNo || quote.poNo || "");
-      setRefNo(quote.referenceNo || "");
-      setChallanNo(quote.challanNo || "");
-      setBinNo(quote.binNo || "");
-      setDiscount(Number(quote.discount || 0));
-      setTax(Number(quote.tax || 0));
-      setShipping(Number(quote.shipping || 0));
-      setCart(
-        (quote.items || []).map(
-          (it: {
-            productId?: string;
-            name?: string;
-            sku?: string;
-            unit?: string;
-            description?: string;
-            imageUrl?: string;
-            qty?: number;
-            bonusQty?: number;
-            unitPrice?: number;
-          }) => ({
-            _id: String(it.productId || `${quote._id}-${it.sku || it.name}`),
-            name: it.name || "",
-            sku: it.sku || "",
-            unit: it.unit || "Pcs",
-            sellPrice: Number(it.unitPrice || 0),
-            imageUrl: it.imageUrl || "",
-            description: it.description || "",
-            qty: Number(it.qty || 1),
-            bonusQty: Number(it.bonusQty || 0),
-            saleDescription: it.description || "",
-          }),
-        ),
-      );
-      setMessage(
-        locale === "bn"
-          ? `কোটেশন লোড: ${quote.quotationNo}`
-          : `Loaded quotation: ${quote.quotationNo}`,
-      );
-    } catch {
-      setMessage(t("common.error"));
-    }
-  }
-
-  function addToCart(p: Product) {
-    const stock = Number(p.locationQty ?? 0);
-    const displayName = locale === "bn" && p.nameBn ? p.nameBn : p.name;
-    setCart((prev) => {
-      const found = prev.find((i) => i._id === p._id);
-      const nextQty = (found?.qty || 0) + 1;
-      if (stock > 0 && nextQty > stock) {
-        setMessage(
-          locale === "bn"
-            ? `স্টক অপর্যাপ্ত (${p.name}) — হাতে ${stock}`
-            : `Insufficient stock for ${p.name} — available ${stock}`,
-        );
-        return prev;
-      }
-      if (found) {
-        return prev.map((i) => (i._id === p._id ? { ...i, qty: i.qty + 1 } : i));
-      }
-      return [
-        ...prev,
-        {
-          ...p,
-          name: displayName,
-          qty: 1,
-          bonusQty: 0,
-          saleDescription: p.description || "",
-        },
-      ];
+    let active = true;
+    const qs = new URLSearchParams({ limit: "200" });
+    if (query) qs.set("q", query);
+    if (locationId) qs.set("locationId", locationId);
+    if (categoryId) qs.set("categoryId", categoryId);
+    fetch(`/api/products?${qs}`).then((r) => r.json()).then((json) => {
+      if (active) setProducts(json.data || []);
+    }).catch(() => {
+      if (active) setProducts([]);
+    }).finally(() => {
+      if (active) setLoading(false);
     });
-  }
+    return () => { active = false; };
+  }, [query, locationId, categoryId]);
 
-  function tryBarcodeAdd(raw: string) {
-    const code = raw.trim();
-    if (!code) return false;
-    const list = productsRef.current;
-    const exact =
-      list.find((p) => p.sku.toLowerCase() === code.toLowerCase()) ||
-      list.find((p) => p.name.toLowerCase() === code.toLowerCase());
-    if (exact) {
-      addToCart(exact);
-      setQ("");
-      setMessage(
-        locale === "bn"
-          ? `যোগ হয়েছে: ${exact.nameBn || exact.name}`
-          : `Added: ${exact.name}`,
-      );
-      return true;
-    }
-    return false;
-  }
+  const filtered = useMemo(() => products.filter((p) => {
+    const needle = query.trim().toLowerCase();
+    const category = categories.find((c) => c._id === p.categoryId)?.name || "";
+    const matchesText = !needle || [p.name, p.nameBn, p.sku, p.brand, category]
+      .some((v) => (v || "").toLowerCase().includes(needle));
+    return matchesText && (!brandName || p.brand === brandName);
+  }), [products, query, brandName, categories]);
+  const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const customerMatches = customers.filter((c) =>
+    [c.name, c.nameBn, c.mobile, c.bin].some((v) => (v || "").toLowerCase().includes(customerQuery.toLowerCase())),
+  ).slice(0, 8);
 
-  function resetCart() {
-    setCart([]);
-    setDiscount(0);
-    setTax(0);
-    setShipping(0);
-    setPaidReceived(null);
-    setPayRows([newPayRow("cash", 0)]);
-    setPfNo("");
-    setRefNo("");
-    setChallanNo("");
-    setSourceQuotationId("");
-    setQuoteLookup("");
-    setMessage("");
-    searchRef.current?.focus();
-  }
+  const subtotal = cart.reduce((sum, i) => sum + i.qty * i.sellPrice, 0);
+  const lineDiscount = cart.reduce((sum, i) => sum + Math.min(i.lineDiscount, i.qty * i.sellPrice), 0);
+  const discountBase = Math.max(0, subtotal - lineDiscount);
+  const orderDiscount = Math.min(
+    discountBase,
+    discountType === "percentage" ? discountBase * Math.min(100, discountValue) / 100 : discountValue,
+  );
+  const totalDiscount = lineDiscount + orderDiscount;
+  const grandTotal = Math.max(0, subtotal - totalDiscount);
+  const paid = payRows.reduce((sum, p) => p.method === "credit" ? sum : sum + Math.max(0, p.amount), 0);
+  const due = Math.max(0, grandTotal - paid);
 
-  async function checkout(opts?: {
-    status?: string;
-    method?: string;
-    fullPay?: boolean;
-    usePayRows?: boolean;
-  }) {
-    if (!cart.length || !locationId) {
-      setMessage(
-        locale === "bn"
-          ? "লোকেশন ও কার্ট আইটেম প্রয়োজন"
-          : "Location and cart items are required",
-      );
+  function chooseCustomer(c: Customer) {
+    setCustomerId(c._id); setCustomerName(locale === "bn" && c.nameBn ? c.nameBn : c.name);
+    setCustomerQuery(locale === "bn" && c.nameBn ? c.nameBn : c.name);
+    setCustomerMobile(c.mobile || ""); setCustomerAddress(c.address || "");
+    setCustomerEmail(c.email || ""); setCustomerMenu(false);
+  }
+  function addProduct(p: Product) {
+    const stock = Number(p.locationQty || 0);
+    setCart((old) => {
+      const found = old.find((x) => x._id === p._id);
+      if (found && stock > 0 && found.qty >= stock) {
+        setMessage(`Insufficient stock — available ${stock}`); return old;
+      }
+      return found
+        ? old.map((x) => x._id === p._id ? { ...x, qty: x.qty + 1 } : x)
+        : [...old, { ...p, qty: 1, bonusQty: 0, saleDescription: p.description || "", lineDiscount: 0 }];
+    });
+    setProductResultsOpen(false);
+  }
+  function updateItem(id: string, patch: Partial<CartItem>) {
+    setCart((old) => old.map((x) => x._id === id ? { ...x, ...patch } : x));
+  }
+  function updateQuantity(item: CartItem, quantity: number) {
+    const next = Math.max(1, Number(quantity) || 1);
+    const stock = Number(item.locationQty || 0);
+    if (stock > 0 && next > stock) {
+      setMessage(`Insufficient stock — available ${stock}`);
       return;
     }
-    const status = opts?.status || "final";
-    const method = opts?.method || payMethod;
-    setPayMethod(method);
-
-    let payments: { method: string; amount: number }[] = [];
-    if (status === "final" && opts?.usePayRows) {
-      if (collectedPaid - grandTotal > 0.009) {
-        setMessage(t("pos.overpayment"));
-        return;
-      }
-      payments = payRows
-        .filter((r) => Number(r.amount) > 0)
-        .map((r) => ({ method: r.method, amount: Number(r.amount) }));
-    } else {
-      const paid =
-        status !== "final" || method === "credit"
-          ? 0
-          : opts?.fullPay
-            ? grandTotal
-            : Math.min(effectivePaid, grandTotal);
-      payments = paid > 0 ? [{ method, amount: paid }] : [];
-    }
-
-    setBusy(true);
-    setMessage("");
+    updateItem(item._id, { qty: next });
+  }
+  function reset() {
+    setCart([]); setCustomerId(""); setCustomerQuery(""); setCustomerName("");
+    setCustomerMobile(""); setCustomerAddress(""); setCustomerEmail("");
+    setQuotationNo(""); setReferenceNo(""); setSourceQuotationId(""); setSaleDate(today());
+    setNote(""); setSavedTermQuery(""); setDiscountValue(0); setPayRows([payRow()]); setMessage("");
+    setSearch(""); setBrandName(""); setCategoryId(""); setProductResultsOpen(false);
+  }
+  async function loadQuotation() {
+    if (!quotationNo.trim()) return;
+    try {
+      const json = await fetch(`/api/sales?quotationNo=${encodeURIComponent(quotationNo.trim())}&status=quotation&limit=1`).then((r) => r.json());
+      const quote = json.data?.[0];
+      if (!quote) return setMessage("Quotation not found");
+      setSourceQuotationId(String(quote._id)); setQuotationNo(quote.quotationNo || "");
+      setReferenceNo(quote.referenceNo || ""); setCustomerId(String(quote.customerId || ""));
+      setCustomerName(quote.customerName || ""); setCustomerQuery(quote.customerName || "");
+      setCustomerMobile(quote.customerMobile || ""); setCustomerAddress(quote.customerAddress || "");
+      setCustomerEmail(quote.customerEmail || ""); setSaleDate(String(quote.saleDate || "").slice(0, 10) || today());
+      setNote(quote.terms || quote.note || ""); setSavedTermQuery("");
+      const loaded = (quote.items || []).map((i: Record<string, unknown>) => ({
+        _id: String(i.productId || `${quote._id}-${i.sku}`), name: String(i.name || ""),
+        sku: String(i.sku || ""), sellPrice: Number(i.unitPrice || 0), unit: String(i.unit || "Pcs"),
+        imageUrl: String(i.imageUrl || ""), qty: Number(i.qty || 1), bonusQty: Number(i.bonusQty || 0),
+        saleDescription: String(i.description || ""), lineDiscount: Number(i.discount || 0),
+      }));
+      setCart(loaded); setDiscountValue(Math.max(0, Number(quote.discount || 0) - loaded.reduce((s: number, i: CartItem) => s + i.lineDiscount, 0)));
+      setDiscountType("fixed"); setMessage(`Loaded quotation: ${quote.quotationNo}`);
+    } catch { setMessage(t("common.error")); }
+  }
+  async function save(status: "draft" | "quotation" | "final" | "suspended", usePayments = false) {
+    if (!cart.length || !locationId) return setMessage("Location and order items are required");
+    if (usePayments && paid > grandTotal + .009) return setMessage("Payment cannot exceed grand total");
+    setBusy(true); setMessage("");
     try {
       const res = await fetch("/api/sales", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          locationId,
-          customerId: customerId || undefined,
-          customerName: customerName.trim() || selectedCustomer?.name || "Walk-in Customer",
-          customerMobile: customerMobile.trim() || selectedCustomer?.mobile,
-          customerAddress: customerAddress.trim() || selectedCustomer?.address,
-          customerEmail: customerEmail.trim() || undefined,
-          pfNo: pfNo.trim() || undefined,
-          challanNo: challanNo.trim() || undefined,
-          binNo: binNo.trim() || undefined,
-          sourceQuotationId: status === "final" && sourceQuotationId ? sourceQuotationId : undefined,
-          status,
-          discount,
-          tax,
-          shipping,
+          locationId, customerId: customerId || undefined,
+          customerName: customerName.trim() || "Walk-in Customer", customerMobile,
+          customerAddress, customerEmail, saleDate, sourceQuotationId: status === "final" ? sourceQuotationId || undefined : undefined,
+          status, note, terms: note, discount: totalDiscount, tax: 0, shipping: 0,
           items: cart.map((i) => ({
-            productId: i._id,
-            name: (i.name || "").trim() || i.sku,
-            sku: i.sku,
-            unit: i.unit || "Pcs",
-            qty: i.qty,
-            bonusQty: i.bonusQty,
-            unitPrice: i.sellPrice,
-            description: i.saleDescription || "",
-            imageUrl: i.imageUrl || "",
+            productId: i._id, name: i.name, sku: i.sku, unit: i.unit || "Pcs", qty: i.qty,
+            bonusQty: i.bonusQty, unitPrice: i.sellPrice, discount: Math.min(i.lineDiscount, i.qty * i.sellPrice),
+            description: i.saleDescription, imageUrl: i.imageUrl || "",
           })),
-          payments,
+          payments: status === "final" && usePayments
+            ? payRows.filter((p) => p.amount > 0).map(({ method, amount }) => ({ method, amount }))
+            : [],
         }),
       });
       const json = await res.json();
-      if (!res.ok) {
-        if (json.error === "overpayment") throw new Error("overpayment");
-        throw new Error(json.error || "fail");
-      }
-      resetCart();
-      const docLabel =
-        status === "quotation"
-          ? `${json.data.quotationNo || ""} / ${json.data.referenceNo || ""}`
-          : `${json.data.invoiceNo || ""} / ${json.data.referenceNo || ""}`;
-      setMessage(
-        locale === "bn"
-          ? `সংরক্ষিত: ${docLabel}`
-          : `Saved: ${docLabel}`,
-      );
+      if (!res.ok) throw new Error(json.error || "Save failed");
+      reset(); setMessage(`Saved: ${json.data.quotationNo || json.data.invoiceNo || json.data.referenceNo}`);
       await loadProducts();
-      if (json.data?._id) {
-        const path =
-          status === "quotation"
-            ? `/sales/${json.data._id}/quotation`
-            : `/sales/${json.data._id}/invoice`;
-        window.open(path, "_blank");
-      }
-    } catch (err) {
-      setMessage(err instanceof Error && err.message === "overpayment" ? t("pos.overpayment") : t("common.error"));
-    } finally {
-      setBusy(false);
-    }
+      if (json.data?._id) window.open(status === "quotation" ? `/sales/${json.data._id}/quotation` : `/sales/${json.data._id}/invoice`, "_blank");
+    } catch (e) { setMessage(e instanceof Error ? e.message : t("common.error")); } finally { setBusy(false); }
   }
-
   async function addCustomer() {
     if (!newCust.name.trim() || !newCust.mobile.trim()) return;
     try {
-      const res = await fetch("/api/contacts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "customer",
-          name: newCust.name.trim(),
-          mobile: newCust.mobile.trim(),
-        }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error("fail");
-      const created = json.data;
-      setCustomers((prev) => [created, ...prev]);
-      setCustomerId(String(created._id));
-      setCustOpen(false);
-      setNewCust({ name: "", mobile: "" });
-    } catch {
-      setMessage(t("common.error"));
-    }
+      const res = await fetch("/api/contacts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "customer", ...newCust }) });
+      const json = await res.json(); if (!res.ok) throw new Error();
+      setCustomers((old) => [json.data, ...old]); chooseCustomer(json.data);
+      setCustOpen(false); setNewCust({ name: "", mobile: "" });
+    } catch { setMessage(t("common.error")); }
   }
 
-  const clockLabel = `${formatDateBD(now, locale)} ${now.toLocaleTimeString(
-    locale === "bn" ? "bn-BD" : "en-GB",
-    { hour: "2-digit", minute: "2-digit", hour12: false },
-  )}`;
-
   return (
-    <div className="pos-page space-y-3">
-      <div className="gp-card flex flex-wrap items-center gap-2 p-2.5">
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-          <span className="text-sm font-semibold text-muted">
-            {t("dashboard.location")}:
-          </span>
-          <select
-            className="gp-input max-w-xs"
-            value={locationId}
-            onChange={(e) => setLocationId(e.target.value)}
-          >
-            {locations.length === 0 ? (
-              <option value="">{locale === "bn" ? "লোকেশন নেই" : "No location"}</option>
-            ) : null}
-            {locations.map((l) => (
-              <option key={l._id} value={l._id}>
-                {l.name}
-              </option>
-            ))}
-          </select>
-          <span className="rounded-lg bg-[var(--gp-primary)] px-3 py-1.5 text-sm font-semibold text-white">
-            {clockLabel}
-          </span>
-        </div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          <button
-            type="button"
-            className="gp-btn gp-btn-ghost min-h-10 min-w-10 px-2"
-            title={locale === "bn" ? "ক্যালকুলেটর" : "Calculator"}
-            onClick={() => setCalcOpen(true)}
-          >
-            <Calculator className="h-4 w-4 text-[var(--gp-primary)]" />
-          </button>
-          <button
-            type="button"
-            className="gp-btn gp-btn-ghost min-h-10 min-w-10 px-2"
-            title={t("pos.clear")}
-            onClick={resetCart}
-          >
-            <X className="h-4 w-4 text-[var(--gp-danger)]" />
-          </button>
-          <Link href="/expenses" className="gp-btn gp-btn-ghost min-h-10 px-3 text-sm">
-            <Plus className="h-4 w-4" />
-            {locale === "bn" ? "খরচ" : "Add Expense"}
-          </Link>
-        </div>
-      </div>
+    <div className="space-y-2">
+      <section className="gp-card overflow-hidden">
+        <header className="flex flex-wrap items-center gap-2 border-b border-line px-3 py-2">
+          <div className="flex flex-1 items-center gap-2 text-xl font-bold text-[var(--gp-ink)]">
+            <span className="rounded-lg bg-[var(--gp-primary)] p-2 text-white"><FileText className="h-5 w-5" /></span>
+            Quotation
+          </div>
+          <button className="gp-btn gp-btn-primary" type="button" onClick={reset}><Plus className="h-4 w-4" />New Order</button>
+          <Link className="gp-btn gp-btn-ghost" href="/contacts/import"><Upload className="h-4 w-4" />Import Customer</Link>
+        </header>
 
-      <div className="grid gap-3 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
-        <section className="gp-card flex min-h-[28rem] flex-col p-3">
-          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1.2fr)_auto]">
-            <select
-              className="gp-input"
-              value={customerId}
-              onChange={(e) => setCustomerId(e.target.value)}
-            >
-              <option value="">{t("pos.customerWalkIn")}</option>
-              {customers.map((c) => (
-                <option key={c._id} value={c._id}>
-                  {(locale === "bn" && c.nameBn ? c.nameBn : c.name) +
-                    (c.mobile ? ` · ${c.mobile}` : "")}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              className="gp-btn gp-btn-primary min-h-10 min-w-10 px-2"
-              title={t("contacts.addCustomer")}
-              onClick={() => setCustOpen(true)}
-            >
-              <UserPlus className="h-4 w-4" />
-            </button>
-            <div className="relative sm:col-span-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
-              <input
-                ref={searchRef}
-                className="gp-input gp-input-icon-left"
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    tryBarcodeAdd(q);
-                  }
-                }}
-                placeholder={t("pos.searchProduct")}
-                autoComplete="off"
-                autoFocus
-              />
-            </div>
-            <button
-              type="button"
-              className="gp-btn gp-btn-primary min-h-10 min-w-10 px-2"
-              title={t("pos.searchProduct")}
-              onClick={() => tryBarcodeAdd(q)}
-            >
-              <Plus className="h-4 w-4" />
-            </button>
-          </div>
-
-          <p className="mt-3 text-sm font-bold uppercase tracking-[0.06em] text-[var(--gp-ink)]">
-            {t("pos.documentTitle")}
-          </p>
-          <div className="mt-2 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-            <Field label={t("pos.quotationPiNo")}>
-              <input
-                className="gp-input"
-                value={quoteLookup}
-                onChange={(e) => setQuoteLookup(e.target.value.toUpperCase())}
-                placeholder="NES202600001"
-              />
-            </Field>
-            <div className="flex items-end">
-              <button type="button" className="gp-btn gp-btn-ghost min-h-10 px-3" onClick={() => void loadQuotationByNo()}>
-                {t("pos.loadQuotation")}
-              </button>
-            </div>
-          </div>
-          <div className="mt-2 grid gap-2 sm:grid-cols-2">
-            <Field label={t("pos.customerName")}>
-              <input
-                className="gp-input"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-              />
-            </Field>
-            <Field label={t("pos.contactNo")}>
-              <input
-                className="gp-input"
-                value={customerMobile}
-                onChange={(e) => setCustomerMobile(e.target.value)}
-              />
-            </Field>
-            <Field label={t("contacts.address")}>
-              <input
-                className="gp-input"
-                value={customerAddress}
-                onChange={(e) => setCustomerAddress(e.target.value)}
-              />
-            </Field>
-            <Field label={t("contacts.email")}>
-              <input
-                className="gp-input"
-                type="email"
-                value={customerEmail}
-                onChange={(e) => setCustomerEmail(e.target.value)}
-              />
-            </Field>
-          </div>
-          <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            <Field label={t("pos.pfNo")}>
-              <input className="gp-input" value={pfNo} onChange={(e) => setPfNo(e.target.value)} />
-            </Field>
-            <Field label={t("pos.refNo")}>
-              <input className="gp-input" value={refNo} readOnly placeholder={t("pos.autoGenerated")} />
-            </Field>
-            <Field label={t("pos.challanNo")}>
-              <input className="gp-input" value={challanNo} onChange={(e) => setChallanNo(e.target.value)} />
-            </Field>
-            <Field label={t("pos.binNo")}>
-              <input className="gp-input" value={binNo} onChange={(e) => setBinNo(e.target.value)} />
-            </Field>
-          </div>
-
-          <div className="mt-3 min-h-0 flex-1 overflow-auto">
-            <table className="gp-table">
-              <thead>
-                <tr>
-                  <th>{t("pos.itemName")}</th>
-                  <th>{t("pos.specification")}</th>
-                  <th className="w-24">{t("pos.itemQty")}</th>
-                  <th className="w-28">{t("pos.unitPrice")}</th>
-                  <th className="w-28">{t("pos.totalPrice")}</th>
-                  <th className="w-12">
-                    <X className="mx-auto h-4 w-4" />
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {cart.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-10 text-center text-muted">
-                      {t("pos.emptyCart")}
-                    </td>
-                  </tr>
-                ) : (
-                  cart.map((i) => (
-                    <tr key={i._id}>
-                      <td className="align-top">
-                        <input
-                          className="gp-input min-w-[8rem]"
-                          value={i.name}
-                          onChange={(e) => updateLine(i._id, { name: e.target.value })}
-                        />
-                        <p className="mt-1 text-[0.7rem] text-muted">SKU: {i.sku}</p>
-                      </td>
-                      <td className="align-top">
-                        <input
-                          className="gp-input min-w-[8rem]"
-                          value={i.saleDescription}
-                          onChange={(e) => updateLine(i._id, { saleDescription: e.target.value })}
-                          placeholder={t("pos.specification")}
-                        />
-                      </td>
-                      <td className="align-top">
-                        <input
-                          type="number"
-                          min={1}
-                          className="gp-input"
-                          value={i.qty}
-                          onChange={(e) =>
-                            setQty(i._id, Number(e.target.value || 0), Number(i.locationQty ?? 0))
-                          }
-                        />
-                      </td>
-                      <td className="align-top">
-                        <input
-                          type="number"
-                          min={0}
-                          step="0.01"
-                          className="gp-input"
-                          value={i.sellPrice}
-                          onChange={(e) =>
-                            updateLine(i._id, {
-                              sellPrice: Math.max(0, Number(e.target.value || 0)),
-                            })
-                          }
-                        />
-                      </td>
-                      <td className="align-top pt-2">
-                        <span className="gp-money font-bold">
-                          {formatBDT(i.qty * i.sellPrice, locale)}
-                        </span>
-                      </td>
-                      <td className="align-top">
-                        <button
-                          type="button"
-                          className="gp-btn gp-btn-danger min-h-9 min-w-9 px-0"
-                          onClick={() => removeLine(i._id)}
-                          aria-label={t("common.delete")}
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+        <div className="space-y-2 p-2">
+          <div className="grid gap-x-3 gap-y-1.5 rounded-xl border border-line bg-[#fbfdff] p-2 md:grid-cols-2 lg:grid-cols-3">
+            <Field label="Customer Name">
+              <div className="relative">
+                <div className="flex gap-2"><div className="relative min-w-0 flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" /><input className="gp-input gp-input-icon-left" value={customerQuery} placeholder="Search by name, code or mobile..."
+                  onFocus={() => setCustomerMenu(true)}
+                  onChange={(e) => { setCustomerQuery(e.target.value); setCustomerName(e.target.value); setCustomerId(""); setCustomerMenu(true); }} /></div><button type="button" className="gp-btn gp-btn-primary shrink-0 px-3" onClick={() => setCustOpen(true)} aria-label="Add customer"><UserPlus className="h-4 w-4" /></button></div>
+                {customerMenu && customerQuery && customerMatches.length > 0 && (
+                  <div className="absolute z-30 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-line bg-white p-1 shadow-xl">
+                    {customerMatches.map((c) => <button key={c._id} type="button" onClick={() => chooseCustomer(c)} className="block w-full rounded-md px-3 py-2 text-left text-sm hover:bg-[var(--gp-primary-soft)]">{c.name}<span className="ml-2 text-muted">{c.mobile}</span></button>)}
+                  </div>
                 )}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="mt-3 space-y-2 border-t border-line pt-3 text-sm">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span>
-                {t("pos.items")}: <b>{itemCount.toFixed(2)}</b>
-              </span>
-              <span>
-                {t("common.total")}:{" "}
-                <b className="gp-money">{formatBDT(subtotal, locale)}</b>
-              </span>
-            </div>
-            <div className="grid gap-2 sm:grid-cols-3">
-              <Field label={`${t("common.discount")} (-)`}>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min={0}
-                    className="gp-input gp-input-icon-right"
-                    value={discount}
-                    onChange={(e) => setDiscount(Number(e.target.value || 0))}
-                  />
-                  <Pencil className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--gp-info)]" />
-                </div>
-              </Field>
-              <Field label={`${t("common.tax")} (+)`}>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min={0}
-                    className="gp-input gp-input-icon-right"
-                    value={tax}
-                    onChange={(e) => setTax(Number(e.target.value || 0))}
-                  />
-                  <Pencil className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--gp-info)]" />
-                </div>
-              </Field>
-              <Field label={`${t("invoice.shipping")} (+)`}>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min={0}
-                    className="gp-input gp-input-icon-right"
-                    value={shipping}
-                    onChange={(e) => setShipping(Number(e.target.value || 0))}
-                  />
-                  <Pencil className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--gp-info)]" />
-                </div>
-              </Field>
-            </div>
-            <div className="space-y-2">
-              <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">
-                {t("pos.multiplePayment")}
-              </p>
-              {payRows.map((row, idx) => (
-                <div key={row.id} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-end gap-2">
-                  <Field label={`${t("sales.paymentMethod")} ${idx + 1}`}>
-                    <select
-                      className="gp-input"
-                      value={row.method}
-                      onChange={(e) => updatePayRow(row.id, { method: e.target.value })}
-                    >
-                      {PAY_METHODS.map((m) => (
-                        <option key={m} value={m}>
-                          {t(`sales.${m}`)}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                  <Field label={t("common.amount")}>
-                    <input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      className="gp-input"
-                      value={row.amount || ""}
-                      onChange={(e) =>
-                        updatePayRow(row.id, { amount: Math.max(0, Number(e.target.value || 0)) })
-                      }
-                    />
-                  </Field>
-                  <button
-                    type="button"
-                    className="gp-btn gp-btn-danger mb-[1px] min-h-10 min-w-10 px-0"
-                    disabled={payRows.length <= 1}
-                    onClick={() => removePayRow(row.id)}
-                    aria-label={t("common.delete")}
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
-              <button type="button" className="gp-btn gp-btn-ghost min-h-10 px-3 text-sm" onClick={addPayRow}>
-                <Plus className="h-4 w-4" />
-                {t("pos.addPayment")}
-              </button>
-              <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line bg-[#f8fafc] px-3 py-2">
-                <span>
-                  {t("pos.totalPayable")}:{" "}
-                  <b className="gp-money">{formatBDT(grandTotal, locale)}</b>
-                </span>
-                <span>
-                  {t("pos.totalPaid")}:{" "}
-                  <b className="gp-money">{formatBDT(collectedPaid, locale)}</b>
-                </span>
-                <span>
-                  {t("sales.paymentDue")}:{" "}
-                  <b className="gp-money text-[var(--gp-danger)]">{formatBDT(remainingDue, locale)}</b>
-                </span>
               </div>
-              {collectedPaid - grandTotal > 0.009 ? (
-                <p className="rounded-xl border border-[#f5c2c2] bg-[#fef2f2] px-3 py-2 text-sm font-semibold text-danger">
-                  {t("pos.overpayment")}
-                </p>
-              ) : null}
-            </div>
+            </Field>
+            <Field label="Contact No"><input className="gp-input" value={customerMobile} onChange={(e) => setCustomerMobile(e.target.value)} placeholder="Contact No" /></Field>
+            <Field label="Address"><div className="relative"><MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" /><input className="gp-input gp-input-icon-left" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} placeholder="Address" /></div></Field>
+            <Field label="Date"><div className="relative"><CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" /><input type="date" className="gp-input gp-input-icon-left" value={saleDate} onChange={(e) => setSaleDate(e.target.value)} /></div></Field>
+            <Field label="Quotation/PI No"><div className="flex gap-2"><input className="gp-input" value={quotationNo} onChange={(e) => setQuotationNo(e.target.value.toUpperCase())} placeholder="Auto-generated on save / enter to load" /><button type="button" className="gp-btn gp-btn-ghost px-3" onClick={() => void loadQuotation()}>Load</button></div></Field>
+            <Field label="REF No"><input className="gp-input bg-slate-50" value={referenceNo} readOnly placeholder="Auto-generated on save" /></Field>
           </div>
-        </section>
 
-        <section className="space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              className={`gp-btn min-h-12 ${filterOpen === "category" || categoryId ? "gp-btn-primary" : "gp-btn-ghost"}`}
-              onClick={() => setFilterOpen((v) => (v === "category" ? null : "category"))}
-            >
-              <LayoutGrid className="h-4 w-4" />
-              {t("products.category")}
-            </button>
-            <button
-              type="button"
-              className={`gp-btn min-h-12 ${filterOpen === "brand" || brandName ? "gp-btn-primary" : "gp-btn-ghost"}`}
-              onClick={() => setFilterOpen((v) => (v === "brand" ? null : "brand"))}
-            >
-              <span className="font-bold">B</span>
-              {locale === "bn" ? "ব্র্যান্ড" : "Brands"}
-            </button>
-          </div>
-          {filterOpen === "category" ? (
-            <div className="gp-card flex flex-wrap gap-1.5 p-2">
-              <button
-                type="button"
-                className="gp-btn gp-btn-ghost min-h-9 px-3 text-sm"
-                onClick={() => {
-                  setCategoryId("");
-                  setFilterOpen(null);
-                }}
-              >
-                {t("common.all")}
-              </button>
-              {categories.map((c) => (
-                <button
-                  key={c._id}
-                  type="button"
-                  className={`gp-btn min-h-9 px-3 text-sm ${categoryId === c._id ? "gp-btn-primary" : "gp-btn-ghost"}`}
-                  onClick={() => {
-                    setCategoryId(c._id);
-                    setFilterOpen(null);
-                  }}
-                >
-                  {locale === "bn" && c.nameBn ? c.nameBn : c.name}
-                </button>
-              ))}
+          <section className="rounded-xl border border-line p-2">
+            <h2 className="mb-1.5 flex items-center gap-2 text-sm font-bold"><PackagePlus className="h-4 w-4 text-primary" />Order Items</h2>
+            <div className="mb-2 grid items-end gap-2 sm:grid-cols-2 lg:grid-cols-[auto_minmax(260px,1fr)_minmax(150px,0.45fr)_minmax(150px,0.45fr)]">
+              <button type="button" className="gp-btn gp-btn-primary whitespace-nowrap" onClick={() => { const p = productsRef.current.find((x) => x.sku.toLowerCase() === search.trim().toLowerCase()); if (p) addProduct(p); }}><Plus className="h-4 w-4 shrink-0" /><span>Add Product</span></button>
+              <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" /><input className="gp-input gp-input-icon-left" value={search} onChange={(e) => { const value = e.target.value; setSearch(value); setPage(1); setProductResultsOpen(Boolean(value.trim() || brandName || categoryId)); }} placeholder="Search product by name, SKU, category or brand..." /></div>
+              <select aria-label="Brand filter" className="gp-input" value={brandName} onChange={(e) => { const value = e.target.value; setBrandName(value); setPage(1); setProductResultsOpen(Boolean(value || search.trim() || categoryId)); }}><option value="">All Brands</option>{brands.map((b) => <option key={b._id} value={b.name}>{b.name}</option>)}</select>
+              <select aria-label="Category filter" className="gp-input" value={categoryId} onChange={(e) => { const value = e.target.value; setCategoryId(value); setPage(1); setProductResultsOpen(Boolean(value || search.trim() || brandName)); }}><option value="">All Categories</option>{categories.map((c) => <option key={c._id} value={c._id}>{c.name}</option>)}</select>
             </div>
-          ) : null}
-          {filterOpen === "brand" ? (
-            <div className="gp-card flex flex-wrap gap-1.5 p-2">
-              <button
-                type="button"
-                className="gp-btn gp-btn-ghost min-h-9 px-3 text-sm"
-                onClick={() => {
-                  setBrandName("");
-                  setFilterOpen(null);
-                }}
-              >
-                {t("common.all")}
-              </button>
-              {brands.map((b) => (
-                <button
-                  key={b._id}
-                  type="button"
-                  className={`gp-btn min-h-9 px-3 text-sm ${brandName === b.name ? "gp-btn-primary" : "gp-btn-ghost"}`}
-                  onClick={() => {
-                    setBrandName(b.name);
-                    setFilterOpen(null);
-                  }}
-                >
-                  {b.name}
-                </button>
-              ))}
-            </div>
-          ) : null}
-
-          {loadingProducts && visibleProducts.length === 0 ? (
-            <p className="rounded-xl border border-line bg-[var(--gp-surface)] px-4 py-10 text-center text-muted">
-              {t("app.loading")}
-            </p>
-          ) : visibleProducts.length === 0 ? (
-            <p className="rounded-xl border border-line bg-[var(--gp-surface)] px-4 py-10 text-center text-muted">
-              {locale === "bn" ? "কোনো পণ্য পাওয়া যায়নি" : "No products found"}
-            </p>
-          ) : (
-            <>
-              <div
-                ref={gridRef}
-                className={`grid grid-cols-2 gap-3 sm:grid-cols-3 ${loadingProducts ? "opacity-60" : ""}`}
-              >
-                {pagedProducts.map((p) => {
-                  const stock = Number(p.locationQty ?? 0);
-                  const out = stock <= 0;
-                  return (
-                    <button
-                      key={p._id}
-                      type="button"
-                      data-pos-card
-                      disabled={out}
-                      onClick={() => addToCart(p)}
-                      className="gp-card-interactive group p-3.5 text-left disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <div className="mb-2.5 flex items-start justify-between gap-2">
+            {productResultsOpen && (loading && !visible.length ? <p className="py-6 text-center text-muted">Loading products...</p> : (
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                {visible.map((p) => {
+                  const stock = Number(p.locationQty || 0);
+                  return <button key={p._id} type="button" disabled={stock <= 0} onClick={() => addProduct(p)} className="group rounded-xl border border-line bg-white p-2 text-left transition hover:-translate-y-0.5 hover:border-[var(--gp-primary)] hover:shadow-md disabled:opacity-50">
+                    <div className="flex min-h-28 items-stretch gap-2">
+                      <div className="flex w-1/2 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-50">
                         {p.imageUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={p.imageUrl}
-                            alt=""
-                            className="h-10 w-10 rounded-lg border border-line object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--gp-primary-soft)] text-[var(--gp-primary)] transition group-hover:bg-[var(--gp-primary)] group-hover:text-white">
-                            <Cpu className="h-4 w-4" />
-                          </div>
-                        )}
-                        <span className={`gp-stock-pill ${out ? "opacity-60" : ""}`}>
-                          {stock} {p.unit || "Pcs"}
-                        </span>
+                          <img src={p.imageUrl} alt={p.name} className="aspect-square h-full max-h-32 w-full object-contain" />
+                        ) : <ImageIcon className="h-8 w-8 text-slate-300" />}
                       </div>
-                      <p className="text-[0.92rem] font-semibold leading-snug text-[var(--gp-ink)]">
-                        {locale === "bn" && p.nameBn ? p.nameBn : p.name}
-                      </p>
-                      <p className="mt-1 text-xs text-muted">({p.sku})</p>
-                      <p className="gp-money mt-2.5 text-lg text-primary">
-                        {formatBDT(p.sellPrice, locale)}
-                      </p>
-                    </button>
-                  );
+                      <div className="flex min-w-0 w-1/2 flex-col justify-center py-1">
+                        <p className="line-clamp-2 font-semibold leading-snug">{locale === "bn" && p.nameBn ? p.nameBn : p.name}</p>
+                        <p className="gp-money mt-1.5 font-bold text-primary">{formatBDT(p.sellPrice, locale)}</p>
+                        <p className="mt-1 text-xs text-muted">Stock: <span className={stock > 0 ? "font-semibold text-emerald-600" : "font-semibold text-red-500"}>{stock}</span></p>
+                        <p className="mt-1 truncate text-xs text-muted" title={p.brand || ""}>Brand: {p.brand || "—"}</p>
+                        <p className="mt-1 truncate text-[0.7rem] text-muted">SKU: {p.sku}</p>
+                      </div>
+                    </div>
+                  </button>;
                 })}
               </div>
-              {productPages > 1 ? (
-                <div className="flex flex-wrap items-center gap-1.5">
-                  {Array.from({ length: productPages }, (_, i) => i + 1).map((n) => (
-                    <button
-                      key={n}
-                      type="button"
-                      className={`gp-btn min-h-9 min-w-9 px-2.5 text-sm ${
-                        n === safeProductPage ? "gp-btn-primary" : "gp-btn-ghost"
-                      }`}
-                      onClick={() => setProductPage(n)}
-                    >
-                      {n}
-                    </button>
-                  ))}
-                  {safeProductPage < productPages ? (
-                    <button
-                      type="button"
-                      className="gp-btn gp-btn-ghost min-h-9 px-3 text-sm"
-                      onClick={() => setProductPage((p) => Math.min(productPages, p + 1))}
-                    >
-                      {t("pos.next")}
-                    </button>
-                  ) : null}
-                </div>
-              ) : null}
-            </>
-          )}
-        </section>
-      </div>
+            ))}
+            {productResultsOpen && pages > 1 && <div className="mt-2 flex items-center justify-center gap-2"><button type="button" className="gp-btn gp-btn-ghost" disabled={page === 1} onClick={() => setPage((x) => x - 1)}>Previous</button><span className="text-sm text-muted">Page {page} of {pages}</span><button type="button" className="gp-btn gp-btn-ghost" disabled={page === pages} onClick={() => setPage((x) => x + 1)}>Next</button></div>}
+          </section>
 
-      <div className="gp-card flex flex-wrap items-center gap-2 p-2.5">
-        <button
-          type="button"
-          className="gp-btn gp-btn-ghost min-h-11 px-3 text-sm"
-          disabled={busy || !cart.length}
-          onClick={() => void checkout({ status: "draft" })}
-        >
-          <Pencil className="h-4 w-4 text-[var(--gp-info)]" />
-          {t("sales.statusDraft")}
-        </button>
-        <button
-          type="button"
-          className="gp-btn gp-btn-ghost min-h-11 px-3 text-sm"
-          disabled={busy || !cart.length}
-          onClick={() => void checkout({ status: "quotation" })}
-        >
-          <FileText className="h-4 w-4 text-[var(--gp-warn)]" />
-          {t("sales.statusQuotation")}
-        </button>
-        <button
-          type="button"
-          className="gp-btn gp-btn-ghost min-h-11 px-3 text-sm"
-          disabled={busy || !cart.length}
-          onClick={() => void checkout({ status: "suspended" })}
-        >
-          <Pause className="h-4 w-4 text-[var(--gp-danger)]" />
-          {t("pos.hold")}
-        </button>
-        <button
-          type="button"
-          className="gp-btn gp-btn-ghost min-h-11 px-3 text-sm"
-          disabled={busy || !cart.length}
-          onClick={() => void checkout({ method: "credit" })}
-        >
-          <Wallet className="h-4 w-4 text-[var(--gp-primary)]" />
-          {t("sales.credit")}
-        </button>
-        <button
-          type="button"
-          className="gp-btn gp-btn-ghost min-h-11 px-3 text-sm"
-          disabled={busy || !cart.length}
-          onClick={() => void checkout({ method: "card", fullPay: true })}
-        >
-          <CreditCard className="h-4 w-4 text-[#db2777]" />
-          {t("sales.card")}
-        </button>
+          {cart.length > 0 && <div className="overflow-x-auto rounded-xl border border-line">
+            <table className="gp-table min-w-[850px] [&_input]:min-h-8 [&_input]:py-1 [&_td]:py-1.5 [&_th]:py-1.5">
+              <thead><tr><th className="w-12">SL</th><th>Name</th><th>Description</th><th className="w-24">QTY</th><th className="w-32">Price</th><th className="w-28">Discount</th><th className="w-32">Total</th><th className="w-12" /></tr></thead>
+              <tbody>{cart.map((i, index) => {
+                const lineTotal = Math.max(0, i.qty * i.sellPrice - i.lineDiscount);
+                return <tr key={i._id}><td>{index + 1}</td><td><input className="gp-input min-w-40" value={i.name} onChange={(e) => updateItem(i._id, { name: e.target.value })} /></td><td><input className="gp-input min-w-52" value={i.saleDescription} onChange={(e) => updateItem(i._id, { saleDescription: e.target.value })} /></td><td><input type="number" min={1} max={i.locationQty || undefined} className="gp-input" value={i.qty} onChange={(e) => updateQuantity(i, Number(e.target.value))} /></td><td><input type="number" min={0} className="gp-input" value={i.sellPrice} onChange={(e) => updateItem(i._id, { sellPrice: Math.max(0, Number(e.target.value)) })} /></td><td><input type="number" min={0} max={i.qty * i.sellPrice} className="gp-input" value={i.lineDiscount} onChange={(e) => updateItem(i._id, { lineDiscount: Math.max(0, Number(e.target.value)) })} /></td><td className="gp-money font-bold">{formatBDT(lineTotal, locale)}</td><td><button type="button" className="p-2 text-red-500" onClick={() => setCart((old) => old.filter((x) => x._id !== i._id))}><Trash2 className="h-4 w-4" /></button></td></tr>;
+              })}</tbody>
+            </table>
+          </div>}
 
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            className="gp-btn pos-multipay min-h-12 min-w-[9rem] px-4"
-            disabled={busy || !cart.length || !locationId || collectedPaid - grandTotal > 0.009}
-            onClick={() => void checkout({ usePayRows: true })}
-          >
-            <Wallet className="h-4 w-4" />
-            {t("sales.multiple")}
-          </button>
-          <button
-            type="button"
-            className="gp-btn pos-cash min-h-12 min-w-[8rem] px-4"
-            disabled={busy || !cart.length || !locationId}
-            onClick={() => void checkout({ method: "cash", fullPay: true })}
-          >
-            {busy ? "..." : t("sales.cash")}
-          </button>
-          <button
-            type="button"
-            className="gp-btn pos-cancel min-h-12 min-w-[7rem] px-4"
-            disabled={busy || cart.length === 0}
-            onClick={resetCart}
-          >
-            <X className="h-4 w-4" />
-            {t("common.cancel")}
-          </button>
-          <div className="px-2 text-right">
-            <p className="text-xs font-semibold text-muted">
-              {locale === "bn" ? "মোট প্রদেয়" : "Total Payable"}
-            </p>
-            <p className="gp-money text-2xl font-extrabold text-[var(--gp-primary)]">
-              {formatBDT(grandTotal, locale)}
-            </p>
-          </div>
-          <Link href="/sales" className="gp-btn gp-btn-primary min-h-12 px-4">
-            <Clock className="h-4 w-4" />
-            {locale === "bn" ? "সাম্প্রতিক" : "Recent Transactions"}
-          </Link>
-        </div>
-      </div>
+          <section className="rounded-xl border border-line p-2">
+            <h2 className="mb-1.5 flex items-center gap-2 text-sm font-bold"><FileText className="h-4 w-4 text-primary" />Notes / Delivery Instructions</h2>
+            <div className="mb-1.5">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+                <input
+                  className="gp-input gp-input-icon-left"
+                  list="quotation-saved-terms"
+                  value={savedTermQuery}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setSavedTermQuery(value);
+                    const selected = savedTerms.find((term) => term === value);
+                    if (selected) setNote(selected);
+                  }}
+                  placeholder="Search saved terms or write directly below..."
+                />
+                <datalist id="quotation-saved-terms">
+                  {savedTerms.map((term) => <option key={term} value={term} />)}
+                </datalist>
+              </div>
+            </div>
+            <textarea className="gp-input min-h-20 resize-y" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Enter notes, delivery instructions, or terms and conditions..." />
+          </section>
 
-      {message ? (
-        <p className="rounded-xl border border-line bg-[var(--gp-surface)] px-3 py-2 text-sm font-semibold text-primary">
-          {message}
-          {locationName ? <span className="ml-2 font-normal text-muted">· {locationName}</span> : null}
-        </p>
-      ) : null}
-
-      <CalculatorModal open={calcOpen} onClose={() => setCalcOpen(false)} />
-
-      <Modal
-        open={custOpen}
-        title={t("contacts.addCustomer")}
-        onClose={() => setCustOpen(false)}
-      >
-        <div className="grid gap-3">
-          <Field label={t("contacts.name")}>
-            <input
-              className="gp-input"
-              value={newCust.name}
-              onChange={(e) => setNewCust((s) => ({ ...s, name: e.target.value }))}
-            />
-          </Field>
-          <Field label={t("contacts.mobile")}>
-            <input
-              className="gp-input"
-              value={newCust.mobile}
-              onChange={(e) => setNewCust((s) => ({ ...s, mobile: e.target.value }))}
-            />
-          </Field>
-          <div className="flex justify-end gap-2">
-            <button type="button" className="gp-btn gp-btn-ghost" onClick={() => setCustOpen(false)}>
-              {t("common.cancel")}
-            </button>
-            <button type="button" className="gp-btn gp-btn-primary" onClick={() => void addCustomer()}>
-              {t("common.save")}
-            </button>
+          <div className="grid gap-2 md:grid-cols-2">
+            <section className="rounded-xl border border-line p-2">
+              <button type="button" className="gp-btn gp-btn-ghost" onClick={() => setPayRows((old) => [...old, payRow()])}><Plus className="h-4 w-4" />Add Payment</button>
+              <div className="mt-2 space-y-1.5">{payRows.map((p) => <div key={p.id} className="grid grid-cols-[1fr_1fr_auto] gap-2"><select className="gp-input" value={p.method} onChange={(e) => setPayRows((old) => old.map((x) => x.id === p.id ? { ...x, method: e.target.value } : x))}>{METHODS.map((m) => <option key={m} value={m}>{m}</option>)}</select><input type="number" min={0} className="gp-input" value={p.amount || ""} placeholder="Amount" onChange={(e) => setPayRows((old) => old.map((x) => x.id === p.id ? { ...x, amount: Math.max(0, Number(e.target.value)) } : x))} /><button type="button" className="p-2 text-red-500" disabled={payRows.length === 1} onClick={() => setPayRows((old) => old.filter((x) => x.id !== p.id))}><X className="h-4 w-4" /></button></div>)}</div>
+            </section>
+            <section className="rounded-xl border border-line bg-[#fbfdff] p-2">
+              <h2 className="mb-2 flex items-center gap-2 text-sm font-bold"><Grid2X2 className="h-4 w-4 text-primary" />Quotation Summary</h2>
+              <div className="space-y-1.5 text-sm"><div className="flex justify-between"><span>Subtotal</span><b className="gp-money">{formatBDT(subtotal, locale)}</b></div><div className="grid grid-cols-[1fr_150px] items-center gap-2"><span>Total Discount</span><div className="flex"><input type="number" min={0} className="gp-input rounded-r-none" value={discountValue} onChange={(e) => setDiscountValue(Math.max(0, Number(e.target.value)))} /><select className="gp-input w-16 rounded-l-none px-1" value={discountType} onChange={(e) => setDiscountType(e.target.value as "percentage" | "fixed")}><option value="percentage">%</option><option value="fixed">৳</option></select></div></div><div className="flex justify-between text-xs text-muted"><span>Including line discounts</span><span>{formatBDT(totalDiscount, locale)}</span></div><div className="flex justify-between rounded-lg border border-line bg-white p-2 text-lg"><b>Grand Total</b><b className="gp-money text-primary">{formatBDT(grandTotal, locale)}</b></div><div className="flex justify-between px-2 text-base"><b>Due Amount</b><b className="gp-money text-red-500">{formatBDT(due, locale)}</b></div></div>
+            </section>
           </div>
         </div>
+      </section>
+
+      <div className="gp-card flex flex-wrap gap-2 p-2">
+        <button type="button" className="gp-btn gp-btn-ghost" disabled={busy || !cart.length} onClick={() => void save("draft")}>Save Draft</button>
+        <button type="button" className="gp-btn gp-btn-primary" disabled={busy || !cart.length} onClick={() => void save("quotation")}>Save Quotation</button>
+        <button type="button" className="gp-btn gp-btn-ghost" disabled={busy || !cart.length} onClick={() => void save("suspended")}>Hold</button>
+        <button type="button" className="gp-btn gp-btn-primary ml-auto" disabled={busy || !cart.length || paid > grandTotal + .009} onClick={() => void save("final", true)}><Wallet className="h-4 w-4" />{busy ? "Saving..." : "Complete Sale"}</button>
+      </div>
+      {message && <p className="rounded-xl border border-line bg-white px-4 py-3 text-sm font-semibold text-primary">{message}</p>}
+
+      <Modal open={custOpen} title="Import Customer" onClose={() => setCustOpen(false)}>
+        <div className="grid gap-3"><Field label="Customer Name"><input className="gp-input" value={newCust.name} onChange={(e) => setNewCust((x) => ({ ...x, name: e.target.value }))} /></Field><Field label="Contact No"><input className="gp-input" value={newCust.mobile} onChange={(e) => setNewCust((x) => ({ ...x, mobile: e.target.value }))} /></Field><div className="flex justify-end gap-2"><button type="button" className="gp-btn gp-btn-ghost" onClick={() => setCustOpen(false)}>Cancel</button><button type="button" className="gp-btn gp-btn-primary" onClick={() => void addCustomer()}><UserPlus className="h-4 w-4" />Save Customer</button></div></div>
       </Modal>
     </div>
   );

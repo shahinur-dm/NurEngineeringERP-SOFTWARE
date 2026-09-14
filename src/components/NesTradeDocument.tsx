@@ -409,7 +409,7 @@ export function NesTradeDocument({
         </p>
       ) : null}
 
-      {isLast && kind === "quotation" ? (
+      {isLast && (kind === "quotation" || terms.length > 0) ? (
         <div className="nes-terms">
           <p>
             <b>Terms &amp; Conditions</b>

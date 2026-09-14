@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Types } from "mongoose";
 import { connectDB } from "@/lib/db";
 import { readSession } from "@/lib/auth";
-import { Contact, Location, Product, ProductSupplier, nextSeq } from "@/models";
+import { Category, Contact, Location, Product, ProductSupplier, nextSeq } from "@/models";
 import { attachOffersToProducts, saveProductOffers } from "@/lib/product-suppliers";
 
 function escapeRegex(value: string) {
@@ -53,6 +53,14 @@ export async function GET(req: NextRequest) {
     ];
 
     const extraQueries: Promise<string[]>[] = [];
+
+    const matchingCategoryIds = await Category.find({
+      $or: [{ name: rx }, { nameBn: rx }],
+    })
+      .distinct("_id");
+    if (matchingCategoryIds.length) {
+      or.push({ categoryId: { $in: matchingCategoryIds } });
+    }
 
     extraQueries.push(
       Contact.find({
