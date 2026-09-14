@@ -495,6 +495,22 @@ export const CRUD_CONFIG: Record<string, CrudConfig> = {
     fields: [
       { key: "referenceNo", labelBn: "রেফারেন্স", labelEn: "Reference" },
       { key: "supplierName", labelBn: "সরবরাহকারী", labelEn: "Supplier" },
+      { key: "purchaseType", labelBn: "ক্রয়ের ধরন", labelEn: "Purchase Type", type: "select", options: [
+        { value: "local", labelBn: "লোকাল ক্রয়", labelEn: "Local Purchase" },
+        { value: "import", labelBn: "আমদানি ক্রয়", labelEn: "Import Purchase" },
+      ]},
+      { key: "purchaseDate", labelBn: "ক্রয়ের তারিখ", labelEn: "Purchase Date", type: "date" },
+      { key: "receivingDate", labelBn: "গ্রহণের তারিখ", labelEn: "Receiving Date", type: "date" },
+      { key: "supplierWhatsapp", labelBn: "হোয়াটসঅ্যাপ", labelEn: "Supplier WhatsApp" },
+      { key: "supplierWechat", labelBn: "উইচ্যাট", labelEn: "Supplier WeChat" },
+      { key: "shippingCost", labelBn: "শিপিং খরচ", labelEn: "Shipping Cost", type: "number" },
+      { key: "otherCost", labelBn: "অন্যান্য খরচ", labelEn: "Other Cost", type: "number" },
+      { key: "discount", labelBn: "ছাড়", labelEn: "Discount", type: "number" },
+      { key: "currency", labelBn: "মুদ্রা", labelEn: "Currency", type: "select", options: [
+        { value: "BDT", labelBn: "বিডিটি", labelEn: "BDT" },
+        { value: "USD", labelBn: "ইউএসডি", labelEn: "USD" },
+        { value: "RMB", labelBn: "আরএমবি", labelEn: "RMB" },
+      ]},
       { key: "note", labelBn: "নোট", labelEn: "Note", type: "textarea" },
     ],
   },

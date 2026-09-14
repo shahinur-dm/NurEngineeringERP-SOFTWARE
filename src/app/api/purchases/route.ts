@@ -97,7 +97,9 @@ export async function POST(req: NextRequest) {
   const subtotal = items.reduce((a: number, i: { lineTotal: number }) => a + i.lineTotal, 0);
   const discount = Number(body.discount || 0);
   const tax = Number(body.tax || 0);
-  const grandTotal = subtotal - discount + tax;
+  const shippingCost = Number(body.shippingCost || 0);
+  const otherCost = Number(body.otherCost || 0);
+  const grandTotal = subtotal + shippingCost + otherCost - discount + tax;
   const payments = body.payments || [];
   const paidAmount = payments.reduce(
     (a: number, p: { amount: number }) => a + Number(p.amount || 0),
@@ -114,17 +116,28 @@ export async function POST(req: NextRequest) {
           referenceNo,
           status: body.status || "received",
           locationId: body.locationId,
+          purchaseType: body.purchaseType === "import" ? "import" : "local",
           supplierId: body.supplierId,
           supplierName: body.supplierName,
+          supplierWhatsapp: body.supplierWhatsapp,
+          supplierWechat: body.supplierWechat,
           items,
           subtotal,
           discount,
           tax,
+          shippingCost,
+          otherCost,
+          currency: ["BDT", "USD", "RMB"].includes(String(body.currency))
+            ? body.currency
+            : "BDT",
           grandTotal,
           paidAmount,
           dueAmount,
           payments,
           note: body.note,
+          receivingDate: body.receivingDate ? new Date(body.receivingDate) : undefined,
+          documentName: body.documentName,
+          documentUrl: body.documentUrl,
           purchaseDate: body.purchaseDate ? new Date(body.purchaseDate) : new Date(),
           createdBy: session.id,
         },

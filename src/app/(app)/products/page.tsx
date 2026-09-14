@@ -3,7 +3,7 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { ChevronDown, ImageIcon, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { AlertBanner, EmptyState, Field, Modal, PageHeader, TableSkeleton } from "@/components/ui";
 import { formatMoney } from "@/lib/utils";
 import { displaySupplierLabel } from "@/lib/supplier-label";
@@ -323,7 +323,7 @@ export default function ProductsPage() {
   }
 
   return (
-    <div>
+    <div className="[&>div:first-child]:mb-2 [&>div:first-child]:pb-2">
       <PageHeader
         title={t("products.title")}
         subtitle={
@@ -332,10 +332,15 @@ export default function ProductsPage() {
             : "পণ্য তালিকা — লিংকড সরবরাহকারী মূল্যসহ"
         }
         actions={
-          <button type="button" className="gp-btn gp-btn-primary" onClick={openCreate}>
-            <Plus className="h-4 w-4" />
-            {t("products.add")}
-          </button>
+          <div className="flex items-center gap-2">
+            <Link href="/products/categories" className="gp-btn gp-btn-ghost">
+              {t("nav.categories")}
+            </Link>
+            <button type="button" className="gp-btn gp-btn-primary" onClick={openCreate}>
+              <Plus className="h-4 w-4" />
+              {t("products.add")}
+            </button>
+          </div>
         }
       />
 
@@ -343,10 +348,10 @@ export default function ProductsPage() {
         <AlertBanner tone={banner.tone} message={banner.message} onClose={() => setBanner(null)} />
       ) : null}
 
-      <div className="gp-card mb-5 flex items-center gap-3 p-3.5">
+      <div className="gp-card mb-2 flex items-center gap-2 px-2 py-1.5">
         <Search className="h-4 w-4 shrink-0 text-muted" />
         <input
-          className="gp-input border-0 bg-transparent shadow-none focus:shadow-none"
+          className="gp-input min-h-8 border-0 bg-transparent py-1 shadow-none focus:shadow-none"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder={t("products.searchWide")}
@@ -358,46 +363,62 @@ export default function ProductsPage() {
       </div>
 
       {loading && !products.length ? (
-        <TableSkeleton rows={8} cols={7} />
+        <TableSkeleton rows={8} cols={10} />
       ) : products.length === 0 ? (
         <EmptyState message={debouncedQ ? (locale === "bn" ? "কোনো পণ্য পাওয়া যায়নি" : "No products match your search") : t("common.noData")} />
       ) : (
-        <div className="gp-table-wrap overflow-x-auto">
-          <table className="gp-table gp-product-list">
+        <div className="gp-table-wrap overflow-x-auto lg:-ml-12 lg:w-[calc(100%+3rem)]">
+          <table className="gp-table gp-product-list min-w-[980px] lg:w-full lg:min-w-0 lg:table-fixed lg:[&_td]:py-1 lg:[&_th]:py-1.5">
+            <colgroup>
+              <col className="lg:w-10" />
+              <col className="lg:w-12" />
+              <col className="lg:w-[11.25rem]" />
+              <col className="lg:w-[8.4375rem]" />
+              <col className="lg:w-[4.375rem]" />
+              <col className="lg:w-[5.625rem]" />
+              <col className="lg:w-[5.9375rem]" />
+              <col className="lg:w-[9.0625rem]" />
+              <col className="lg:w-[5.625rem]" />
+              <col className="lg:w-[4.75rem]" />
+            </colgroup>
             <thead>
               <tr>
+                <th className="w-10">SL</th>
+                <th className="w-12">Image</th>
                 <th>{t("products.name")}</th>
+                <th>{t("products.brand")}</th>
                 <th>{t("products.sku")}</th>
                 <th>{locale === "bn" ? "খরচ মূল্য" : "Cost"}</th>
                 <th>{locale === "bn" ? "বিক্রয় মূল্য" : "Sales price"}</th>
                 <th>{t("products.supplierPrices")}</th>
+                <th>{locale === "bn" ? "বিবরণ" : "Description"}</th>
                 <th>{t("common.actions")}</th>
               </tr>
             </thead>
             <tbody className={loading ? "opacity-60" : undefined}>
-              {products.map((p) => {
+              {products.map((p, index) => {
                 const title = locale === "bn" && p.nameBn ? p.nameBn : p.name;
                 const offers = relationOffers(p);
                 return (
                   <tr key={p._id}>
+                    <td>{index + 1}</td>
                     <td>
-                      <div className="flex items-center gap-2">
-                        {p.imageUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={p.imageUrl}
-                            alt=""
-                            className="h-9 w-9 rounded-lg object-cover border border-line"
-                          />
-                        ) : null}
-                        <div>
-                          <div className="font-semibold text-[var(--gp-ink)]">{title}</div>
-                          {locale === "bn" && p.name && p.nameBn ? (
-                            <div className="mt-0.5 text-xs text-muted">{p.name}</div>
-                          ) : null}
-                        </div>
-                      </div>
+                      {p.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={p.imageUrl} alt="" className="h-7 w-7 rounded-md border border-line object-cover" />
+                      ) : (
+                        <span className="flex h-7 w-7 items-center justify-center rounded-md border border-line bg-[var(--gp-bg)]">
+                          <ImageIcon className="h-3.5 w-3.5 text-muted" />
+                        </span>
+                      )}
                     </td>
+                    <td>
+                      <div className="max-w-[13rem] truncate font-semibold text-[var(--gp-ink)]" title={title}>{title}</div>
+                      {locale === "bn" && p.name && p.nameBn ? (
+                        <div className="max-w-[13rem] truncate text-xs text-muted">{p.name}</div>
+                      ) : null}
+                    </td>
+                    <td><span className="block max-w-[10rem] truncate" title={p.brand || ""}>{p.brand || "—"}</span></td>
                     <td className="gp-money whitespace-nowrap">{p.sku}</td>
                     <td className="gp-money whitespace-nowrap">
                       {formatMoney(p.purchasePrice || 0, p.currency || "BDT", locale)}
@@ -409,42 +430,40 @@ export default function ProductsPage() {
                       {offers.length === 0 ? (
                         <span className="text-sm text-muted">{t("products.noSuppliers")}</span>
                       ) : (
-                        <div className="gp-product-list__suppliers">
-                          {offers.map((offer, idx) => (
-                            <Link
-                              key={offer.linkId || `${p._id}-${offer.supplierId}-${idx}`}
-                              href={`/contacts/suppliers/${offer.supplierId}`}
-                              className="gp-product-list__chip"
-                              title={locale === "bn" ? "সরবরাহকারী দেখুন" : "View supplier"}
-                            >
-                              <span className="gp-product-list__chip-name">
-                                {displaySupplierLabel(offer, locale)}
-                              </span>
-                              <span className="gp-product-list__chip-price gp-money">
-                                {formatMoney(offer.price, p.currency || "BDT", locale)}
-                              </span>
-                            </Link>
-                          ))}
-                        </div>
+                        <details>
+                          <summary className="inline-flex cursor-pointer list-none items-center gap-1 whitespace-nowrap text-sm font-medium text-primary">
+                            {offers.length} {locale === "bn" ? "লিংকড সরবরাহকারী" : "Linked Suppliers"}
+                            <ChevronDown className="h-3.5 w-3.5" />
+                          </summary>
+                          <div className="mt-1 space-y-1">
+                            {offers.map((offer, idx) => (
+                              <Link key={offer.linkId || `${p._id}-${offer.supplierId}-${idx}`} href={`/contacts/suppliers/${offer.supplierId}`} className="flex max-w-[13rem] items-center justify-between gap-2 text-xs text-primary hover:underline">
+                                <span className="truncate">{displaySupplierLabel(offer, locale)}</span>
+                                <span className="gp-money shrink-0">{formatMoney(offer.price, p.currency || "BDT", locale)}</span>
+                              </Link>
+                            ))}
+                          </div>
+                        </details>
                       )}
                     </td>
+                    <td><span className="block max-w-[12rem] truncate text-muted" title={p.description || ""}>{p.description || "—"}</span></td>
                     <td>
-                      <div className="flex flex-wrap gap-1">
+                      <div className="flex flex-nowrap gap-1">
                         <button
                           type="button"
-                          className="gp-btn gp-btn-ghost min-h-9 px-2.5"
+                          className="gp-btn gp-btn-ghost min-h-9 px-2.5 lg:min-h-7 lg:min-w-7 lg:px-1.5"
                           onClick={() => openEdit(p)}
                           aria-label="Edit"
                         >
-                          <Pencil className="h-4 w-4" />
+                          <Pencil className="h-4 w-4 shrink-0" />
                         </button>
                         <button
                           type="button"
-                          className="gp-btn gp-btn-ghost min-h-9 px-2.5 text-[var(--gp-danger)]"
+                          className="gp-btn gp-btn-ghost min-h-9 px-2.5 text-[var(--gp-danger)] lg:min-h-7 lg:min-w-7 lg:px-1.5"
                           onClick={() => onDelete(p._id)}
                           aria-label="Delete"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4 shrink-0" />
                         </button>
                       </div>
                     </td>

@@ -63,6 +63,8 @@ export function InvoiceActions({
   hidePrintPdf,
   saleStatus,
   className,
+  iconOnly,
+  iconOnlyCore,
 }: {
   saleId: string;
   compact?: boolean;
@@ -71,6 +73,8 @@ export function InvoiceActions({
   hidePrintPdf?: boolean;
   saleStatus?: string;
   className?: string;
+  iconOnly?: boolean;
+  iconOnlyCore?: boolean;
 }) {
   const t = useTranslations();
   const router = useRouter();
@@ -84,7 +88,9 @@ export function InvoiceActions({
   const isQuotation = saleStatus === "quotation";
   const stacked = compact && !inline;
 
-  const btn = stacked
+  const btn = iconOnly
+    ? "gp-btn gp-btn-ghost min-h-8 min-w-8 px-2 lg:min-h-7 lg:min-w-7 lg:shrink-0 lg:px-1.5"
+    : stacked
     ? "gp-btn gp-btn-ghost min-h-9 w-full justify-start whitespace-nowrap px-2.5 text-sm"
     : inline
       ? "gp-btn gp-btn-ghost min-h-8 px-2 text-xs whitespace-nowrap"
@@ -120,23 +126,23 @@ export function InvoiceActions({
         <>
           <Link href={quotationHref} className={btn} title="View">
             <Eye className="h-4 w-4" />
-            <span>View</span>
+            <span className={iconOnly || iconOnlyCore ? "sr-only" : undefined}>View</span>
           </Link>
           {hidePrintPdf ? null : showPrint ? (
             <button type="button" className={btn} onClick={() => window.print()} title="Print">
               <Printer className="h-4 w-4" />
-              <span>Print</span>
+              <span className={iconOnly || iconOnlyCore ? "sr-only" : undefined}>Print</span>
             </button>
           ) : (
             <Link href={printQuotationHref} className={btn} title="Print">
               <Printer className="h-4 w-4" />
-              <span>Print</span>
+              <span className={iconOnly || iconOnlyCore ? "sr-only" : undefined}>Print</span>
             </Link>
           )}
           {hidePrintPdf ? null : (
           <a href={quotationPdf} target="_blank" rel="noreferrer" className={btn} title="PDF">
             <FileText className="h-4 w-4 text-[var(--gp-info)]" />
-            <span>PDF</span>
+            <span className={iconOnly ? "sr-only" : undefined}>PDF</span>
           </a>
           )}
           <button
@@ -152,43 +158,43 @@ export function InvoiceActions({
             title={t("sales.convertToOrder")}
           >
             <FileCheck className="h-4 w-4" />
-            <span>{t("sales.convertToOrder")}</span>
+            <span className={iconOnly ? "sr-only" : undefined}>{t("sales.convertToOrder")}</span>
           </button>
         </>
       ) : (
         <>
           <Link href={viewHref} className={btn} title="View Invoice">
             <Eye className="h-4 w-4" />
-            <span>View Invoice</span>
+            <span className={iconOnly ? "sr-only" : undefined}>View Invoice</span>
           </Link>
           {hidePrintPdf ? null : showPrint ? (
             <button type="button" className={btn} onClick={() => window.print()} title="Print">
               <Printer className="h-4 w-4" />
-              <span>Print</span>
+              <span className={iconOnly ? "sr-only" : undefined}>Print</span>
             </button>
           ) : (
             <Link href={printInvoiceHref} className={btn} title="Print">
               <Printer className="h-4 w-4" />
-              <span>Print</span>
+              <span className={iconOnly ? "sr-only" : undefined}>Print</span>
             </Link>
           )}
           {hidePrintPdf ? null : (
           <a href={pdfHref} target="_blank" rel="noreferrer" className={btn} title="Invoice PDF">
             <FileText className="h-4 w-4 text-[var(--gp-danger)]" />
-            <span>Invoice PDF</span>
+            <span className={iconOnly ? "sr-only" : undefined}>Invoice PDF</span>
           </a>
           )}
           <Link href={challanView} className={btn} title="View Delivery Challan">
             <Truck className="h-4 w-4" />
-            <span>View Delivery Challan</span>
+            <span className={iconOnly ? "sr-only" : undefined}>View Delivery Challan</span>
           </Link>
           <Link href={printChallanHref} className={btn} title="Print Delivery Challan">
             <Printer className="h-4 w-4" />
-            <span>Print Delivery Challan</span>
+            <span className={iconOnly ? "sr-only" : undefined}>Print Delivery Challan</span>
           </Link>
           <a href={challanPdf} target="_blank" rel="noreferrer" className={btn} title="Delivery Challan PDF">
             <FileText className="h-4 w-4" />
-            <span>Delivery Challan PDF</span>
+            <span className={iconOnly ? "sr-only" : undefined}>Delivery Challan PDF</span>
           </a>
         </>
       )}

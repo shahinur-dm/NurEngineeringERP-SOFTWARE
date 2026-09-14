@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { EmptyState, Field, FilterBar, PageHeader } from "@/components/ui";
+import { Pencil, Search } from "lucide-react";
+import { EmptyState, Field, Modal } from "@/components/ui";
 import { InvoiceActions } from "@/components/InvoiceActions";
 import { formatBDT, formatDateBD } from "@/lib/utils";
 
@@ -16,6 +17,22 @@ type Quote = {
   invoiceNo?: string;
   customerName: string;
   customerId?: string;
+  customerMobile?: string;
+  customerAddress?: string;
+  customerEmail?: string;
+  pfNo?: string;
+  poNo?: string;
+  challanNo?: string;
+  binNo?: string;
+  subject?: string;
+  note?: string;
+  terms?: string;
+  subtotal?: number;
+  discount?: number;
+  tax?: number;
+  shipping?: number;
+  paidAmount?: number;
+  dueAmount?: number;
   grandTotal: number;
   saleDate: string;
   status: string;
@@ -28,14 +45,27 @@ export default function QuotationsPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [q, setQ] = useState("");
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [editing, setEditing] = useState<Quote | null>(null);
+  const [editForm, setEditForm] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
 
-  async function load(nextPage = 1) {
+  async function load(nextPage = 1, search = q) {
     const qs = new URLSearchParams({
       limit: String(PAGE_SIZE),
       page: String(nextPage),
       status: "quotation",
     });
-    if (q) qs.set("q", q);
+    const value = search.trim();
+    const dateMatch = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (dateMatch) {
+      const [, day, month, year] = dateMatch;
+      const date = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+      qs.set("from", date);
+      qs.set("to", date);
+    } else if (value) {
+      qs.set("q", value);
+    }
     const res = await fetch(`/api/sales?${qs}`);
     const json = await res.json();
     setData(json.data || []);
@@ -45,50 +75,136 @@ export default function QuotationsPage() {
 
   useEffect(() => {
     void load(1);
+    return () => {
+      if (searchTimer.current) clearTimeout(searchTimer.current);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
 
+  function openEdit(quote: Quote) {
+    setEditing(quote);
+    setEditForm({
+      quotationNo: quote.quotationNo || "",
+      referenceNo: quote.referenceNo || "",
+      customerName: quote.customerName || "",
+      customerMobile: quote.customerMobile || "",
+      customerAddress: quote.customerAddress || "",
+      customerEmail: quote.customerEmail || "",
+      pfNo: quote.pfNo || quote.poNo || "",
+      challanNo: quote.challanNo || "",
+      binNo: quote.binNo || "",
+      subject: quote.subject || "",
+      saleDate: quote.saleDate ? quote.saleDate.slice(0, 10) : "",
+      subtotal: String(quote.subtotal || 0),
+      discount: String(quote.discount || 0),
+      tax: String(quote.tax || 0),
+      shipping: String(quote.shipping || 0),
+      grandTotal: String(quote.grandTotal || 0),
+      paidAmount: String(quote.paidAmount || 0),
+      dueAmount: String(quote.dueAmount || 0),
+      note: quote.note || "",
+      terms: quote.terms || "",
+    });
+  }
+
+  async function saveEdit() {
+    if (!editing) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/sales/${editing._id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          quotationNo: editForm.quotationNo,
+          referenceNo: editForm.referenceNo,
+          customerName: editForm.customerName,
+          customerMobile: editForm.customerMobile,
+          customerAddress: editForm.customerAddress,
+          customerEmail: editForm.customerEmail,
+          pfNo: editForm.pfNo,
+          challanNo: editForm.challanNo,
+          binNo: editForm.binNo,
+          subject: editForm.subject,
+          saleDate: editForm.saleDate,
+          subtotal: Number(editForm.subtotal || 0),
+          discount: Number(editForm.discount || 0),
+          tax: Number(editForm.tax || 0),
+          shipping: Number(editForm.shipping || 0),
+          grandTotal: Number(editForm.grandTotal || 0),
+          paidAmount: Number(editForm.paidAmount || 0),
+          dueAmount: Number(editForm.dueAmount || 0),
+          note: editForm.note,
+          terms: editForm.terms,
+        }),
+      });
+      if (!res.ok) throw new Error("update_failed");
+      setEditing(null);
+      await load(page);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div>
-      <PageHeader
-        title={t("nav.listQuotations")}
-        actions={
+      <div className="mb-2 flex flex-col gap-2 border-b border-line pb-2 sm:flex-row sm:items-center">
+        <h1 className="gp-display text-2xl font-bold tracking-tight text-[var(--gp-ink)]">
+          {t("nav.listQuotations")}
+        </h1>
+        <form className="flex min-w-0 flex-1 gap-2 sm:ml-auto sm:max-w-xl" onSubmit={(e) => { e.preventDefault(); void load(1); }}>
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+            <input
+              className="gp-input gp-input-icon-left"
+              value={q}
+              onChange={(e) => {
+                const value = e.target.value;
+                setQ(value);
+                if (searchTimer.current) clearTimeout(searchTimer.current);
+                searchTimer.current = setTimeout(() => void load(1, value), 250);
+              }}
+              placeholder={t("common.search")}
+            />
+          </div>
           <Link href="/pos" className="gp-btn gp-btn-primary">
             {t("nav.addQuotation")}
           </Link>
-        }
-      />
+        </form>
+      </div>
 
-      <FilterBar>
-        <Field label={t("common.search")}>
-          <input className="gp-input" value={q} onChange={(e) => setQ(e.target.value)} />
-        </Field>
-      </FilterBar>
-      <button type="button" className="gp-btn gp-btn-primary mb-5" onClick={() => void load(1)}>
-        {t("dashboard.apply")}
-      </button>
-
-      <div className="gp-table-wrap !overflow-x-auto">
+      <div className="gp-table-wrap !overflow-x-auto lg:-ml-12 lg:w-[calc(100%+3rem)]">
         {data.length === 0 ? (
           <EmptyState message={t("common.noData")} />
         ) : (
-          <table className="gp-table gp-table-compact">
+          <table className="gp-table gp-table-compact min-w-[760px] lg:w-full lg:min-w-0 lg:table-fixed [&_td]:py-2 [&_th]:py-2">
+            <colgroup>
+              <col className="lg:w-9" />
+              <col className="lg:w-[6.875rem]" />
+              <col className="lg:w-[7.8125rem]" />
+              <col className="lg:w-[7.8125rem]" />
+              <col />
+              <col className="lg:w-[6.25rem]" />
+              <col className="lg:w-[22rem]" />
+            </colgroup>
             <thead>
               <tr>
+                <th className="w-14">SL No</th>
+                <th>{t("common.date")}</th>
                 <th>{t("sales.quotationNo")}</th>
                 <th>{t("sales.referenceNo")}</th>
                 <th>{t("sales.customer")}</th>
-                <th>{t("common.date")}</th>
                 <th>{t("common.grandTotal")}</th>
                 <th>{t("common.actions")}</th>
               </tr>
             </thead>
             <tbody>
-              {data.map((s) => (
+              {data.map((s, index) => (
                 <tr key={s._id}>
+                  <td>{(page - 1) * PAGE_SIZE + index + 1}</td>
+                  <td>{formatDateBD(s.saleDate, locale)}</td>
                   <td>
                     <Link href={`/sales/${s._id}/quotation`} className="font-semibold text-primary hover:underline">
                       {s.quotationNo || s.invoiceNo || "—"}
@@ -107,10 +223,15 @@ export default function QuotationsPage() {
                       s.customerName
                     )}
                   </td>
-                  <td>{formatDateBD(s.saleDate, locale)}</td>
                   <td className="font-bold">{formatBDT(s.grandTotal, locale)}</td>
                   <td>
-                    <InvoiceActions saleId={s._id} saleStatus={s.status} inline />
+                    <div className="flex flex-wrap items-center gap-1 lg:flex-nowrap">
+                      <button type="button" className="gp-btn gp-btn-ghost min-h-8 px-2 text-xs" onClick={() => openEdit(s)}>
+                        <Pencil className="h-3.5 w-3.5" />
+                        <span className="sr-only">{t("common.edit")}</span>
+                      </button>
+                      <InvoiceActions saleId={s._id} saleStatus={s.status} inline iconOnlyCore className="lg:flex-nowrap [&>*]:shrink-0" />
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -160,6 +281,53 @@ export default function QuotationsPage() {
           </button>
         </div>
       ) : null}
+
+      <Modal open={!!editing} title={t("common.edit")} onClose={() => setEditing(null)} wide>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {[
+            ["quotationNo", t("sales.quotationNo"), "text"],
+            ["referenceNo", t("sales.referenceNo"), "text"],
+            ["saleDate", t("common.date"), "date"],
+            ["customerName", t("sales.customer"), "text"],
+            ["customerMobile", t("contacts.mobile"), "text"],
+            ["customerAddress", t("contacts.address"), "text"],
+            ["customerEmail", t("contacts.email"), "email"],
+            ["pfNo", "Quotation / PI No", "text"],
+            ["challanNo", "Challan No", "text"],
+            ["binNo", "BIN No", "text"],
+            ["subject", "Subject", "text"],
+            ["subtotal", "Subtotal", "number"],
+            ["discount", t("common.discount"), "number"],
+            ["tax", t("common.tax"), "number"],
+            ["shipping", "Shipping", "number"],
+            ["grandTotal", t("common.grandTotal"), "number"],
+            ["paidAmount", "Paid Amount", "number"],
+            ["dueAmount", t("common.due"), "number"],
+          ].map(([key, label, type]) => (
+            <Field key={key} label={label}>
+              <input
+                className="gp-input"
+                type={type}
+                step={type === "number" ? "0.01" : undefined}
+                value={editForm[key] || ""}
+                onChange={(e) => setEditForm((form) => ({ ...form, [key]: e.target.value }))}
+              />
+            </Field>
+          ))}
+          <label className="block space-y-1 sm:col-span-2 lg:col-span-3">
+            <span className="text-[0.8rem] font-semibold text-muted">{t("common.note")}</span>
+            <textarea className="gp-input min-h-20 resize-y" value={editForm.note || ""} onChange={(e) => setEditForm((form) => ({ ...form, note: e.target.value }))} />
+          </label>
+          <label className="block space-y-1 sm:col-span-2 lg:col-span-3">
+            <span className="text-[0.8rem] font-semibold text-muted">Terms &amp; Conditions</span>
+            <textarea className="gp-input min-h-20 resize-y" value={editForm.terms || ""} onChange={(e) => setEditForm((form) => ({ ...form, terms: e.target.value }))} />
+          </label>
+          <div className="flex justify-end gap-2 sm:col-span-2 lg:col-span-3">
+            <button type="button" className="gp-btn gp-btn-ghost" onClick={() => setEditing(null)}>{t("common.cancel")}</button>
+            <button type="button" className="gp-btn gp-btn-primary" disabled={saving} onClick={() => void saveEdit()}>{saving ? "..." : t("common.save")}</button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -51,14 +51,46 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   const { id } = await ctx.params;
   await connectDB();
   const body = await req.json();
+  const existing = await Sale.findById(id).select("status").lean();
+  if (!existing) return NextResponse.json({ error: "not_found" }, { status: 404 });
+
+  const $set: Record<string, unknown> = {};
+  for (const key of ["customerName", "note", "staffNote", "status"]) {
+    if (body[key] !== undefined) $set[key] = body[key];
+  }
+  if (existing.status === "quotation") {
+    for (const key of [
+      "quotationNo",
+      "referenceNo",
+      "customerMobile",
+      "customerAddress",
+      "customerEmail",
+      "pfNo",
+      "poNo",
+      "challanNo",
+      "binNo",
+      "subject",
+      "terms",
+    ]) {
+      if (body[key] !== undefined) $set[key] = body[key];
+    }
+    for (const key of [
+      "subtotal",
+      "discount",
+      "tax",
+      "shipping",
+      "grandTotal",
+      "paidAmount",
+      "dueAmount",
+    ]) {
+      if (body[key] !== undefined) $set[key] = Number(body[key] || 0);
+    }
+    if (body.saleDate !== undefined) $set.saleDate = new Date(body.saleDate);
+  }
+
   const updated = await Sale.findByIdAndUpdate(
     id,
-    {
-      customerName: body.customerName,
-      note: body.note,
-      staffNote: body.staffNote,
-      status: body.status,
-    },
+    { $set },
     { new: true },
   );
   if (!updated) return NextResponse.json({ error: "not_found" }, { status: 404 });

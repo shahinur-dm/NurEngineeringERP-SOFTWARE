@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { Pencil, Trash2 } from "lucide-react";
-import { EmptyState, Field, FilterBar, Modal, PageHeader } from "@/components/ui";
+import { Pencil, Search, Trash2 } from "lucide-react";
+import { EmptyState, Modal } from "@/components/ui";
 import { InvoiceActions, PaymentStatusBadge } from "@/components/InvoiceActions";
 import { CrudForm } from "@/components/CrudForm";
 import { getCrudConfig } from "@/lib/crud-config";
@@ -30,20 +30,14 @@ export default function SalesPage() {
   const locale = useLocale();
   const [data, setData] = useState<Sale[]>([]);
   const [summary, setSummary] = useState({ grandTotal: 0, dueAmount: 0, count: 0 });
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
   const [q, setQ] = useState("");
-  const [status, setStatus] = useState("");
   const [editing, setEditing] = useState<Sale | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const salesCrud = getCrudConfig("sales");
 
-  async function load() {
+  async function load(search = q) {
     const qs = new URLSearchParams({ limit: "100" });
-    if (from) qs.set("from", from);
-    if (to) qs.set("to", to);
-    if (q) qs.set("q", q);
-    if (status) qs.set("status", status);
+    if (search) qs.set("q", search);
     const res = await fetch(`/api/sales?${qs}`);
     const json = await res.json();
     setData(json.data || []);
@@ -75,10 +69,37 @@ export default function SalesPage() {
 
   return (
     <div>
-      <PageHeader
-        title={t("sales.title")}
-        actions={
-          <div className="flex flex-wrap gap-2">
+      <div className="mb-2 flex flex-col gap-2 border-b border-line pb-2 xl:flex-row xl:items-center">
+        <h1 className="gp-display shrink-0 text-2xl font-bold tracking-tight text-[var(--gp-ink)]">
+          {t("sales.title")}
+        </h1>
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 xl:flex-nowrap">
+          <div className="relative min-w-[12rem] flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+            <input
+              className="gp-input gp-input-icon-left"
+              value={q}
+              onChange={(e) => {
+                const value = e.target.value;
+                setQ(value);
+                void load(value);
+              }}
+              placeholder={t("common.search")}
+            />
+          </div>
+          <div className="flex min-h-9 items-center gap-2 rounded-lg border border-line bg-white px-3 text-sm">
+            <span className="text-muted">{t("common.total")}</span>
+            <b className="gp-money whitespace-nowrap">{formatBDT(summary.grandTotal, locale)}</b>
+          </div>
+          <div className="flex min-h-9 items-center gap-2 rounded-lg border border-line bg-white px-3 text-sm">
+            <span className="text-muted">{t("common.due")}</span>
+            <b className="gp-money whitespace-nowrap">{formatBDT(summary.dueAmount, locale)}</b>
+          </div>
+          <div className="flex min-h-9 items-center gap-2 rounded-lg border border-line bg-white px-3 text-sm">
+            <span className="text-muted">{t("pos.items")}</span>
+            <b>{summary.count}</b>
+          </div>
+          <div className="flex shrink-0 gap-2">
             <Link href="/sales/quotations" className="gp-btn gp-btn-ghost">
               {t("nav.listQuotations")}
             </Link>
@@ -86,52 +107,26 @@ export default function SalesPage() {
               {t("nav.pos")}
             </Link>
           </div>
-        }
-      />
-
-      <FilterBar>
-        <Field label={t("common.search")}>
-          <input className="gp-input" value={q} onChange={(e) => setQ(e.target.value)} />
-        </Field>
-        <Field label={t("dashboard.fromDate")}>
-          <input type="date" className="gp-input" value={from} onChange={(e) => setFrom(e.target.value)} />
-        </Field>
-        <Field label={t("dashboard.toDate")}>
-          <input type="date" className="gp-input" value={to} onChange={(e) => setTo(e.target.value)} />
-        </Field>
-        <Field label={t("common.status")}>
-          <select className="gp-input" value={status} onChange={(e) => setStatus(e.target.value)}>
-            <option value="">{t("common.all")}</option>
-            <option value="final">{t("sales.statusFinal")}</option>
-            <option value="draft">{t("sales.statusDraft")}</option>
-            <option value="quotation">{t("sales.statusQuotation")}</option>
-          </select>
-        </Field>
-      </FilterBar>
-      <button type="button" className="gp-btn gp-btn-primary mb-5" onClick={load}>
-        {t("dashboard.apply")}
-      </button>
-
-      <div className="mb-5 grid gap-3 sm:grid-cols-3">
-        <div className="gp-card p-4">
-          <p className="text-muted">{t("common.total")}</p>
-          <p className="gp-money text-2xl text-[var(--gp-ink)]">{formatBDT(summary.grandTotal, locale)}</p>
-        </div>
-        <div className="gp-card p-4">
-          <p className="text-muted">{t("common.due")}</p>
-          <p className="gp-money text-2xl text-[var(--gp-ink)]">{formatBDT(summary.dueAmount, locale)}</p>
-        </div>
-        <div className="gp-card p-4">
-          <p className="text-muted">{t("pos.items")}</p>
-          <p className="text-2xl font-extrabold">{summary.count}</p>
         </div>
       </div>
 
-      <div className="gp-table-wrap !overflow-x-auto">
+      <div className="gp-table-wrap !overflow-x-auto lg:-ml-12 lg:w-[calc(100%+3rem)]">
         {data.length === 0 ? (
           <EmptyState message={t("common.noData")} />
         ) : (
-          <table className="gp-table">
+          <table className="gp-table min-w-[900px] lg:w-full lg:min-w-0 lg:table-fixed [&_td]:py-2 [&_th]:py-2">
+            <colgroup>
+              <col className="lg:w-[6.5rem]" />
+              <col className="lg:w-[5.5rem]" />
+              <col className="lg:w-[5.5rem]" />
+              <col />
+              <col className="lg:w-[5.5rem]" />
+              <col className="lg:w-[6.25rem]" />
+              <col className="lg:w-20" />
+              <col className="lg:w-[4.5rem]" />
+              <col className="lg:w-14" />
+              <col className="lg:w-[15rem]" />
+            </colgroup>
             <thead>
               <tr>
                 <th>{t("sales.invoiceNo")}</th>
@@ -143,7 +138,7 @@ export default function SalesPage() {
                 <th>{t("common.due")}</th>
                 <th>{t("sales.paymentStatus")}</th>
                 <th>{t("common.status")}</th>
-                <th className="min-w-[14rem]">{t("common.actions")}</th>
+                <th>{t("common.actions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -197,12 +192,12 @@ export default function SalesPage() {
                   <td>
                     <span className="gp-badge gp-badge-success capitalize">{s.status}</span>
                   </td>
-                  <td className="min-w-[14rem] align-top">
-                    <div className="flex flex-col items-stretch gap-1">
-                      <InvoiceActions saleId={s._id} saleStatus={s.status} compact />
+                  <td>
+                    <div className="flex flex-wrap items-center gap-1 lg:flex-nowrap lg:gap-0.5">
+                      <InvoiceActions saleId={s._id} saleStatus={s.status} inline iconOnly className="lg:flex-nowrap lg:gap-0.5" />
                       <button
                         type="button"
-                        className="gp-btn gp-btn-ghost min-h-9 px-2"
+                        className="gp-btn gp-btn-ghost min-h-8 min-w-8 px-2 lg:min-h-7 lg:min-w-7 lg:shrink-0 lg:px-1.5"
                         onClick={() => {
                           setEditing(s);
                           setFormOpen(true);
@@ -213,7 +208,7 @@ export default function SalesPage() {
                       </button>
                       <button
                         type="button"
-                        className="gp-btn gp-btn-danger min-h-9 px-2"
+                        className="gp-btn gp-btn-danger min-h-8 min-w-8 px-2 lg:min-h-7 lg:min-w-7 lg:shrink-0 lg:px-1.5"
                         onClick={() => removeSale(s._id)}
                         title={t("common.delete")}
                       >

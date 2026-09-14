@@ -11,14 +11,31 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   const { id } = await ctx.params;
   await connectDB();
   const body = await req.json();
+  const set: Record<string, unknown> = {};
+  const textFields = [
+    "referenceNo",
+    "supplierName",
+    "supplierWhatsapp",
+    "supplierWechat",
+    "note",
+    "purchaseType",
+    "currency",
+    "documentName",
+    "documentUrl",
+    "status",
+  ];
+  const numberFields = ["discount", "tax", "shippingCost", "otherCost"];
+  for (const key of textFields) {
+    if (body[key] !== undefined) set[key] = body[key];
+  }
+  for (const key of numberFields) {
+    if (body[key] !== undefined) set[key] = Number(body[key] || 0);
+  }
+  if (body.purchaseDate !== undefined) set.purchaseDate = new Date(body.purchaseDate);
+  if (body.receivingDate !== undefined) set.receivingDate = new Date(body.receivingDate);
   const updated = await Purchase.findByIdAndUpdate(
     id,
-    {
-      referenceNo: body.referenceNo,
-      supplierName: body.supplierName,
-      note: body.note,
-      status: body.status,
-    },
+    { $set: set },
     { new: true },
   );
   if (!updated) return NextResponse.json({ error: "not_found" }, { status: 404 });
