@@ -1230,6 +1230,67 @@ h3,
   text-decoration: underline;
 }
 
+.dash-premium .dash-qa {
+  display: flex;
+  min-height: 3rem;
+  align-items: center;
+  gap: 0.65rem;
+  border-radius: 1rem;
+  padding: 0.7rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dash-premium .dash-qa:hover {
+  transform: translateY(-1px);
+}
+
+.dash-premium .dash-qa-blue {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.dash-premium .dash-qa-orange {
+  background: #fff7ed;
+  color: #ea580c;
+}
+
+.dash-premium .dash-qa-purple {
+  background: #f5f3ff;
+  color: #7c3aed;
+}
+
+.dash-premium .dash-qa-green {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.dash-premium .dash-qa-mint {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.dash-premium .dash-qa-amber {
+  background: #fffbeb;
+  color: #d97706;
+}
+
+.dash-premium .dash-qa-alert {
+  display: flex;
+  width: 100%;
+  min-height: 3rem;
+  align-items: center;
+  gap: 0.65rem;
+  border-radius: 1rem;
+  border: 1px solid #fed7aa;
+  background: #fff7ed;
+  padding: 0.7rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #c2410c;
+}
+
 .reports-premium .report-tile {
   border: 1px solid #eef2f7;
   border-radius: 1.35rem;

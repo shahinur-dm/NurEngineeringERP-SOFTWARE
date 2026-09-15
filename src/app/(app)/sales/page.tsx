@@ -138,8 +138,8 @@ export default function SalesPage() {
               <col className="lg:w-[11%]" />
               <col className="lg:w-[9%]" />
               <col className="lg:w-[10%]" />
-              <col className="lg:w-[7%]" />
-              <col className="lg:w-[5%]" />
+              <col className="lg:w-[8%]" />
+              <col className="lg:w-[8%]" />
             </colgroup>
             <thead>
               <tr>
@@ -207,7 +207,7 @@ export default function SalesPage() {
                   <td>
                     <span className="gp-badge gp-badge-success capitalize">{s.status}</span>
                   </td>
-                  <td>
+                  <td className="overflow-visible whitespace-nowrap pr-2">
                     <InvoiceActions
                       saleId={s._id}
                       saleStatus={s.status}

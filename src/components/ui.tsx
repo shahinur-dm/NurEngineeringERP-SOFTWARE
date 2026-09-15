@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { cn, formatBDT } from "@/lib/utils";
 import { animateModalIn, animateModalOut, animateCardsIn } from "@/lib/gsap";
 
@@ -43,13 +44,22 @@ export function KpiCard({
   onClick?: () => void;
   tone?: "default" | "warn" | "danger" | "info";
 }) {
+  const t = useTranslations();
+  const iconWrap =
+    tone === "warn"
+      ? "bg-[#f97316] text-white"
+      : tone === "danger"
+        ? "bg-[#ef4444] text-white"
+        : tone === "info"
+          ? "bg-[#22c55e] text-white"
+          : "bg-[#2563eb] text-white";
   return (
     <button
       type="button"
       data-animate="card"
       onClick={onClick}
       className={cn(
-        "gp-card gp-kpi-card flex min-h-[132px] w-full flex-col p-5 text-left transition-all hover:-translate-y-0.5",
+        "gp-card gp-kpi-card flex min-h-[148px] w-full flex-col p-5 text-left transition-all hover:-translate-y-0.5 hover:shadow-md",
         onClick && "cursor-pointer",
       )}
     >
@@ -58,31 +68,24 @@ export function KpiCard({
           {label}
         </p>
         {Icon ? (
-          <span
-            className={cn(
-              "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-sm",
-              tone === "warn"
-                ? "bg-[#fff7ed] text-[#ea580c]"
-                : tone === "danger"
-                  ? "bg-[#fef2f2] text-[#dc2626]"
-                  : tone === "info"
-                    ? "bg-[#ecfdf5] text-[#059669]"
-                    : "bg-[#eff6ff] text-[#2563eb]",
-            )}
-          >
-            <Icon className="h-6 w-6" />
+          <span className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl shadow-sm", iconWrap)}>
+            <Icon className="h-5 w-5" />
           </span>
         ) : (
-          <span className="h-12 w-12 shrink-0" aria-hidden />
+          <span className="h-11 w-11 shrink-0" aria-hidden />
         )}
       </div>
-      <div className="mt-auto pt-3">
+      <div className="mt-3">
         <p className="gp-money text-[1.7rem] leading-none tracking-tight text-[var(--gp-ink)] md:text-[1.85rem]">
           {typeof value === "number" ? formatBDT(value) : value}
         </p>
         <p className="mt-2 min-h-[1rem] text-xs font-medium text-muted">
           {hint || "\u00A0"}
         </p>
+      </div>
+      <div className="mt-auto flex items-center justify-between border-t border-[#eef2f7] pt-3">
+        <span className="text-sm font-medium text-muted">{t("common.view")}</span>
+        <span className="text-xs font-semibold text-emerald-600">→</span>
       </div>
     </button>
   );

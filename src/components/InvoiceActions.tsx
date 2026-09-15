@@ -229,16 +229,16 @@ export function InvoiceActions({
 
   if (asMenu) {
     return (
-      <div className={cn("relative flex justify-end", className)}>
+      <div className={cn("relative flex justify-end overflow-visible", className)}>
         <button
           ref={menuBtnRef}
           type="button"
-          className="gp-btn gp-btn-ghost min-h-8 min-w-8 px-2"
+          className="gp-btn gp-btn-ghost inline-flex h-8 w-8 shrink-0 items-center justify-center overflow-visible p-0 text-[var(--gp-ink)]"
           aria-label={t("common.actions")}
           aria-expanded={menuOpen}
           onClick={toggleMenu}
         >
-          <MoreHorizontal className="h-4 w-4" />
+          <MoreHorizontal className="h-4 w-4 shrink-0 stroke-[2]" aria-hidden />
         </button>
         {menu}
       </div>

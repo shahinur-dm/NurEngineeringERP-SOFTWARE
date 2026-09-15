@@ -28,9 +28,14 @@ import {
   CreditCard,
   Receipt,
   Package,
+  Truck,
+  List,
+  RotateCcw,
+  BarChart3,
+  Users,
 } from "lucide-react";
 import { EmptyState, Field, KpiCard, Modal } from "@/components/ui";
-import { formatBDT, formatDateBD } from "@/lib/utils";
+import { formatBDT } from "@/lib/utils";
 
 type Dash = {
   kpis: {
@@ -74,6 +79,7 @@ export default function DashboardPage() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [locationId, setLocationId] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
   const [modal, setModal] = useState<{ title: string; rows: Record<string, unknown>[] } | null>(
     null,
   );
@@ -124,13 +130,19 @@ export default function DashboardPage() {
 
   return (
     <div className="dash-premium pb-6">
-      <div className="dash-hero">
-        <h1 className="gp-display">{t("dashboard.title")}</h1>
-        <p>
-          {t("dashboard.clickBreakdown")} · {todayLabel}
-        </p>
+      <div className="dash-hero mb-4 flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h1 className="gp-display">{t("dashboard.title")}</h1>
+          <p>
+            {t("dashboard.clickBreakdown")} · {todayLabel}
+          </p>
+        </div>
+        <button type="button" className="gp-btn gp-btn-ghost min-h-9 px-3 text-sm" onClick={() => setShowFilters((v) => !v)}>
+          {t("dashboard.filters")}
+        </button>
       </div>
 
+      {showFilters ? (
       <div className="dash-filter">
         <Field label={t("dashboard.fromDate")}>
           <input type="date" className="gp-input" value={from} onChange={(e) => setFrom(e.target.value)} />
@@ -166,6 +178,7 @@ export default function DashboardPage() {
           </button>
         </div>
       </div>
+      ) : null}
 
       <div className="mb-5">
         <h2 className="dash-section-title">
@@ -347,112 +360,71 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="mt-5 grid auto-rows-fr gap-4 lg:grid-cols-2 xl:grid-cols-3">
-        <WidgetCard
-          title={t("dashboard.salesPaymentDue")}
-          href="/reports/sell-payment"
-          onViewAll={() => openBreakdown("due", t("dashboard.salesPaymentDue"))}
-        >
-          {(widgets?.salesPaymentDue || []).length === 0 ? (
-            <EmptyState message={t("common.noData")} />
-          ) : (
-            widgets?.salesPaymentDue.map((s, i) => (
-              <WidgetRow
-                key={i}
-                label={s.customerName || s.invoiceNo || "—"}
-                value={formatBDT(s.dueAmount || 0, locale)}
-              />
-            ))
-          )}
-        </WidgetCard>
-
-        <WidgetCard
-          title={t("dashboard.purchasePaymentDue")}
-          href="/reports/purchase-payment"
-          onViewAll={() => openBreakdown("purchase-due", t("dashboard.purchasePaymentDue"))}
-        >
-          {(widgets?.purchasePaymentDue || []).length === 0 ? (
-            <EmptyState message={t("common.noData")} />
-          ) : (
-            widgets?.purchasePaymentDue.map((p, i) => (
-              <WidgetRow
-                key={i}
-                label={p.supplierName || p.referenceNo || "—"}
-                value={formatBDT(p.dueAmount || 0, locale)}
-              />
-            ))
-          )}
-        </WidgetCard>
-
-        <WidgetCard title={t("dashboard.salesOrder")} href="/sales/drafts">
-          <WidgetRow label={t("dashboard.todaySales")} value={formatBDT(data?.kpis.todaySales || 0, locale)} />
-          <div className="pt-2 text-right">
-            <Link href="/sales/drafts" className="text-sm font-semibold text-primary hover:underline">
-              {t("nav.listDrafts")} →
-            </Link>
-          </div>
-        </WidgetCard>
-
-        <WidgetCard
-          title={t("dashboard.purchaseRequisition")}
-          href="/purchases/requisition"
-          onViewAll={() => openBreakdown("requisitions", t("dashboard.purchaseRequisition"))}
-        >
-          {(widgets?.purchaseRequisitions || []).length === 0 ? (
-            <EmptyState message={t("common.noData")} />
-          ) : (
-            widgets?.purchaseRequisitions.map((r, i) => (
-              <WidgetRow key={i} label={r.reqNo || "—"} value={r.status || ""} />
-            ))
-          )}
-        </WidgetCard>
-
-        <WidgetCard
-          title={t("dashboard.pendingShipments")}
-          href="/sales/shipments"
-          onViewAll={() => openBreakdown("shipments", t("dashboard.pendingShipments"))}
-        >
-          {(widgets?.pendingShipments || []).length === 0 ? (
-            <EmptyState message={t("common.noData")} />
-          ) : (
-            widgets?.pendingShipments.map((s, i) => (
-              <WidgetRow key={i} label={s.shipmentNo || "—"} value={s.customerName || s.status || ""} />
-            ))
-          )}
-        </WidgetCard>
-      </div>
-
-      <div className="dash-panel mt-5 overflow-auto">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-[var(--gp-ink)]">{t("dashboard.recentSales")}</h2>
-          <Link href="/sales" className="dash-link">
-            {t("nav.allSales")} →
+      <div className="dash-panel mt-5">
+        <h2 className="mb-4 text-[var(--gp-ink)]">{locale === "bn" ? "দ্রুত কাজ" : "Quick Actions"}</h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <button
+            type="button"
+            className="dash-qa dash-qa-blue"
+            onClick={() => openBreakdown("due", t("dashboard.salesPaymentDue"))}
+          >
+            <ShoppingCart className="h-4 w-4" />
+            {t("dashboard.salesPaymentDue")}
+          </button>
+          <button
+            type="button"
+            className="dash-qa dash-qa-orange"
+            onClick={() => openBreakdown("purchase-due", t("dashboard.purchasePaymentDue"))}
+          >
+            <Truck className="h-4 w-4" />
+            {t("dashboard.purchasePaymentDue")}
+          </button>
+          <Link href="/sales/drafts" className="dash-qa dash-qa-purple">
+            <CreditCard className="h-4 w-4" />
+            {t("dashboard.salesOrder")}
+          </Link>
+          <Link href="/purchases/requisition" className="dash-qa dash-qa-green">
+            <Users className="h-4 w-4" />
+            {t("dashboard.purchaseRequisition")}
+          </Link>
+          <Link href="/sales/shipments" className="dash-qa dash-qa-mint">
+            <Package className="h-4 w-4" />
+            {t("dashboard.pendingShipments")}
+          </Link>
+          <Link href="/sales" className="dash-qa dash-qa-amber">
+            <List className="h-4 w-4" />
+            {t("dashboard.recentSales")}
+          </Link>
+          <Link href="/pos" className="dash-qa dash-qa-blue">
+            <ShoppingCart className="h-4 w-4" />
+            {t("nav.pos")}
+          </Link>
+          <Link href="/purchases/returns" className="dash-qa dash-qa-orange">
+            <RotateCcw className="h-4 w-4" />
+            {t("nav.purchaseReturns")}
+          </Link>
+          <Link href="/stock" className="dash-qa dash-qa-mint">
+            <Package className="h-4 w-4" />
+            {t("nav.stock")}
+          </Link>
+          <Link href="/reports" className="dash-qa dash-qa-amber">
+            <BarChart3 className="h-4 w-4" />
+            {t("nav.reports")}
           </Link>
         </div>
-        <table className="gp-table">
-          <thead>
-            <tr>
-              <th>{t("sales.invoiceNo")}</th>
-              <th>{t("sales.customer")}</th>
-              <th>{t("common.date")}</th>
-              <th>{t("common.grandTotal")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(data?.recentSales || []).map((s) => (
-              <tr key={s._id}>
-                <td className="font-semibold">
-                  <Link href={`/sales/${s._id}/invoice`} className="text-primary hover:underline">
-                    {s.invoiceNo}
-                  </Link>
-                </td>
-                <td>{s.customerName}</td>
-                <td>{formatDateBD(s.saleDate, locale)}</td>
-                <td className="font-bold">{formatBDT(s.grandTotal, locale)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        {(widgets?.purchaseRequisitions || []).length > 0 ? (
+          <button
+            type="button"
+            className="dash-qa-alert mt-3"
+            onClick={() => openBreakdown("requisitions", t("dashboard.purchaseRequisition"))}
+          >
+            <AlertTriangle className="h-4 w-4" />
+            <span className="flex-1 text-left">
+              {(widgets?.purchaseRequisitions || []).length} {t("dashboard.purchaseRequisition")}
+            </span>
+            →
+          </button>
+        ) : null}
       </div>
 
       <Modal open={!!modal} title={modal?.title || ""} onClose={() => setModal(null)} wide>
@@ -491,46 +463,6 @@ export default function DashboardPage() {
           </div>
         )}
       </Modal>
-    </div>
-  );
-}
-
-function WidgetCard({
-  title,
-  href,
-  onViewAll,
-  children,
-}: {
-  title: string;
-  href?: string;
-  onViewAll?: () => void;
-  children: React.ReactNode;
-}) {
-  const t = useTranslations();
-  return (
-    <div className="dash-panel flex h-full min-h-[200px] flex-col">
-      <div className="mb-3 flex min-h-[2rem] items-center justify-between pb-2.5">
-        <h3 className="text-[0.98rem] font-extrabold text-[var(--gp-ink)]">{title}</h3>
-        {onViewAll ? (
-          <button type="button" className="dash-link" onClick={onViewAll}>
-            {t("common.view")} →
-          </button>
-        ) : href ? (
-          <Link href={href} className="dash-link">
-            {t("common.view")} →
-          </Link>
-        ) : null}
-      </div>
-      <div className="flex flex-1 flex-col space-y-2">{children}</div>
-    </div>
-  );
-}
-
-function WidgetRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between rounded-2xl border border-[#eef2f7] bg-[#f8fafc] px-3 py-2.5 text-sm">
-      <span className="font-semibold text-[var(--gp-ink)]">{label}</span>
-      <span className="gp-money font-bold text-[var(--gp-primary)]">{value}</span>
     </div>
   );
 }
