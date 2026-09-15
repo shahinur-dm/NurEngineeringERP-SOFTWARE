@@ -24,12 +24,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "inactive" }, { status: 403 });
     }
 
+    const userLocale = user.locale === "en" ? "en" : "bn";
     const token = await createSessionToken({
       id: String(user._id),
       name: user.name,
       email: user.email,
       role: user.role,
-      locale: user.locale === "en" ? "en" : "bn",
+      locale: userLocale,
     });
 
     const res = NextResponse.json({
@@ -39,10 +40,16 @@ export async function POST(req: NextRequest) {
         name: user.name,
         email: user.email,
         role: user.role,
-        locale: user.locale,
+        locale: userLocale,
       },
     });
-    return applySessionCookie(res, token);
+    applySessionCookie(res, token);
+    res.cookies.set("NEXT_LOCALE", userLocale, {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
+      sameSite: "lax",
+    });
+    return res;
   } catch (e) {
     console.error(e);
     const msg = e instanceof Error ? e.message : String(e);

@@ -49,7 +49,9 @@ export default async function RootLayout({
       className={`${plusJakarta.variable} ${manrope.variable} ${notoBengali.variable} ${notoBengaliDisplay.variable} h-full`}
     >
       <body className="min-h-full antialiased">
-        <NextIntlClientProvider messages={messages}>{children}</NextIntlClientProvider>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          {children}
+        </NextIntlClientProvider>
       </body>
     </html>
   );

@@ -3,9 +3,9 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { Eye, FileText, Pencil, Plus, Trash2 } from "lucide-react";
-import { EmptyState, Field, FilterBar, Modal, PageHeader } from "@/components/ui";
-import { formatBDT } from "@/lib/utils";
+import { Eye, FileText, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { EmptyState, Field, Modal } from "@/components/ui";
+import { formatBDT, formatDateBD } from "@/lib/utils";
 import { displaySupplierLabel } from "@/lib/supplier-label";
 
 type Supplier = {
@@ -24,6 +24,7 @@ type Supplier = {
   supplierCurrencyName?: string;
   balance?: number;
   openingBalance?: number;
+  createdAt?: string;
 };
 
 type FormState = {
@@ -191,74 +192,83 @@ export default function SuppliersPage() {
 
   return (
     <div>
-      <PageHeader
-        title={locale === "bn" ? "সরবরাহকারী" : "Suppliers"}
-        subtitle={
-          locale === "bn"
-            ? "নামে ক্লিক করে স্টেটমেন্ট · চোখ আইকনে বিস্তারিত"
-            : "Click name for statement · eye icon for details"
-        }
-        actions={
-          <button type="button" className="gp-btn gp-btn-primary" onClick={openCreate}>
+      <div className="mb-2 flex flex-col gap-2 border-b border-line pb-2 sm:flex-row sm:items-center">
+        <h1 className="gp-display text-2xl font-bold tracking-tight text-[var(--gp-ink)]">
+          {locale === "bn" ? "সরবরাহকারী" : "Suppliers"}
+        </h1>
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:ml-auto sm:max-w-xl">
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+            <input
+              className="gp-input gp-input-icon-left"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder={t("common.search")}
+            />
+          </div>
+          <button type="button" className="gp-btn gp-btn-primary shrink-0" onClick={openCreate}>
             <Plus className="h-4 w-4" />
-            {t("common.add")}
+            {locale === "bn" ? "নতুন সরবরাহকারী" : "Add New Supplier"}
           </button>
-        }
-      />
+        </div>
+      </div>
 
       {message ? (
-        <p className="mb-4 rounded-xl border border-line bg-[var(--gp-primary-soft)] px-3 py-2 text-sm font-semibold text-primary">
+        <p className="mb-2 rounded-xl border border-line bg-[var(--gp-primary-soft)] px-3 py-2 text-sm font-semibold text-primary">
           {message}
         </p>
       ) : null}
-
-      <FilterBar>
-        <Field label={t("common.search")}>
-          <input
-            className="gp-input"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder={t("common.search")}
-          />
-        </Field>
-        <div className="flex items-end">
-          <button type="button" className="gp-btn gp-btn-primary w-full" onClick={load}>
-            {t("common.apply")}
-          </button>
-        </div>
-      </FilterBar>
 
       {loading ? (
         <EmptyState message={t("app.loading")} />
       ) : rows.length === 0 ? (
         <EmptyState message={t("common.noData")} />
       ) : (
-        <div className="gp-table-wrap">
-          <table className="gp-table">
+        <div className="gp-table-wrap !overflow-x-auto lg:-ml-12 lg:w-[calc(100%+3rem)]">
+          <table className="gp-table w-full min-w-[800px] table-fixed [&_td]:py-2 [&_th]:py-2">
+            <colgroup>
+              <col className="w-[6%]" />
+              <col className="w-[12%]" />
+              <col className="w-[20%]" />
+              <col className="w-[16%]" />
+              <col className="w-[14%]" />
+              <col className="w-[14%]" />
+              <col className="w-[18%]" />
+            </colgroup>
             <thead>
               <tr>
+                <th>SL</th>
+                <th>{t("common.date")}</th>
                 <th>{locale === "bn" ? "নাম" : "Name"}</th>
+                <th>{locale === "bn" ? "লোকেশন" : "Location"}</th>
                 <th>{locale === "bn" ? "মোবাইল" : "Mobile"}</th>
                 <th>{locale === "bn" ? "প্রদেয় (Payable)" : "Payable"}</th>
                 <th>{t("common.actions")}</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((s) => {
+              {rows.map((s, index) => {
                 const name = displaySupplierLabel(s, locale);
                 return (
                   <tr key={s._id}>
-                    <td>
+                    <td>{index + 1}</td>
+                    <td className="whitespace-nowrap">
+                      {s.createdAt ? formatDateBD(s.createdAt, locale) : "—"}
+                    </td>
+                    <td className="min-w-0">
                       <Link
                         href={`/contacts/${s._id}/statement`}
-                        className="font-semibold text-primary hover:underline"
+                        className="block truncate font-semibold text-primary hover:underline"
                         title={locale === "bn" ? "স্টেটমেন্ট দেখুন" : "View statement"}
                       >
                         {name}
                       </Link>
                     </td>
+                    <td className="min-w-0 truncate" title={s.location || s.address || ""}>
+                      {s.location || s.address || "—"}
+                    </td>
                     <td>{s.mobile || "—"}</td>
-                    <td className="gp-money">{formatBDT(s.balance || 0, locale)}</td>
+                    <td className="gp-money whitespace-nowrap">{formatBDT(s.balance || 0, locale)}</td>
                     <td>
                       <div className="flex flex-wrap gap-1">
                         <Link

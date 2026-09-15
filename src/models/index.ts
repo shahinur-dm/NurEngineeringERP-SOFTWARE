@@ -11,6 +11,7 @@ const UserSchema = new Schema(
       default: "cashier",
     },
     phone: String,
+    avatarUrl: String,
     isActive: { type: Boolean, default: true },
     locale: { type: String, enum: ["bn", "en"], default: "bn" },
     locationIds: [{ type: Schema.Types.ObjectId, ref: "Location" }],
@@ -819,6 +820,9 @@ export const ActivityLog = models.ActivityLog || model("ActivityLog", ActivityLo
 
 // Hot-reload: compiled models keep the first schema. Patch new sale/challan fields.
 try {
+  if (!User.schema.path("avatarUrl")) {
+    User.schema.add({ avatarUrl: String });
+  }
   const saleItems = Sale.schema.path("items") as mongoose.Schema.Types.DocumentArray | undefined;
   if (saleItems?.schema && !saleItems.schema.path("description")) {
     saleItems.schema.add({ description: String });

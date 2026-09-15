@@ -25,17 +25,28 @@ const REPORT_LINKS = [
   { href: "/reports/activity-log", key: "activityLog" },
 ] as const;
 
+const TILE_TONES = [
+  "bg-[#eff6ff] text-[#2563eb]",
+  "bg-[#ecfdf5] text-[#059669]",
+  "bg-[#f5f3ff] text-[#7c3aed]",
+  "bg-[#fff7ed] text-[#ea580c]",
+  "bg-[#fdf2f8] text-[#db2777]",
+  "bg-[#ecfeff] text-[#0891b2]",
+] as const;
+
 export default function ReportsPage() {
   const t = useTranslations();
 
   return (
-    <div>
+    <div className="reports-premium">
       <PageHeader title={t("reports.title")} subtitle={t("reports.drillHint")} />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {REPORT_LINKS.map((r) => (
-          <Link key={r.key} href={r.href} className="gp-card p-6 transition hover:border-primary">
-            <BarChart3 className="h-8 w-8 text-primary" />
-            <p className="mt-4 text-xl font-bold">{t(`reports.${r.key}`)}</p>
+        {REPORT_LINKS.map((r, i) => (
+          <Link key={r.key} href={r.href} className="report-tile">
+            <span className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl ${TILE_TONES[i % TILE_TONES.length]}`}>
+              <BarChart3 className="h-6 w-6" />
+            </span>
+            <p className="mt-4 text-xl font-extrabold tracking-tight">{t(`reports.${r.key}`)}</p>
             <p className="mt-2 text-sm text-muted">{t("dashboard.clickBreakdown")}</p>
           </Link>
         ))}

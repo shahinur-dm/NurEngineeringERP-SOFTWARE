@@ -146,7 +146,9 @@
     "toDate": "To date",
     "location": "Location",
     "allLocations": "All locations",
-    "todayProfit": "Today's Profit"
+    "todayProfit": "Today's Profit",
+    "expenseBreakdown": "Expense Breakdown",
+    "salesByStatus": "Sales by Status"
   },
   "common": {
     "search": "Search...",

@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useTranslations, useLocale } from "next-intl";
 import {
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   Tooltip,
@@ -29,7 +29,7 @@ import {
   Receipt,
   Package,
 } from "lucide-react";
-import { EmptyState, Field, FilterBar, KpiCard, Modal, PageHeader } from "@/components/ui";
+import { EmptyState, Field, KpiCard, Modal } from "@/components/ui";
 import { formatBDT, formatDateBD } from "@/lib/utils";
 
 type Dash = {
@@ -108,12 +108,30 @@ export default function DashboardPage() {
   );
 
   const widgets = data?.widgets;
+  const todayLabel = new Date().toLocaleDateString(locale === "bn" ? "bn-BD" : "en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  const tooltipStyle = {
+    borderRadius: 14,
+    border: "1px solid #eef2f7",
+    boxShadow: "0 10px 24px rgba(15,23,42,0.08)",
+  };
+  const expenseColors = ["#2563eb", "#22c55e", "#a855f7", "#f59e0b", "#ef4444", "#06b6d4", "#ec4899"];
+  const statusColors = ["#2563eb", "#22c55e", "#a855f7", "#f59e0b", "#06b6d4"];
 
   return (
-    <div className="pb-4">
-      <PageHeader title={t("dashboard.title")} subtitle={t("dashboard.clickBreakdown")} />
+    <div className="dash-premium pb-6">
+      <div className="dash-hero">
+        <h1 className="gp-display">{t("dashboard.title")}</h1>
+        <p>
+          {t("dashboard.clickBreakdown")} · {todayLabel}
+        </p>
+      </div>
 
-      <FilterBar>
+      <div className="dash-filter">
         <Field label={t("dashboard.fromDate")}>
           <input type="date" className="gp-input" value={from} onChange={(e) => setFrom(e.target.value)} />
         </Field>
@@ -147,13 +165,13 @@ export default function DashboardPage() {
             {t("dashboard.reset")}
           </button>
         </div>
-      </FilterBar>
+      </div>
 
-      <div className="mb-5 space-y-2.5">
-        <h2 className="mb-1 text-[0.72rem] font-bold uppercase tracking-[0.1em] text-muted">
+      <div className="mb-5">
+        <h2 className="dash-section-title">
           {locale === "bn" ? "প্রধান সারাংশ" : "Primary Overview"}
         </h2>
-        <div className="grid auto-rows-fr gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid auto-rows-fr gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <KpiCard
             label={t("dashboard.totalSales")}
             value={data?.kpis.totalSales || 0}
@@ -184,11 +202,11 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="mb-5 space-y-2.5">
-        <h2 className="mb-1 text-[0.72rem] font-bold uppercase tracking-[0.1em] text-muted">
+      <div className="mb-5">
+        <h2 className="dash-section-title">
           {locale === "bn" ? "বকেয়া ও ফেরত" : "Due & Returns"}
         </h2>
-        <div className="grid auto-rows-fr gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid auto-rows-fr gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <KpiCard
             label={t("dashboard.invoiceDue")}
             value={data?.kpis.invoiceDue || 0}
@@ -222,26 +240,38 @@ export default function DashboardPage() {
       </div>
 
       <div className="mt-5 grid gap-4 xl:grid-cols-3">
-        <div className="gp-card border border-line p-4 shadow-sm xl:col-span-2">
-          <h2 className="mb-3 text-lg font-bold text-[var(--gp-ink)]">
-            {t("dashboard.salesTrend")}
-          </h2>
-          <div className="h-64">
+        <div className="dash-panel xl:col-span-2">
+          <h2 className="mb-4 text-[var(--gp-ink)]">{t("dashboard.salesTrend")}</h2>
+          <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-                <XAxis dataKey="date" tick={{ fontSize: 12, fill: "#6b7280" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 12, fill: "#6b7280" }} axisLine={false} tickLine={false} />
-                <Tooltip formatter={(v) => formatBDT(Number(v || 0), locale)} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} />
-                <Line type="monotone" dataKey="total" stroke="#2563eb" strokeWidth={2.5} dot={false} activeDot={{ r: 5, fill: "#2563eb" }} />
-              </LineChart>
+              <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="salesTrendFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#2563eb" stopOpacity={0.22} />
+                    <stop offset="100%" stopColor="#2563eb" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 6" stroke="#eef2f7" vertical={false} />
+                <XAxis dataKey="date" tick={{ fontSize: 12, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 12, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                <Tooltip formatter={(v) => formatBDT(Number(v || 0), locale)} contentStyle={tooltipStyle} />
+                <Area
+                  type="monotone"
+                  dataKey="total"
+                  stroke="#2563eb"
+                  strokeWidth={3}
+                  fill="url(#salesTrendFill)"
+                  dot={false}
+                  activeDot={{ r: 5, fill: "#2563eb", stroke: "#fff", strokeWidth: 2 }}
+                />
+              </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        <div className="gp-card border border-line p-4 shadow-sm">
-          <h2 className="mb-3 text-lg font-bold text-[var(--gp-ink)]">Expense Breakdown</h2>
-          <div className="h-64">
+        <div className="dash-panel">
+          <h2 className="mb-4 text-[var(--gp-ink)]">{t("dashboard.expenseBreakdown")}</h2>
+          <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -249,17 +279,19 @@ export default function DashboardPage() {
                   dataKey="total"
                   nameKey="_id"
                   cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
+                  cy="46%"
+                  innerRadius={68}
+                  outerRadius={92}
+                  paddingAngle={4}
+                  stroke="#fff"
+                  strokeWidth={3}
                 >
                   {(data?.charts?.expensesByCategory || []).map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={["#2563eb", "#f59e0b", "#059669", "#dc2626", "#7c3aed"][index % 5]} />
+                    <Cell key={`cell-${index}`} fill={expenseColors[index % expenseColors.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(v) => formatBDT(Number(v || 0), locale)} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} />
-                <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
+                <Tooltip formatter={(v) => formatBDT(Number(v || 0), locale)} contentStyle={tooltipStyle} />
+                <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: "12px" }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -267,28 +299,34 @@ export default function DashboardPage() {
       </div>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-3">
-        <div className="gp-card border border-line p-4 shadow-sm xl:col-span-2">
-          <h2 className="mb-3 text-lg font-bold text-[var(--gp-ink)]">Sales by Status</h2>
-          <div className="h-64">
+        <div className="dash-panel xl:col-span-2">
+          <h2 className="mb-4 text-[var(--gp-ink)]">{t("dashboard.salesByStatus")}</h2>
+          <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data?.charts?.salesByStatus || []} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-                <XAxis dataKey="_id" tick={{ fontSize: 12, fill: "#6b7280" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 12, fill: "#6b7280" }} axisLine={false} tickLine={false} />
-                <Tooltip formatter={(v) => formatBDT(Number(v || 0), locale)} cursor={{ fill: '#f3f4f6' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} />
-                <Bar dataKey="total" fill="#2563eb" radius={[4, 4, 0, 0]} barSize={36} />
+                <CartesianGrid strokeDasharray="3 6" stroke="#eef2f7" vertical={false} />
+                <XAxis dataKey="_id" tick={{ fontSize: 12, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 12, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                <Tooltip formatter={(v) => formatBDT(Number(v || 0), locale)} cursor={{ fill: "#f8fafc" }} contentStyle={tooltipStyle} />
+                <Bar dataKey="total" radius={[10, 10, 4, 4]} barSize={42}>
+                  {(data?.charts?.salesByStatus || []).map((_, index) => (
+                    <Cell key={`bar-${index}`} fill={statusColors[index % statusColors.length]} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        <div className="gp-card border border-line p-4 shadow-sm">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-bold text-[var(--gp-ink)] flex items-center gap-2">
-              <Package className="w-5 h-5 text-warn" />
+        <div className="dash-panel">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="flex items-center gap-2 text-[var(--gp-ink)]">
+              <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[#fff7ed] text-[#ea580c]">
+                <Package className="h-5 w-5" />
+              </span>
               {t("dashboard.stockAlerts")}
             </h2>
-            <Link href="/reports/stock" className="text-sm font-semibold text-primary hover:underline">
+            <Link href="/reports/stock" className="dash-link">
               {t("common.view")} →
             </Link>
           </div>
@@ -297,10 +335,10 @@ export default function DashboardPage() {
               <EmptyState message={t("common.noData")} />
             ) : (
               data?.lowStock.map((p) => (
-                <div key={p.sku} className="rounded-lg border border-line px-3 py-2.5 transition hover:bg-[#fafbfc]">
-                  <p className="font-bold text-sm text-[var(--gp-ink)]">{locale === "bn" && p.nameBn ? p.nameBn : p.name}</p>
-                  <p className="text-xs text-muted mt-0.5">
-                    SKU: {p.sku} · QTY: <span className="text-danger font-bold">{p.qty}</span>
+                <div key={p.sku} className="rounded-2xl border border-[#eef2f7] bg-[#fafbfc] px-3 py-2.5">
+                  <p className="text-sm font-bold text-[var(--gp-ink)]">{locale === "bn" && p.nameBn ? p.nameBn : p.name}</p>
+                  <p className="mt-0.5 text-xs text-muted">
+                    SKU: {p.sku} · QTY: <span className="font-bold text-danger">{p.qty}</span>
                   </p>
                 </div>
               ))
@@ -309,7 +347,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="mt-5 grid auto-rows-fr gap-3 lg:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-5 grid auto-rows-fr gap-4 lg:grid-cols-2 xl:grid-cols-3">
         <WidgetCard
           title={t("dashboard.salesPaymentDue")}
           href="/reports/sell-payment"
@@ -384,10 +422,10 @@ export default function DashboardPage() {
         </WidgetCard>
       </div>
 
-      <div className="gp-card mt-5 overflow-auto border-line p-4 shadow-sm">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-[var(--gp-ink)]">{t("dashboard.recentSales")}</h2>
-          <Link href="/sales" className="text-sm font-semibold text-primary hover:underline">
+      <div className="dash-panel mt-5 overflow-auto">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-[var(--gp-ink)]">{t("dashboard.recentSales")}</h2>
+          <Link href="/sales" className="dash-link">
             {t("nav.allSales")} →
           </Link>
         </div>
@@ -470,15 +508,15 @@ function WidgetCard({
 }) {
   const t = useTranslations();
   return (
-    <div className="gp-card flex h-full min-h-[185px] flex-col p-4">
-      <div className="mb-3 flex min-h-[2rem] items-center justify-between border-b border-line pb-2.5">
-        <h3 className="text-[0.95rem] font-bold text-[var(--gp-ink)]">{title}</h3>
+    <div className="dash-panel flex h-full min-h-[200px] flex-col">
+      <div className="mb-3 flex min-h-[2rem] items-center justify-between pb-2.5">
+        <h3 className="text-[0.98rem] font-extrabold text-[var(--gp-ink)]">{title}</h3>
         {onViewAll ? (
-          <button type="button" className="text-sm font-semibold text-primary hover:underline" onClick={onViewAll}>
+          <button type="button" className="dash-link" onClick={onViewAll}>
             {t("common.view")} →
           </button>
         ) : href ? (
-          <Link href={href} className="text-sm font-semibold text-primary hover:underline">
+          <Link href={href} className="dash-link">
             {t("common.view")} →
           </Link>
         ) : null}
@@ -490,9 +528,9 @@ function WidgetCard({
 
 function WidgetRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between rounded-lg border border-line bg-[#fbfcfb] px-3 py-2 text-sm transition hover:border-[color-mix(in_oklab,var(--gp-primary)_30%,white)]">
-      <span className="font-medium text-[var(--gp-ink)]">{label}</span>
-      <span className="gp-money text-[var(--gp-primary)] font-bold">{value}</span>
+    <div className="flex items-center justify-between rounded-2xl border border-[#eef2f7] bg-[#f8fafc] px-3 py-2.5 text-sm">
+      <span className="font-semibold text-[var(--gp-ink)]">{label}</span>
+      <span className="gp-money font-bold text-[var(--gp-primary)]">{value}</span>
     </div>
   );
 }

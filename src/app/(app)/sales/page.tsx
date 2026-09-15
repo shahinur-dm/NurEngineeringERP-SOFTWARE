@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { Pencil, Search, Trash2 } from "lucide-react";
+import { Search } from "lucide-react";
 import { EmptyState, Modal } from "@/components/ui";
 import { InvoiceActions, PaymentStatusBadge } from "@/components/InvoiceActions";
 import { CrudForm } from "@/components/CrudForm";
@@ -124,22 +124,22 @@ export default function SalesPage() {
         </div>
       </div>
 
-      <div className="gp-table-wrap !overflow-x-auto">
+      <div className="gp-table-wrap !overflow-x-auto lg:-ml-12 lg:w-[calc(100%+3rem)]">
         {data.length === 0 ? (
           <EmptyState message={loadError ? t("common.error") : t("common.noData")} />
         ) : (
           <table className="gp-table min-w-[900px] lg:w-full lg:min-w-0 lg:table-fixed [&_td]:py-2 [&_th]:py-2">
             <colgroup>
-              <col className="lg:w-[8%]" />
+              <col className="lg:w-[11%]" />
+              <col className="lg:w-[10%]" />
+              <col className="lg:w-[12%]" />
+              <col className="lg:w-[16%]" />
+              <col className="lg:w-[9%]" />
+              <col className="lg:w-[11%]" />
+              <col className="lg:w-[9%]" />
+              <col className="lg:w-[10%]" />
               <col className="lg:w-[7%]" />
-              <col className="lg:w-[10%]" />
-              <col className="lg:w-[14%]" />
-              <col className="lg:w-[9%]" />
-              <col className="lg:w-[10%]" />
-              <col className="lg:w-[8%]" />
-              <col className="lg:w-[9%]" />
-              <col className="lg:w-[6%]" />
-              <col className="lg:w-[19%]" />
+              <col className="lg:w-[5%]" />
             </colgroup>
             <thead>
               <tr>
@@ -208,28 +208,16 @@ export default function SalesPage() {
                     <span className="gp-badge gp-badge-success capitalize">{s.status}</span>
                   </td>
                   <td>
-                    <div className="flex flex-wrap items-center gap-1 lg:flex-nowrap lg:gap-0.5">
-                      <InvoiceActions saleId={s._id} saleStatus={s.status} inline iconOnly className="lg:flex-nowrap lg:gap-0.5" />
-                      <button
-                        type="button"
-                        className="gp-btn gp-btn-ghost min-h-8 min-w-8 px-2 lg:min-h-7 lg:min-w-7 lg:shrink-0 lg:px-1.5"
-                        onClick={() => {
-                          setEditing(s);
-                          setFormOpen(true);
-                        }}
-                        title={t("common.edit")}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        className="gp-btn gp-btn-danger min-h-8 min-w-8 px-2 lg:min-h-7 lg:min-w-7 lg:shrink-0 lg:px-1.5"
-                        onClick={() => removeSale(s._id)}
-                        title={t("common.delete")}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
+                    <InvoiceActions
+                      saleId={s._id}
+                      saleStatus={s.status}
+                      asMenu
+                      onEdit={() => {
+                        setEditing(s);
+                        setFormOpen(true);
+                      }}
+                      onDelete={() => removeSale(s._id)}
+                    />
                   </td>
                 </tr>
               ))}

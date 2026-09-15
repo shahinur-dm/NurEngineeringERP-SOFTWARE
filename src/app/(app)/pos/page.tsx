@@ -335,21 +335,57 @@ export default function PosPage() {
           </section>
 
           {cart.length > 0 && <div className="overflow-x-auto rounded-xl border border-line">
-            <table className="gp-table w-full table-fixed min-w-[850px] [&_input]:min-h-8 [&_input]:w-full [&_input]:py-1 [&_td]:px-1.5 [&_td]:py-1.5 [&_th]:px-1.5 [&_th]:py-1.5">
+            <table className="gp-table w-full min-w-[850px] table-fixed [&_input]:block [&_input]:min-h-8 [&_input]:w-full [&_input]:min-w-0 [&_input]:py-1 [&_td]:px-1.5 [&_td]:py-1.5 [&_th]:px-1.5 [&_th]:py-1.5">
               <colgroup>
-                <col className="w-9" />
+                <col className="w-[4%]" />
+                <col className="w-[16%]" />
+                <col className="w-[28%]" />
+                <col className="w-[8%]" />
                 <col className="w-[12%]" />
-                <col />
-                <col className="w-24" />
-                <col className="w-44" />
-                <col className="w-20" />
-                <col className="w-32" />
-                <col className="w-12" />
+                <col className="w-[12%]" />
+                <col className="w-[14%]" />
+                <col className="w-[6%]" />
               </colgroup>
-              <thead><tr><th>SL</th><th>Name</th><th>Description</th><th className="w-24">QTY</th><th>Price</th><th>Discount</th><th className="w-32">Total</th><th className="w-12" /></tr></thead>
+              <thead>
+                <tr>
+                  <th>SL</th>
+                  <th>Name</th>
+                  <th>Description</th>
+                  <th>QTY</th>
+                  <th>Price</th>
+                  <th>Discount</th>
+                  <th>Total</th>
+                  <th />
+                </tr>
+              </thead>
               <tbody>{cart.map((i, index) => {
                 const lineTotal = Math.max(0, i.qty * i.sellPrice - i.lineDiscount);
-                return <tr key={i._id}><td>{index + 1}</td><td className="min-w-0"><input className="gp-input" value={i.name} onChange={(e) => updateItem(i._id, { name: e.target.value })} /></td><td className="min-w-0"><input className="gp-input overflow-x-auto" value={i.saleDescription} onChange={(e) => updateItem(i._id, { saleDescription: e.target.value })} /></td><td className="w-24"><input type="number" min={1} max={i.locationQty || undefined} className="gp-input" value={i.qty} onChange={(e) => updateQuantity(i, Number(e.target.value))} /></td><td className="min-w-0"><input type="number" min={0} className="gp-input" value={i.sellPrice} onChange={(e) => updateItem(i._id, { sellPrice: Math.max(0, Number(e.target.value)) })} /></td><td className="min-w-0"><input type="number" min={0} max={i.qty * i.sellPrice} className="gp-input" value={i.lineDiscount} onChange={(e) => updateItem(i._id, { lineDiscount: Math.max(0, Number(e.target.value)) })} /></td><td className="gp-money w-32 font-bold">{formatBDT(lineTotal, locale)}</td><td><button type="button" className="p-2 text-red-500" onClick={() => setCart((old) => old.filter((x) => x._id !== i._id))}><Trash2 className="h-4 w-4" /></button></td></tr>;
+                return (
+                  <tr key={i._id}>
+                    <td>{index + 1}</td>
+                    <td className="min-w-0">
+                      <input className="gp-input" value={i.name} onChange={(e) => updateItem(i._id, { name: e.target.value })} />
+                    </td>
+                    <td className="min-w-0">
+                      <input className="gp-input overflow-x-auto" value={i.saleDescription} onChange={(e) => updateItem(i._id, { saleDescription: e.target.value })} />
+                    </td>
+                    <td className="min-w-0">
+                      <input type="number" min={1} max={i.locationQty || undefined} className="gp-input" value={i.qty} onChange={(e) => updateQuantity(i, Number(e.target.value))} />
+                    </td>
+                    <td className="min-w-0">
+                      <input type="number" min={0} className="gp-input" value={i.sellPrice} onChange={(e) => updateItem(i._id, { sellPrice: Math.max(0, Number(e.target.value)) })} />
+                    </td>
+                    <td className="min-w-0">
+                      <input type="number" min={0} max={i.qty * i.sellPrice} className="gp-input" value={i.lineDiscount} onChange={(e) => updateItem(i._id, { lineDiscount: Math.max(0, Number(e.target.value)) })} />
+                    </td>
+                    <td className="gp-money min-w-0 font-bold">{formatBDT(lineTotal, locale)}</td>
+                    <td>
+                      <button type="button" className="p-2 text-red-500" onClick={() => setCart((old) => old.filter((x) => x._id !== i._id))}>
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                );
               })}</tbody>
             </table>
           </div>}

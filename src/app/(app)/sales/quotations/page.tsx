@@ -175,7 +175,7 @@ export default function QuotationsPage() {
         </form>
       </div>
 
-      <div className="gp-table-wrap !overflow-x-auto">
+      <div className="gp-table-wrap !overflow-x-auto lg:-ml-12 lg:w-[calc(100%+3rem)]">
         {data.length === 0 ? (
           <EmptyState message={t("common.noData")} />
         ) : (

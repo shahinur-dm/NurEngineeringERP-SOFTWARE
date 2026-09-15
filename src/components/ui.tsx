@@ -49,18 +49,18 @@ export function KpiCard({
       data-animate="card"
       onClick={onClick}
       className={cn(
-        "gp-card gp-kpi-card flex min-h-[118px] w-full flex-col p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md",
+        "gp-card gp-kpi-card flex min-h-[132px] w-full flex-col p-5 text-left transition-all hover:-translate-y-0.5",
         onClick && "cursor-pointer",
       )}
     >
-      <div className="flex items-start justify-between gap-2">
-        <p className="min-h-[2.25rem] text-[0.72rem] font-bold uppercase leading-snug tracking-[0.08em] text-muted">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-[0.7rem] font-bold uppercase leading-snug tracking-[0.08em] text-muted">
           {label}
         </p>
         {Icon ? (
           <span
             className={cn(
-              "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+              "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-sm",
               tone === "warn"
                 ? "bg-[#fff7ed] text-[#ea580c]"
                 : tone === "danger"
@@ -70,17 +70,17 @@ export function KpiCard({
                     : "bg-[#eff6ff] text-[#2563eb]",
             )}
           >
-            <Icon className="h-5 w-5" />
+            <Icon className="h-6 w-6" />
           </span>
         ) : (
-          <span className="h-10 w-10 shrink-0" aria-hidden />
+          <span className="h-12 w-12 shrink-0" aria-hidden />
         )}
       </div>
-      <div className="mt-auto pt-2">
-        <p className="gp-money text-2xl leading-none tracking-tight text-[var(--gp-ink)] md:text-[1.6rem]">
+      <div className="mt-auto pt-3">
+        <p className="gp-money text-[1.7rem] leading-none tracking-tight text-[var(--gp-ink)] md:text-[1.85rem]">
           {typeof value === "number" ? formatBDT(value) : value}
         </p>
-        <p className="mt-1.5 min-h-[1rem] text-xs font-medium text-muted">
+        <p className="mt-2 min-h-[1rem] text-xs font-medium text-muted">
           {hint || "\u00A0"}
         </p>
       </div>

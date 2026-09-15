@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Eye, FileCheck, FileText, Printer, Truck } from "lucide-react";
+import { Eye, FileCheck, FileText, MoreHorizontal, Pencil, Printer, Trash2, Truck } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { paymentStatusBadgeClass, paymentStatusFromAmounts } from "@/lib/sale-finance";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 export function PaymentStatusBadge({
   grandTotal,
@@ -65,6 +66,9 @@ export function InvoiceActions({
   className,
   iconOnly,
   iconOnlyCore,
+  asMenu,
+  onEdit,
+  onDelete,
 }: {
   saleId: string;
   compact?: boolean;
@@ -75,6 +79,9 @@ export function InvoiceActions({
   className?: string;
   iconOnly?: boolean;
   iconOnlyCore?: boolean;
+  asMenu?: boolean;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }) {
   const t = useTranslations();
   const router = useRouter();
@@ -108,9 +115,135 @@ export function InvoiceActions({
   }
 
   const printQuotationHref = `${quotationHref}?print=1`;
-
   const printInvoiceHref = `${viewHref}?print=1`;
   const printChallanHref = `${challanView}?print=1`;
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuBtnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onDoc(e: MouseEvent) {
+      const target = e.target as Node;
+      if (menuBtnRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+      setMenuOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [menuOpen]);
+
+  function toggleMenu() {
+    const r = menuBtnRef.current?.getBoundingClientRect();
+    if (r) {
+      const estimated = 280;
+      const top = r.bottom + 4 + estimated > window.innerHeight ? Math.max(8, r.top - estimated) : r.bottom + 4;
+      setMenuPos({ top, right: Math.max(8, window.innerWidth - r.right) });
+    }
+    setMenuOpen((open) => !open);
+  }
+
+  const itemClass =
+    "flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-[var(--gp-ink)] hover:bg-[var(--gp-primary-soft)]";
+
+  const menu =
+    asMenu && menuOpen && typeof document !== "undefined"
+      ? createPortal(
+          <div
+            ref={menuRef}
+            className="fixed z-[120] min-w-[13.5rem] rounded-lg border border-line bg-white py-1 shadow-xl"
+            style={{ top: menuPos.top, right: menuPos.right }}
+          >
+            {isQuotation ? (
+              <>
+                <Link href={quotationHref} className={itemClass} onClick={() => setMenuOpen(false)}>
+                  <Eye className="h-4 w-4" /> View
+                </Link>
+                {hidePrintPdf ? null : showPrint ? (
+                  <button type="button" className={itemClass} onClick={() => { setMenuOpen(false); window.print(); }}>
+                    <Printer className="h-4 w-4" /> Print
+                  </button>
+                ) : (
+                  <Link href={printQuotationHref} className={itemClass} onClick={() => setMenuOpen(false)}>
+                    <Printer className="h-4 w-4" /> Print
+                  </Link>
+                )}
+                {hidePrintPdf ? null : (
+                  <a href={quotationPdf} target="_blank" rel="noreferrer" className={itemClass} onClick={() => setMenuOpen(false)}>
+                    <FileText className="h-4 w-4 text-[var(--gp-info)]" /> PDF
+                  </a>
+                )}
+                <button type="button" className={itemClass} disabled={busy} onClick={() => { setMenuOpen(false); void convert(); }}>
+                  <FileCheck className="h-4 w-4" /> {t("sales.convertToOrder")}
+                </button>
+              </>
+            ) : (
+              <>
+                <Link href={viewHref} className={itemClass} onClick={() => setMenuOpen(false)}>
+                  <Eye className="h-4 w-4" /> View Invoice
+                </Link>
+                {hidePrintPdf ? null : showPrint ? (
+                  <button type="button" className={itemClass} onClick={() => { setMenuOpen(false); window.print(); }}>
+                    <Printer className="h-4 w-4" /> Print
+                  </button>
+                ) : (
+                  <Link href={printInvoiceHref} className={itemClass} onClick={() => setMenuOpen(false)}>
+                    <Printer className="h-4 w-4" /> Print
+                  </Link>
+                )}
+                {hidePrintPdf ? null : (
+                  <a href={pdfHref} target="_blank" rel="noreferrer" className={itemClass} onClick={() => setMenuOpen(false)}>
+                    <FileText className="h-4 w-4 text-[var(--gp-danger)]" /> Invoice PDF
+                  </a>
+                )}
+                <Link href={challanView} className={itemClass} onClick={() => setMenuOpen(false)}>
+                  <Truck className="h-4 w-4" /> View Delivery Challan
+                </Link>
+                <Link href={printChallanHref} className={itemClass} onClick={() => setMenuOpen(false)}>
+                  <Printer className="h-4 w-4" /> Print Delivery Challan
+                </Link>
+                <a href={challanPdf} target="_blank" rel="noreferrer" className={itemClass} onClick={() => setMenuOpen(false)}>
+                  <FileText className="h-4 w-4" /> Delivery Challan PDF
+                </a>
+              </>
+            )}
+            {onEdit ? (
+              <button type="button" className={itemClass} onClick={() => { setMenuOpen(false); onEdit(); }}>
+                <Pencil className="h-4 w-4" /> {t("common.edit")}
+              </button>
+            ) : null}
+            {onDelete ? (
+              <button
+                type="button"
+                className={cn(itemClass, "text-[var(--gp-danger)]")}
+                onClick={() => { setMenuOpen(false); onDelete(); }}
+              >
+                <Trash2 className="h-4 w-4" /> {t("common.delete")}
+              </button>
+            ) : null}
+          </div>,
+          document.body,
+        )
+      : null;
+
+  if (asMenu) {
+    return (
+      <div className={cn("relative flex justify-end", className)}>
+        <button
+          ref={menuBtnRef}
+          type="button"
+          className="gp-btn gp-btn-ghost min-h-8 min-w-8 px-2"
+          aria-label={t("common.actions")}
+          aria-expanded={menuOpen}
+          onClick={toggleMenu}
+        >
+          <MoreHorizontal className="h-4 w-4" />
+        </button>
+        {menu}
+      </div>
+    );
+  }
 
   return (
     <div

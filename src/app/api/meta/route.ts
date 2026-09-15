@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import { readSession } from "@/lib/auth";
 import { Location, Business, Account } from "@/models";
-import { hasPermission } from "@/lib/rbac";
+import { hasPermission, isSuperAdmin } from "@/lib/rbac";
 
 export async function GET(req: NextRequest) {
   const session = await readSession();
@@ -49,12 +49,15 @@ export async function GET(req: NextRequest) {
   }
 
   if (type === "profile") {
+    const { User } = await import("@/models");
+    const user = await User.findById(session.id).lean();
     return NextResponse.json({
       data: [
         { label: "Name", value: session.name },
         { label: "Email", value: session.email },
         { label: "Role", value: session.role },
       ],
+      avatarUrl: (user as { avatarUrl?: string } | null)?.avatarUrl || "",
     });
   }
 
@@ -106,6 +109,26 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ data: business });
     }
 
+    if (type === "profile") {
+      if (!isSuperAdmin(session.role)) {
+        return NextResponse.json({ error: "forbidden" }, { status: 403 });
+      }
+      const avatarUrl = String(body.avatarUrl || "");
+      if (avatarUrl && !avatarUrl.startsWith("data:image/") && !avatarUrl.startsWith("http")) {
+        return NextResponse.json({ error: "invalid_image" }, { status: 400 });
+      }
+      if (avatarUrl.startsWith("data:image/") && avatarUrl.length > 1_200_000) {
+        return NextResponse.json({ error: "too_large" }, { status: 400 });
+      }
+      const { User } = await import("@/models");
+      const updated = await User.findByIdAndUpdate(
+        session.id,
+        { $set: { avatarUrl } },
+        { new: true },
+      );
+      if (!updated) return NextResponse.json({ error: "not_found" }, { status: 404 });
+      return NextResponse.json({ data: { avatarUrl: updated.avatarUrl || "" } });
+    }
     if (type === "location") {
       if (body._id) {
         const updated = await Location.findByIdAndUpdate(
