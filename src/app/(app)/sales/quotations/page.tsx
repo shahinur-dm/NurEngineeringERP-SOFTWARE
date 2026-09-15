@@ -175,23 +175,23 @@ export default function QuotationsPage() {
         </form>
       </div>
 
-      <div className="gp-table-wrap !overflow-x-auto lg:-ml-12 lg:w-[calc(100%+3rem)]">
+      <div className="gp-table-wrap !overflow-x-auto">
         {data.length === 0 ? (
           <EmptyState message={t("common.noData")} />
         ) : (
-          <table className="gp-table gp-table-compact min-w-[760px] lg:w-full lg:min-w-0 lg:table-fixed [&_td]:py-2 [&_th]:py-2">
+          <table className="gp-table gp-table-compact w-full min-w-[720px] table-fixed [&_td]:py-2 [&_th]:py-2">
             <colgroup>
-              <col className="lg:w-9" />
-              <col className="lg:w-[6.875rem]" />
-              <col className="lg:w-[7.8125rem]" />
-              <col className="lg:w-[7.8125rem]" />
-              <col />
-              <col className="lg:w-[6.25rem]" />
-              <col className="lg:w-[22rem]" />
+              <col className="w-[6%]" />
+              <col className="w-[11%]" />
+              <col className="w-[15%]" />
+              <col className="w-[14%]" />
+              <col className="w-[18%]" />
+              <col className="w-[12%]" />
+              <col className="w-[24%]" />
             </colgroup>
             <thead>
               <tr>
-                <th className="w-14">SL No</th>
+                <th>SL No</th>
                 <th>{t("common.date")}</th>
                 <th>{t("sales.quotationNo")}</th>
                 <th>{t("sales.referenceNo")}</th>
@@ -204,7 +204,7 @@ export default function QuotationsPage() {
               {data.map((s, index) => (
                 <tr key={s._id}>
                   <td>{(page - 1) * PAGE_SIZE + index + 1}</td>
-                  <td>{formatDateBD(s.saleDate, locale)}</td>
+                  <td className="whitespace-nowrap">{formatDateBD(s.saleDate, locale)}</td>
                   <td>
                     <Link href={`/sales/${s._id}/quotation`} className="font-semibold text-primary hover:underline">
                       {s.quotationNo || s.invoiceNo || "—"}
@@ -223,14 +223,14 @@ export default function QuotationsPage() {
                       s.customerName
                     )}
                   </td>
-                  <td className="font-bold">{formatBDT(s.grandTotal, locale)}</td>
+                  <td className="whitespace-nowrap font-bold">{formatBDT(s.grandTotal, locale)}</td>
                   <td>
-                    <div className="flex flex-wrap items-center gap-1 lg:flex-nowrap">
-                      <button type="button" className="gp-btn gp-btn-ghost min-h-8 px-2 text-xs" onClick={() => openEdit(s)}>
+                    <div className="flex flex-nowrap items-center gap-1">
+                      <button type="button" className="gp-btn gp-btn-ghost min-h-8 shrink-0 px-2 text-xs" onClick={() => openEdit(s)}>
                         <Pencil className="h-3.5 w-3.5" />
                         <span className="sr-only">{t("common.edit")}</span>
                       </button>
-                      <InvoiceActions saleId={s._id} saleStatus={s.status} inline iconOnlyCore className="lg:flex-nowrap [&>*]:shrink-0" />
+                      <InvoiceActions saleId={s._id} saleStatus={s.status} inline iconOnlyCore className="flex-nowrap [&>*]:shrink-0" />
                     </div>
                   </td>
                 </tr>

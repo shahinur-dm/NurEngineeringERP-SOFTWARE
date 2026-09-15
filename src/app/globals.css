@@ -1138,3 +1138,9 @@ h3,
     grid-template-columns: minmax(280px, 1.05fr) minmax(320px, 1fr);
   }
 }
+
+/* Quotation/POS page only: tighter spacing, same visual language. */
+.pos-quote .gp-input {
+  min-height: 32px;
+  padding-block: 0.28rem;
+}

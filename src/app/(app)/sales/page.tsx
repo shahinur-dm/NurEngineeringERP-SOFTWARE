@@ -31,6 +31,7 @@ export default function SalesPage() {
   const [data, setData] = useState<Sale[]>([]);
   const [summary, setSummary] = useState({ grandTotal: 0, dueAmount: 0, count: 0 });
   const [q, setQ] = useState("");
+  const [loadError, setLoadError] = useState(false);
   const [editing, setEditing] = useState<Sale | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const salesCrud = getCrudConfig("sales");
@@ -38,10 +39,23 @@ export default function SalesPage() {
   async function load(search = q) {
     const qs = new URLSearchParams({ limit: "100" });
     if (search) qs.set("q", search);
-    const res = await fetch(`/api/sales?${qs}`);
-    const json = await res.json();
-    setData(json.data || []);
-    setSummary(json.summary || { grandTotal: 0, dueAmount: 0, count: 0 });
+    try {
+      const res = await fetch(`/api/sales?${qs}`);
+      const json = await res.json();
+      if (!res.ok || !Array.isArray(json.data)) {
+        setLoadError(true);
+        setData([]);
+        setSummary({ grandTotal: 0, dueAmount: 0, count: 0 });
+        return;
+      }
+      setLoadError(false);
+      setData(json.data);
+      setSummary(json.summary || { grandTotal: 0, dueAmount: 0, count: 0 });
+    } catch {
+      setLoadError(true);
+      setData([]);
+      setSummary({ grandTotal: 0, dueAmount: 0, count: 0 });
+    }
   }
 
   useEffect(() => {
@@ -112,7 +126,7 @@ export default function SalesPage() {
 
       <div className="gp-table-wrap !overflow-x-auto">
         {data.length === 0 ? (
-          <EmptyState message={t("common.noData")} />
+          <EmptyState message={loadError ? t("common.error") : t("common.noData")} />
         ) : (
           <table className="gp-table min-w-[900px] lg:w-full lg:min-w-0 lg:table-fixed [&_td]:py-2 [&_th]:py-2">
             <colgroup>

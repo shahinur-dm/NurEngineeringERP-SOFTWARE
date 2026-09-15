@@ -122,8 +122,6 @@ export async function buildTradePdf(opts: {
   const date = enDate(sale.saleDate);
   const m = 10;
   const boxW = 62;
-  const images = await Promise.all(items.map((it) => loadImageDataUrl(it.imageUrl)));
-
   const logoData = business?.logoUrl ? await loadImageDataUrl(business.logoUrl) : null;
   const footerH = 16;
 
@@ -358,18 +356,6 @@ export async function buildTradePdf(opts: {
       ...tableOpts,
       startY: y,
       body: isLast ? [...chunk, ...totalRows] : chunk,
-      didDrawCell: (data) => {
-        if (data.section !== "body" || data.column.index !== 2) return;
-        const img = images[pageIdx * PAGE_ROWS + data.row.index];
-        if (!img) return;
-        try {
-          const x = data.cell.x + data.cell.width - 13;
-          const iy = data.cell.y + 1.5;
-          doc.addImage(img, "JPEG", x, iy, 11, 11);
-        } catch {
-          /* skip */
-        }
-      },
     });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     y = ((doc as any).lastAutoTable?.finalY || y) + 6;

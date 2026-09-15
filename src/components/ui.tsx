@@ -197,6 +197,7 @@ export function Modal({
   wide,
   compact,
   fit,
+  scrollBody,
 }: {
   open: boolean;
   title: string;
@@ -205,6 +206,7 @@ export function Modal({
   wide?: boolean;
   compact?: boolean;
   fit?: boolean;
+  scrollBody?: boolean;
 }) {
   const backdropRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -250,13 +252,25 @@ export function Modal({
         ref={panelRef}
         className={cn(
           "rounded-xl border border-line bg-white shadow-xl",
-          wide ? "w-full max-w-5xl" : compact ? "w-full max-w-[420px]" : fit ? "w-full max-w-[560px]" : "w-full max-w-[480px]",
-          fit ? "overflow-visible" : "max-h-[min(90vh,720px)] overflow-auto",
+          wide
+            ? scrollBody
+              ? "w-full max-w-6xl"
+              : "w-full max-w-5xl"
+            : compact
+              ? "w-full max-w-[420px]"
+              : fit
+                ? "w-full max-w-[560px]"
+                : "w-full max-w-[480px]",
+          scrollBody
+            ? "flex max-h-[calc(100vh-1.5rem)] flex-col overflow-hidden"
+            : fit
+              ? "overflow-visible"
+              : "max-h-[min(90vh,720px)] overflow-auto",
         )}
       >
         <div
           className={cn(
-            "sticky top-0 z-10 flex items-center justify-between border-b border-line bg-white",
+            "sticky top-0 z-10 flex shrink-0 items-center justify-between border-b border-line bg-white",
             compact ? "px-4 py-2.5" : "px-4 py-3",
           )}
         >
@@ -265,7 +279,15 @@ export function Modal({
             ✕
           </button>
         </div>
-        <div className={cn(compact ? "p-3.5" : "p-4")}>{children}</div>
+        <div
+          className={cn(
+            scrollBody && "min-h-0 flex-1 overflow-x-hidden overflow-y-auto",
+            compact ? "p-3.5" : "p-4",
+            scrollBody && compact && "p-2.5",
+          )}
+        >
+          {children}
+        </div>
       </div>
     </div>,
     document.body,

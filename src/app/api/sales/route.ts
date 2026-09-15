@@ -13,78 +13,97 @@ import {
 import { calcDueAmount, roundMoney } from "@/lib/sale-finance";
 import { ensureDeliveryChallan } from "@/lib/delivery-challan";
 
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 export async function GET(req: NextRequest) {
   const session = await readSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  await connectDB();
-  await ensureSaleNumberIndexes();
-  const { searchParams } = new URL(req.url);
-  const from = searchParams.get("from");
-  const to = searchParams.get("to");
-  const locationId = searchParams.get("locationId");
-  const customerId = searchParams.get("customerId");
-  const status = searchParams.get("status");
-  const paymentMethod = searchParams.get("paymentMethod");
-  const q = searchParams.get("q")?.trim();
-  const page = Math.max(1, Number(searchParams.get("page") || 1));
-  const limit = Math.min(200, Number(searchParams.get("limit") || 50));
+  try {
+    await connectDB();
+    await ensureSaleNumberIndexes();
+    const { searchParams } = new URL(req.url);
+    const from = searchParams.get("from");
+    const to = searchParams.get("to");
+    const locationId = searchParams.get("locationId");
+    const customerId = searchParams.get("customerId");
+    const status = searchParams.get("status");
+    const paymentMethod = searchParams.get("paymentMethod");
+    const q = searchParams.get("q")?.trim();
+    const page = Math.max(1, Number(searchParams.get("page") || 1));
+    const limit = Math.min(200, Number(searchParams.get("limit") || 50));
 
-  const filter: Record<string, unknown> = {};
-  if (from || to) {
-    filter.saleDate = {};
-    if (from) (filter.saleDate as Record<string, Date>).$gte = new Date(from);
-    if (to) {
-      const end = new Date(to);
-      end.setHours(23, 59, 59, 999);
-      (filter.saleDate as Record<string, Date>).$lte = end;
+    const filter: Record<string, unknown> = {};
+    if (from || to) {
+      filter.saleDate = {};
+      if (from) (filter.saleDate as Record<string, Date>).$gte = new Date(from);
+      if (to) {
+        const end = new Date(to);
+        end.setHours(23, 59, 59, 999);
+        (filter.saleDate as Record<string, Date>).$lte = end;
+      }
     }
-  }
-  if (locationId) filter.locationId = locationId;
-  if (customerId) filter.customerId = customerId;
-  if (status) filter.status = status;
-  if (paymentMethod) filter["payments.method"] = paymentMethod;
-  if (q) {
-    filter.$or = [
-      { invoiceNo: new RegExp(q, "i") },
-      { quotationNo: new RegExp(q, "i") },
-      { salesOrderNo: new RegExp(q, "i") },
-      { referenceNo: new RegExp(q, "i") },
-      { customerName: new RegExp(q, "i") },
-      { customerMobile: new RegExp(q, "i") },
-    ];
-  }
-  const quotationNo = searchParams.get("quotationNo")?.trim();
-  if (quotationNo) filter.quotationNo = quotationNo.toUpperCase();
+    if (locationId) filter.locationId = locationId;
+    if (customerId) filter.customerId = customerId;
+    if (status) filter.status = status;
+    if (paymentMethod) filter["payments.method"] = paymentMethod;
+    if (q) {
+      const rx = new RegExp(escapeRegex(q), "i");
+      filter.$or = [
+        { invoiceNo: rx },
+        { quotationNo: rx },
+        { salesOrderNo: rx },
+        { referenceNo: rx },
+        { customerName: rx },
+        { customerMobile: rx },
+        { challanNo: rx },
+        { pfNo: rx },
+        { poNo: rx },
+        { "items.name": rx },
+        { "items.description": rx },
+        { "payments.reference": rx },
+      ];
+    }
+    const quotationNo = searchParams.get("quotationNo")?.trim();
+    if (quotationNo) filter.quotationNo = quotationNo.toUpperCase();
 
-  const [data, total, aggregates] = await Promise.all([
-    Sale.find(filter)
-      .sort({ saleDate: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .lean(),
-    Sale.countDocuments(filter),
-    Sale.aggregate([
-      { $match: filter },
-      {
-        $group: {
-          _id: null,
-          grandTotal: { $sum: "$grandTotal" },
-          paidAmount: { $sum: "$paidAmount" },
-          dueAmount: { $sum: "$dueAmount" },
-          count: { $sum: 1 },
+    const [data, total, aggregates] = await Promise.all([
+      Sale.find(filter)
+        .sort({ saleDate: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      Sale.countDocuments(filter),
+      Sale.aggregate([
+        { $match: filter },
+        {
+          $group: {
+            _id: null,
+            grandTotal: { $sum: "$grandTotal" },
+            paidAmount: { $sum: "$paidAmount" },
+            dueAmount: { $sum: "$dueAmount" },
+            count: { $sum: 1 },
+          },
         },
-      },
-    ]),
-  ]);
+      ]),
+    ]);
 
-  return NextResponse.json({
-    data,
-    total,
-    page,
-    limit,
-    summary: aggregates[0] || { grandTotal: 0, paidAmount: 0, dueAmount: 0, count: 0 },
-  });
+    return NextResponse.json({
+      data,
+      total,
+      page,
+      limit,
+      summary: aggregates[0] || { grandTotal: 0, paidAmount: 0, dueAmount: 0, count: 0 },
+    });
+  } catch (err) {
+    console.error("GET /api/sales", err);
+    return NextResponse.json(
+      { error: "failed", data: null, summary: null },
+      { status: 500 },
+    );
+  }
 }
 
 export async function POST(req: NextRequest) {

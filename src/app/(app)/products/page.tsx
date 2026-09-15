@@ -96,7 +96,7 @@ function InlineField({
   children: ReactNode;
 }) {
   return (
-    <label className="grid grid-cols-[6.6rem_minmax(0,1fr)] items-center gap-2">
+    <label className="grid min-w-0 grid-cols-[5.4rem_minmax(0,1fr)] items-center gap-1.5">
       <span className="text-[0.68rem] font-semibold leading-tight text-muted">{label}</span>
       {children}
     </label>
@@ -518,12 +518,12 @@ export default function ProductsPage() {
         title={editing ? t("common.edit") : t("products.add")}
         onClose={() => setModalOpen(false)}
         wide
-        fit
         compact
+        scrollBody
       >
         <form
           onSubmit={onSubmit}
-          className="grid grid-cols-1 gap-x-4 gap-y-1.5 lg:grid-cols-2 [&_.gp-input]:min-h-7 [&_.gp-input]:py-0.5"
+          className="grid grid-cols-1 gap-x-2 gap-y-1 md:grid-cols-2 lg:grid-cols-3 [&_.gp-input]:min-h-7 [&_.gp-input]:py-0.5"
         >
           <InlineField label={locale === "bn" ? "পণ্যের নাম" : "Product Name"}>
             <input
@@ -687,8 +687,8 @@ export default function ProductsPage() {
             />
           </InlineField>
 
-          <div className="lg:col-span-2">
-            <div className="grid grid-cols-[6.6rem_minmax(0,1fr)] items-center gap-2">
+          <div className="md:col-span-2 lg:col-span-3">
+            <div className="grid min-w-0 grid-cols-[5.4rem_minmax(0,1fr)] items-center gap-1.5">
               <span className="text-[0.68rem] font-semibold leading-tight text-muted">
                 {locale === "bn" ? "পণ্য ছবি" : "Product image"}
               </span>
@@ -727,7 +727,7 @@ export default function ProductsPage() {
             </div>
           </div>
 
-          <div className="lg:col-span-2">
+          <div className="md:col-span-2 lg:col-span-3">
             <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
               <p className="text-[0.68rem] font-semibold text-muted">{t("products.supplierPrices")}</p>
               <button
@@ -793,7 +793,7 @@ export default function ProductsPage() {
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 lg:col-span-2">
+          <div className="flex justify-end gap-2 md:col-span-2 lg:col-span-3">
             <button
               type="button"
               className="gp-btn gp-btn-ghost min-h-8 px-3"

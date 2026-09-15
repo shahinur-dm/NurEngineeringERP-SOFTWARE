@@ -268,20 +268,20 @@ export default function PosPage() {
   }
 
   return (
-    <div className="space-y-2">
+    <div className="pos-quote space-y-1.5">
       <section className="gp-card overflow-hidden">
-        <header className="flex flex-wrap items-center gap-2 border-b border-line px-3 py-2">
+        <header className="flex flex-wrap items-center gap-2 border-b border-line px-3 py-1.5">
           <div className="flex flex-1 items-center gap-2 text-xl font-bold text-[var(--gp-ink)]">
-            <span className="rounded-lg bg-[var(--gp-primary)] p-2 text-white"><FileText className="h-5 w-5" /></span>
+            <span className="rounded-lg bg-[var(--gp-primary)] p-1.5 text-white"><FileText className="h-5 w-5" /></span>
             Quotation
           </div>
           <button className="gp-btn gp-btn-primary" type="button" onClick={reset}><Plus className="h-4 w-4" />New Order</button>
           <Link className="gp-btn gp-btn-ghost" href="/contacts/import"><Upload className="h-4 w-4" />Import Customer</Link>
         </header>
 
-        <div className="space-y-2 p-2">
-          <div className="grid gap-x-3 gap-y-1.5 rounded-xl border border-line bg-[#fbfdff] p-2 md:grid-cols-2 lg:grid-cols-3">
-            <Field label="Customer Name">
+        <div className="space-y-1.5 p-1.5">
+          <div className="grid gap-x-3 gap-y-1 rounded-xl border border-line bg-[#fbfdff] p-1.5 md:grid-cols-2 lg:grid-cols-3">
+            <Field label="Customer Name" className="space-y-0.5">
               <div className="relative">
                 <div className="flex gap-2"><div className="relative min-w-0 flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" /><input className="gp-input gp-input-icon-left" value={customerQuery} placeholder="Search by name, code or mobile..."
                   onFocus={() => setCustomerMenu(true)}
@@ -293,16 +293,16 @@ export default function PosPage() {
                 )}
               </div>
             </Field>
-            <Field label="Contact No"><input className="gp-input" value={customerMobile} onChange={(e) => setCustomerMobile(e.target.value)} placeholder="Contact No" /></Field>
-            <Field label="Address"><div className="relative"><MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" /><input className="gp-input gp-input-icon-left" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} placeholder="Address" /></div></Field>
-            <Field label="Date"><div className="relative"><CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" /><input type="date" className="gp-input gp-input-icon-left" value={saleDate} onChange={(e) => setSaleDate(e.target.value)} /></div></Field>
-            <Field label="Quotation/PI No"><input className="gp-input" value={quotationNo} onFocus={() => void ensureDocumentNumber("quotation")} onChange={(e) => setQuotationNo(e.target.value.toUpperCase())} onKeyDown={(e) => { if (e.key === "Enter" && quotationNo.trim() && quotationNo !== reservedQuotationNo.current) void loadQuotation(); }} placeholder="Auto-generated on focus" /></Field>
-            <Field label="REF No"><input className="gp-input bg-slate-50" value={referenceNo} onFocus={() => void ensureDocumentNumber("reference")} readOnly placeholder="Auto-generated on focus" /></Field>
+            <Field label="Contact No" className="space-y-0.5"><input className="gp-input" value={customerMobile} onChange={(e) => setCustomerMobile(e.target.value)} placeholder="Contact No" /></Field>
+            <Field label="Address" className="space-y-0.5"><div className="relative"><MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" /><input className="gp-input gp-input-icon-left" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} placeholder="Address" /></div></Field>
+            <Field label="Date" className="space-y-0.5"><div className="relative"><CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" /><input type="date" className="gp-input gp-input-icon-left" value={saleDate} onChange={(e) => setSaleDate(e.target.value)} /></div></Field>
+            <Field label="Quotation/PI No" className="space-y-0.5"><input className="gp-input" value={quotationNo} onFocus={() => void ensureDocumentNumber("quotation")} onChange={(e) => setQuotationNo(e.target.value.toUpperCase())} onKeyDown={(e) => { if (e.key === "Enter" && quotationNo.trim() && quotationNo !== reservedQuotationNo.current) void loadQuotation(); }} placeholder="Auto-generated on focus" /></Field>
+            <Field label="REF No" className="space-y-0.5"><input className="gp-input bg-slate-50" value={referenceNo} onFocus={() => void ensureDocumentNumber("reference")} readOnly placeholder="Auto-generated on focus" /></Field>
           </div>
 
-          <section className="rounded-xl border border-line p-2">
-            <h2 className="mb-1.5 flex items-center gap-2 text-sm font-bold"><PackagePlus className="h-4 w-4 text-primary" />Order Items</h2>
-            <div className="mb-2 grid items-end gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(150px,0.45fr)_minmax(150px,0.45fr)]">
+          <section className="rounded-xl border border-line p-1.5">
+            <h2 className="mb-1 flex items-center gap-2 text-sm font-bold"><PackagePlus className="h-4 w-4 text-primary" />Order Items</h2>
+            <div className="mb-1 grid items-end gap-1.5 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(150px,0.45fr)_minmax(150px,0.45fr)]">
               <div className="relative sm:col-span-2 lg:col-span-1"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" /><input className="gp-input gp-input-icon-left" value={search} onChange={(e) => { const value = e.target.value; setSearch(value); setPage(1); setProductResultsOpen(Boolean(value.trim() || brandName || categoryId)); }} placeholder="Search product by name, SKU, category or brand..." /></div>
               <select aria-label="Brand filter" className="gp-input" value={brandName} onChange={(e) => { const value = e.target.value; setBrandName(value); setPage(1); setProductResultsOpen(Boolean(value || search.trim() || categoryId)); }}><option value="">All Brands</option>{brands.map((b) => <option key={b._id} value={b.name}>{b.name}</option>)}</select>
               <select aria-label="Category filter" className="gp-input" value={categoryId} onChange={(e) => { const value = e.target.value; setCategoryId(value); setPage(1); setProductResultsOpen(Boolean(value || search.trim() || brandName)); }}><option value="">All Categories</option>{categories.map((c) => <option key={c._id} value={c._id}>{c.name}</option>)}</select>
@@ -354,9 +354,9 @@ export default function PosPage() {
             </table>
           </div>}
 
-          <section className="rounded-xl border border-line p-2">
-            <h2 className="mb-1.5 flex items-center gap-2 text-sm font-bold"><FileText className="h-4 w-4 text-primary" />Notes / Delivery Instructions</h2>
-            <div className="mb-1.5">
+          <section className="rounded-xl border border-line p-1.5">
+            <h2 className="mb-1 flex items-center gap-2 text-sm font-bold"><FileText className="h-4 w-4 text-primary" />Notes / Delivery Instructions</h2>
+            <div className="mb-1">
               <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
                 <input
@@ -385,23 +385,23 @@ export default function PosPage() {
                 </datalist>
               </div>
             </div>
-            <textarea className="gp-input min-h-20 resize-y" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Enter notes, delivery instructions, or terms and conditions..." />
+            <textarea className="gp-input min-h-14 resize-y" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Enter notes, delivery instructions, or terms and conditions..." />
           </section>
 
-          <div className="grid gap-2 md:grid-cols-2">
-            <section className="rounded-xl border border-line p-2">
+          <div className="grid items-start gap-1.5 md:grid-cols-2">
+            <section className="rounded-xl border border-line p-1.5">
               <button type="button" className="gp-btn gp-btn-ghost" onClick={() => setPayRows((old) => [...old, payRow()])}><Plus className="h-4 w-4" />Add Payment</button>
-              <div className="mt-2 space-y-1.5">{payRows.map((p) => <div key={p.id} className="grid grid-cols-[1fr_1fr_auto] gap-2"><select className="gp-input" value={p.method} onChange={(e) => setPayRows((old) => old.map((x) => x.id === p.id ? { ...x, method: e.target.value } : x))}>{METHODS.map((m) => <option key={m} value={m}>{m}</option>)}</select><input type="number" min={0} className="gp-input" value={p.amount || ""} placeholder="Amount" onChange={(e) => setPayRows((old) => old.map((x) => x.id === p.id ? { ...x, amount: Math.max(0, Number(e.target.value)) } : x))} /><button type="button" className="p-2 text-red-500" disabled={payRows.length === 1} onClick={() => setPayRows((old) => old.filter((x) => x.id !== p.id))}><X className="h-4 w-4" /></button></div>)}</div>
+              <div className="mt-1.5 space-y-1.5">{payRows.map((p) => <div key={p.id} className="grid grid-cols-[1fr_1fr_auto] gap-2"><select className="gp-input" value={p.method} onChange={(e) => setPayRows((old) => old.map((x) => x.id === p.id ? { ...x, method: e.target.value } : x))}>{METHODS.map((m) => <option key={m} value={m}>{m}</option>)}</select><input type="number" min={0} className="gp-input" value={p.amount || ""} placeholder="Amount" onChange={(e) => setPayRows((old) => old.map((x) => x.id === p.id ? { ...x, amount: Math.max(0, Number(e.target.value)) } : x))} /><button type="button" className="p-2 text-red-500" disabled={payRows.length === 1} onClick={() => setPayRows((old) => old.filter((x) => x.id !== p.id))}><X className="h-4 w-4" /></button></div>)}</div>
             </section>
-            <section className="rounded-xl border border-line bg-[#fbfdff] p-2">
-              <h2 className="mb-2 flex items-center gap-2 text-sm font-bold"><Grid2X2 className="h-4 w-4 text-primary" />Quotation Summary</h2>
-              <div className="space-y-1.5 text-sm"><div className="flex justify-between"><span>Subtotal</span><b className="gp-money">{formatBDT(subtotal, locale)}</b></div><div className="grid grid-cols-[1fr_150px] items-center gap-2"><span>Total Discount</span><div className="flex"><input type="number" min={0} className="gp-input rounded-r-none" value={discountValue} onChange={(e) => setDiscountValue(Math.max(0, Number(e.target.value)))} /><select className="gp-input w-16 rounded-l-none px-1" value={discountType} onChange={(e) => setDiscountType(e.target.value as "percentage" | "fixed")}><option value="percentage">%</option><option value="fixed">৳</option></select></div></div><div className="flex justify-between text-xs text-muted"><span>Including line discounts</span><span>{formatBDT(totalDiscount, locale)}</span></div><div className="flex justify-between rounded-lg border border-line bg-white p-2 text-lg"><b>Grand Total</b><b className="gp-money text-primary">{formatBDT(grandTotal, locale)}</b></div><div className="flex justify-between px-2 text-base"><b>Due Amount</b><b className="gp-money text-red-500">{formatBDT(due, locale)}</b></div></div>
+            <section className="rounded-xl border border-line bg-[#fbfdff] p-1.5">
+              <h2 className="mb-1.5 flex items-center gap-2 text-sm font-bold"><Grid2X2 className="h-4 w-4 text-primary" />Quotation Summary</h2>
+              <div className="space-y-1 text-sm"><div className="flex justify-between"><span>Subtotal</span><b className="gp-money">{formatBDT(subtotal, locale)}</b></div><div className="grid grid-cols-[1fr_150px] items-center gap-2"><span>Total Discount</span><div className="flex"><input type="number" min={0} className="gp-input rounded-r-none" value={discountValue} onChange={(e) => setDiscountValue(Math.max(0, Number(e.target.value)))} /><select className="gp-input w-16 rounded-l-none px-1" value={discountType} onChange={(e) => setDiscountType(e.target.value as "percentage" | "fixed")}><option value="percentage">%</option><option value="fixed">৳</option></select></div></div><div className="flex justify-between text-xs text-muted"><span>Including line discounts</span><span>{formatBDT(totalDiscount, locale)}</span></div><div className="flex justify-between rounded-lg border border-line bg-white p-1.5 text-lg"><b>Grand Total</b><b className="gp-money text-primary">{formatBDT(grandTotal, locale)}</b></div><div className="flex justify-between px-2 text-base"><b>Due Amount</b><b className="gp-money text-red-500">{formatBDT(due, locale)}</b></div></div>
             </section>
           </div>
         </div>
       </section>
 
-      <div className="gp-card flex flex-wrap justify-end gap-2 p-2">
+      <div className="gp-card flex flex-wrap justify-end gap-2 p-1.5">
         <button type="button" className="gp-btn gp-btn-primary" disabled={busy || !cart.length} onClick={() => void save("quotation")}>Save Quotation</button>
         <button type="button" className="gp-btn gp-btn-primary" disabled={busy || !cart.length || paid > grandTotal + .009} onClick={() => void save("final", true)}><Wallet className="h-4 w-4" />{busy ? "Saving..." : "Complete Sale"}</button>
       </div>

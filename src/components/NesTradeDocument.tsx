@@ -320,15 +320,7 @@ export function NesTradeDocument({
             <tr key={`${slOffset}-${idx}`}>
               <td className="c-sl">{slOffset + idx + 1}</td>
               <td className="c-name">{item.name}</td>
-              <td className="c-desc">
-                <div className="nes-desc-wrap">
-                  <span>{item.description || ""}</span>
-                  {item.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={item.imageUrl} alt="" className="nes-prod-img" />
-                  ) : null}
-                </div>
-              </td>
+              <td className="c-desc">{item.description || ""}</td>
               <td className="c-qty">{item.qty ?? 0}</td>
               {kind !== "challan" ? (
                 <>
