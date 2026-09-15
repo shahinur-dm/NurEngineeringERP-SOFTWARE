@@ -196,6 +196,7 @@ export function Modal({
   children,
   wide,
   compact,
+  fit,
 }: {
   open: boolean;
   title: string;
@@ -203,6 +204,7 @@ export function Modal({
   children: React.ReactNode;
   wide?: boolean;
   compact?: boolean;
+  fit?: boolean;
 }) {
   const backdropRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -247,8 +249,9 @@ export function Modal({
       <div
         ref={panelRef}
         className={cn(
-          "max-h-[min(90vh,720px)] overflow-auto rounded-xl border border-line bg-white shadow-xl",
-          wide ? "w-full max-w-5xl" : compact ? "w-full max-w-[420px]" : "w-full max-w-[480px]",
+          "rounded-xl border border-line bg-white shadow-xl",
+          wide ? "w-full max-w-5xl" : compact ? "w-full max-w-[420px]" : fit ? "w-full max-w-[560px]" : "w-full max-w-[480px]",
+          fit ? "overflow-visible" : "max-h-[min(90vh,720px)] overflow-auto",
         )}
       >
         <div

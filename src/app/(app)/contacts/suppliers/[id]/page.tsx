@@ -35,7 +35,15 @@ type Supplier = {
   name: string;
   nameBn?: string;
   mobile?: string;
+  email?: string;
   address?: string;
+  location?: string;
+  supplierName?: string;
+  supplierContact?: string;
+  supplierEmail?: string;
+  supplierWhatsApp?: string;
+  supplierWeChat?: string;
+  supplierCurrencyName?: string;
   balance?: number;
   openingBalance?: number;
 };
@@ -70,10 +78,13 @@ export default function SupplierDetailPage() {
 
   const [editOpen, setEditOpen] = useState(false);
   const [supplierForm, setSupplierForm] = useState({
-    name: "",
-    nameBn: "",
-    mobile: "",
-    address: "",
+    supplierName: "",
+    supplierContact: "",
+    supplierEmail: "",
+    location: "",
+    supplierWhatsApp: "",
+    supplierWeChat: "",
+    supplierCurrencyName: "",
     openingBalance: "0",
   });
 
@@ -111,10 +122,13 @@ export default function SupplierDetailPage() {
     if (!data) return;
     const s = data.supplier;
     setSupplierForm({
-      name: s.name || "",
-      nameBn: s.nameBn || "",
-      mobile: s.mobile || "",
-      address: s.address || "",
+      supplierName: s.supplierName || s.name || "",
+      supplierContact: s.supplierContact || s.mobile || "",
+      supplierEmail: s.supplierEmail || s.email || "",
+      location: s.location || "",
+      supplierWhatsApp: s.supplierWhatsApp || "",
+      supplierWeChat: s.supplierWeChat || "",
+      supplierCurrencyName: s.supplierCurrencyName || "",
       openingBalance: String(s.openingBalance ?? s.balance ?? 0),
     });
     setEditOpen(true);
@@ -130,10 +144,13 @@ export default function SupplierDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           supplier: {
-            name: supplierForm.name,
-            nameBn: supplierForm.nameBn,
-            mobile: supplierForm.mobile,
-            address: supplierForm.address,
+            supplierName: supplierForm.supplierName,
+            supplierContact: supplierForm.supplierContact,
+            supplierEmail: supplierForm.supplierEmail,
+            location: supplierForm.location,
+            supplierWhatsApp: supplierForm.supplierWhatsApp,
+            supplierWeChat: supplierForm.supplierWeChat,
+            supplierCurrencyName: supplierForm.supplierCurrencyName,
             openingBalance: Number(supplierForm.openingBalance || 0),
           },
         }),
@@ -421,34 +438,63 @@ export default function SupplierDetailPage() {
       <Modal
         open={editOpen}
         title={t("common.edit")}
-        compact
+        fit
         onClose={() => setEditOpen(false)}
       >
         <form onSubmit={saveSupplier} className="grid gap-2.5 sm:grid-cols-2">
-          <Field label={locale === "bn" ? "নাম" : "Name"}>
+          <Field label={locale === "bn" ? "সরবরাহকারীর নাম" : "Supplier Name"}>
             <input
               className="gp-input"
               required
-              value={supplierForm.name}
-              onChange={(e) => setSupplierForm((f) => ({ ...f, name: e.target.value }))}
+              value={supplierForm.supplierName}
+              onChange={(e) => setSupplierForm((f) => ({ ...f, supplierName: e.target.value }))}
             />
           </Field>
-          <Field label={locale === "bn" ? "নাম (বাংলা)" : "Name (Bangla)"}>
-            <input
-              className="gp-input"
-              value={supplierForm.nameBn}
-              onChange={(e) => setSupplierForm((f) => ({ ...f, nameBn: e.target.value }))}
-            />
-          </Field>
-          <Field label={locale === "bn" ? "মোবাইল" : "Mobile"}>
+          <Field label={locale === "bn" ? "সরবরাহকারীর যোগাযোগ" : "Supplier Contact"}>
             <input
               className="gp-input"
               required
-              value={supplierForm.mobile}
-              onChange={(e) => setSupplierForm((f) => ({ ...f, mobile: e.target.value }))}
+              value={supplierForm.supplierContact}
+              onChange={(e) => setSupplierForm((f) => ({ ...f, supplierContact: e.target.value }))}
             />
           </Field>
-          <Field label={locale === "bn" ? "প্রারম্ভিক ব্যালেন্স (Opening)" : "Opening balance"}>
+          <Field label={locale === "bn" ? "সরবরাহকারীর ইমেইল" : "Supplier Email"}>
+            <input
+              className="gp-input"
+              type="email"
+              value={supplierForm.supplierEmail}
+              onChange={(e) => setSupplierForm((f) => ({ ...f, supplierEmail: e.target.value }))}
+            />
+          </Field>
+          <Field label={locale === "bn" ? "লোকেশন" : "Location"}>
+            <input
+              className="gp-input"
+              value={supplierForm.location}
+              onChange={(e) => setSupplierForm((f) => ({ ...f, location: e.target.value }))}
+            />
+          </Field>
+          <Field label={locale === "bn" ? "সরবরাহকারীর হোয়াটসঅ্যাপ" : "Supplier WhatsApp"}>
+            <input
+              className="gp-input"
+              value={supplierForm.supplierWhatsApp}
+              onChange={(e) => setSupplierForm((f) => ({ ...f, supplierWhatsApp: e.target.value }))}
+            />
+          </Field>
+          <Field label={locale === "bn" ? "সরবরাহকারীর উইচ্যাট" : "Supplier WeChat"}>
+            <input
+              className="gp-input"
+              value={supplierForm.supplierWeChat}
+              onChange={(e) => setSupplierForm((f) => ({ ...f, supplierWeChat: e.target.value }))}
+            />
+          </Field>
+          <Field label={locale === "bn" ? "সরবরাহকারীর মুদ্রার নাম" : "Supplier Currency Name"}>
+            <input
+              className="gp-input"
+              value={supplierForm.supplierCurrencyName}
+              onChange={(e) => setSupplierForm((f) => ({ ...f, supplierCurrencyName: e.target.value }))}
+            />
+          </Field>
+          <Field label={locale === "bn" ? "প্রারম্ভিক ব্যালেন্স" : "Opening Balance"}>
             <input
               type="number"
               className="gp-input"
@@ -458,23 +504,6 @@ export default function SupplierDetailPage() {
               }
             />
           </Field>
-          <Field label={locale === "bn" ? "বর্তমান প্রদেয়" : "Current payable"}>
-            <input
-              className="gp-input"
-              readOnly
-              value={formatBDT(data?.supplier?.balance ?? 0, locale)}
-            />
-          </Field>
-          <label className="block space-y-1 sm:col-span-2">
-            <span className="text-[0.8rem] font-semibold text-muted">
-              {locale === "bn" ? "ঠিকানা" : "Address"}
-            </span>
-            <textarea
-              className="gp-input min-h-[72px] py-2"
-              value={supplierForm.address}
-              onChange={(e) => setSupplierForm((f) => ({ ...f, address: e.target.value }))}
-            />
-          </label>
           <div className="flex justify-end gap-2 sm:col-span-2">
             <button type="button" className="gp-btn gp-btn-ghost" onClick={() => setEditOpen(false)}>
               {t("common.cancel")}

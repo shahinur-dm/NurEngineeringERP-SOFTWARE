@@ -44,6 +44,11 @@ export function canDelete(role: string) {
   return hasPermission(role, "delete");
 }
 
+/** Highest existing role — used as Super Admin for sensitive product cost. */
+export function isSuperAdmin(role: string) {
+  return role === "admin";
+}
+
 export async function requireSession() {
   const session = await readSession();
   if (!session) {

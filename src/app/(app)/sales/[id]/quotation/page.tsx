@@ -51,6 +51,7 @@ type BusinessDoc = {
   address?: string;
   phone?: string;
   email?: string;
+  website?: string;
   logoUrl?: string;
 };
 

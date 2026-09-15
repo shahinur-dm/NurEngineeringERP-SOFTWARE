@@ -6,13 +6,21 @@ import { Field } from "@/components/ui";
 import type { CrudConfig, CrudField } from "@/lib/crud-config";
 
 function fieldValue(row: Record<string, unknown>, key: string) {
-  const v = row[key];
-  if (v == null) return "";
-  if (typeof v === "object" && v !== null && "_id" in v) {
-    return String((v as { _id: unknown })._id);
+  const aliases: Record<string, string[]> = {
+    supplierName: ["supplierName", "name"],
+    supplierContact: ["supplierContact", "mobile"],
+    supplierEmail: ["supplierEmail", "email"],
+  };
+  for (const k of aliases[key] || [key]) {
+    const v = row[k];
+    if (v == null || v === "") continue;
+    if (typeof v === "object" && v !== null && "_id" in v) {
+      return String((v as { _id: unknown })._id);
+    }
+    if (typeof v === "object") continue;
+    return String(v);
   }
-  if (typeof v === "object") return "";
-  return String(v);
+  return "";
 }
 
 type RelationOption = { _id: string; label: string };

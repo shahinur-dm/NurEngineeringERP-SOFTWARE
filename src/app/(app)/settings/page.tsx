@@ -11,6 +11,7 @@ type Business = {
   address?: string;
   phone?: string;
   email?: string;
+  website?: string;
   bin?: string;
   tin?: string;
   currency?: string;
@@ -192,6 +193,14 @@ export default function SettingsPage() {
               onChange={(e) => setBusiness((b) => ({ ...b, email: e.target.value }))}
             />
           </Field>
+          <Field label={locale === "bn" ? "ওয়েবসাইট" : "Website"}>
+            <input
+              className="gp-input"
+              value={business.website || ""}
+              onChange={(e) => setBusiness((b) => ({ ...b, website: e.target.value }))}
+              placeholder="https://"
+            />
+          </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="BIN">
               <input
@@ -224,7 +233,7 @@ export default function SettingsPage() {
               />
             </Field>
           </div>
-          <Field label={locale === "bn" ? "প্রিন্ট/পিডিএফ লোগো" : "Document print/PDF logo"}>
+          <Field label={locale === "bn" ? "ডকুমেন্ট লোগো" : "Document logo"}>
             <input
               className="gp-input"
               value={business.logoUrl || ""}
@@ -245,6 +254,18 @@ export default function SettingsPage() {
                 reader.readAsDataURL(file);
               }}
             />
+            {business.logoUrl ? (
+              <div className="mt-2 flex h-20 w-20 items-center justify-center rounded-lg border border-line bg-white p-1">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={business.logoUrl} alt="Logo preview" className="max-h-full max-w-full object-contain" />
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-muted">
+                {locale === "bn"
+                  ? "আপলোড করলে Quotation, Bill ও Challan-এ ব্যবহার হবে"
+                  : "Uploaded logo is used on Quotation, Bill and Challan"}
+              </p>
+            )}
           </Field>
           <button type="submit" className="gp-btn gp-btn-primary w-full" disabled={saving}>
             {saving ? t("app.loading") : t("common.save")}

@@ -342,7 +342,8 @@ export function ModulePage({ moduleId }: { moduleId: string }) {
           setFormOpen(false);
           setEditing(null);
         }}
-        wide={!!crud && crud.fields.length > 4}
+        wide={!!crud && crud.fields.length > 4 && crud.createDefaults?.type !== "supplier"}
+        fit={crud?.createDefaults?.type === "supplier"}
       >
         {crud ? (
           <CrudForm

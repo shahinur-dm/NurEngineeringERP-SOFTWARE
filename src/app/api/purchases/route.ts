@@ -4,6 +4,19 @@ import { readSession } from "@/lib/auth";
 import { Purchase, Product, Contact, Business, nextSeq } from "@/models";
 import { generateDocNo } from "@/lib/utils";
 import mongoose from "mongoose";
+import { isSuperAdmin } from "@/lib/rbac";
+
+function moneyCurrency(value: unknown, fallback = "BDT") {
+  const c = String(value || "");
+  return ["BDT", "USD", "RMB"].includes(c) ? c : fallback;
+}
+
+function redactCostPrice<T extends Record<string, unknown>>(doc: T, role: string): T {
+  if (isSuperAdmin(role)) return doc;
+  const next = { ...doc };
+  delete next.costPrice;
+  return next;
+}
 
 export async function GET(req: NextRequest) {
   const session = await readSession();
@@ -55,7 +68,7 @@ export async function GET(req: NextRequest) {
   ]);
 
   return NextResponse.json({
-    data,
+    data: (data as Record<string, unknown>[]).map((row) => redactCostPrice(row, session.role)),
     total,
     page,
     limit,
@@ -73,7 +86,9 @@ export async function POST(req: NextRequest) {
   const seq = await nextSeq("purchase");
   const referenceNo = generateDocNo(business?.purchasePrefix || "PUR", seq);
 
-  const items = (body.items || []).map(
+  const qty = Number(body.quantity ?? body.items?.[0]?.qty ?? 0);
+  const unitCost = Number(body.buyingPrice ?? body.items?.[0]?.unitCost ?? 0);
+  let items = (body.items || []).map(
     (it: {
       productId: string;
       name: string;
@@ -93,6 +108,18 @@ export async function POST(req: NextRequest) {
       expiryDate: it.expiryDate ? new Date(it.expiryDate) : undefined,
     }),
   );
+  if (!items.length) {
+    items = [
+      {
+        productId: body.productId || undefined,
+        name: String(body.productName || "Item"),
+        sku: body.sku,
+        qty,
+        unitCost,
+        lineTotal: qty * unitCost,
+      },
+    ];
+  }
 
   const subtotal = items.reduce((a: number, i: { lineTotal: number }) => a + i.lineTotal, 0);
   const discount = Number(body.discount || 0);
@@ -101,11 +128,14 @@ export async function POST(req: NextRequest) {
   const otherCost = Number(body.otherCost || 0);
   const grandTotal = subtotal + shippingCost + otherCost - discount + tax;
   const payments = body.payments || [];
-  const paidAmount = payments.reduce(
-    (a: number, p: { amount: number }) => a + Number(p.amount || 0),
-    0,
-  );
+  const paidAmount =
+    payments.length > 0
+      ? payments.reduce((a: number, p: { amount: number }) => a + Number(p.amount || 0), 0)
+      : Number(body.paidAmount || 0);
   const dueAmount = Math.max(0, grandTotal - paidAmount);
+  const paymentMethod = String(body.paymentMethod || payments[0]?.method || "cash");
+  const paymentStatus =
+    dueAmount <= 0 ? "Paid" : paidAmount > 0 ? "Partial" : "Due";
 
   const mongoSession = await mongoose.startSession();
   mongoSession.startTransaction();
@@ -121,19 +151,35 @@ export async function POST(req: NextRequest) {
           supplierName: body.supplierName,
           supplierWhatsapp: body.supplierWhatsapp,
           supplierWechat: body.supplierWechat,
+          supplierAddress: body.supplierAddress,
+          supplierMobile: body.supplierMobile,
+          supplierLocation: body.supplierLocation,
+          productName: body.productName,
+          productDescription: body.productDescription,
+          categoryId: body.categoryId || undefined,
+          brand: body.brand,
+          quantity: qty,
+          buyingPrice: unitCost,
+          shippingCurrency: moneyCurrency(body.shippingCurrency),
+          costPrice: isSuperAdmin(session.role) ? Number(body.costPrice || 0) : 0,
+          paymentMethod,
+          paymentStatus,
           items,
           subtotal,
           discount,
           tax,
           shippingCost,
           otherCost,
-          currency: ["BDT", "USD", "RMB"].includes(String(body.currency))
-            ? body.currency
-            : "BDT",
+          currency: moneyCurrency(body.currency),
           grandTotal,
           paidAmount,
           dueAmount,
-          payments,
+          payments:
+            payments.length > 0
+              ? payments
+              : paidAmount > 0
+                ? [{ method: paymentMethod, amount: paidAmount }]
+                : [],
           note: body.note,
           receivingDate: body.receivingDate ? new Date(body.receivingDate) : undefined,
           documentName: body.documentName,
@@ -147,6 +193,7 @@ export async function POST(req: NextRequest) {
 
     if ((body.status || "received") === "received" && body.locationId) {
       for (const it of items) {
+        if (!it.productId) continue;
         const product = await Product.findById(it.productId).session(mongoSession);
         if (!product) continue;
         const idx = product.stocks.findIndex(
@@ -177,7 +224,11 @@ export async function POST(req: NextRequest) {
     }
 
     await mongoSession.commitTransaction();
-    return NextResponse.json({ data: purchase[0] }, { status: 201 });
+    const created = purchase[0]?.toObject?.() ?? purchase[0];
+    return NextResponse.json(
+      { data: redactCostPrice(created as Record<string, unknown>, session.role) },
+      { status: 201 },
+    );
   } catch (e) {
     await mongoSession.abortTransaction();
     console.error(e);

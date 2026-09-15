@@ -3,6 +3,21 @@ import { connectDB } from "@/lib/db";
 import { readSession } from "@/lib/auth";
 import { Contact } from "@/models";
 
+function withSupplierAliases<T extends Record<string, unknown>>(doc: T) {
+  const type = String(doc.type || "");
+  if (type !== "supplier" && type !== "both") return doc;
+  return {
+    ...doc,
+    supplierName: String(doc.supplierName || doc.name || ""),
+    supplierContact: String(doc.supplierContact || doc.mobile || ""),
+    supplierEmail: String(doc.supplierEmail || doc.email || ""),
+    location: String(doc.location || ""),
+    supplierWhatsApp: String(doc.supplierWhatsApp || ""),
+    supplierWeChat: String(doc.supplierWeChat || ""),
+    supplierCurrencyName: String(doc.supplierCurrencyName || ""),
+  };
+}
+
 export async function GET(req: NextRequest) {
   const session = await readSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -23,6 +38,10 @@ export async function GET(req: NextRequest) {
       { name: new RegExp(q, "i") },
       { nameBn: new RegExp(q, "i") },
       { mobile: new RegExp(q, "i") },
+      { email: new RegExp(q, "i") },
+      { supplierName: new RegExp(q, "i") },
+      { supplierContact: new RegExp(q, "i") },
+      { location: new RegExp(q, "i") },
     ];
   }
 
@@ -35,7 +54,12 @@ export async function GET(req: NextRequest) {
     Contact.countDocuments(filter),
   ]);
 
-  return NextResponse.json({ data, total, page, limit });
+  return NextResponse.json({
+    data: data.map((row) => withSupplierAliases(row as Record<string, unknown>)),
+    total,
+    page,
+    limit,
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -44,18 +68,22 @@ export async function POST(req: NextRequest) {
 
   await connectDB();
   const body = await req.json();
+  const name = String(body.supplierName || body.name || "").trim();
+  const mobile = String(body.supplierContact || body.mobile || "").trim();
+  const email = String(body.supplierEmail || body.email || "").trim();
 
-  if (!String(body.name || "").trim() || !String(body.mobile || "").trim()) {
+  if (!name || !mobile) {
     return NextResponse.json({ error: "missing_fields" }, { status: 400 });
   }
 
   try {
     const contact = await Contact.create({
       type: body.type || "customer",
-      name: String(body.name).trim(),
+      name,
       nameBn: body.nameBn,
-      mobile: String(body.mobile).trim(),
-      email: body.email,
+      mobile,
+      phone: body.phone,
+      email,
       address: body.address,
       nid: body.nid,
       bin: body.bin,
@@ -64,9 +92,16 @@ export async function POST(req: NextRequest) {
       balance: Number(body.openingBalance || 0),
       openingBalance: Number(body.openingBalance || 0),
       basicSalary: Number(body.basicSalary || 0),
+      location: body.location,
+      supplierName: name,
+      supplierContact: mobile,
+      supplierEmail: email,
+      supplierWhatsApp: body.supplierWhatsApp,
+      supplierWeChat: body.supplierWeChat,
+      supplierCurrencyName: body.supplierCurrencyName,
     });
 
-    return NextResponse.json({ data: contact }, { status: 201 });
+    return NextResponse.json({ data: withSupplierAliases(contact.toObject()) }, { status: 201 });
   } catch (err) {
     console.error("POST /api/contacts", err);
     return NextResponse.json({ error: "failed" }, { status: 400 });

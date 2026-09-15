@@ -17,7 +17,12 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
   await connectDB();
   const doc = await Contact.findById(id).lean();
   if (!doc) return NextResponse.json({ error: "not_found" }, { status: 404 });
-  return NextResponse.json({ data: doc });
+  return NextResponse.json({ data: {
+    ...doc,
+    supplierName: doc.supplierName || doc.name || "",
+    supplierContact: doc.supplierContact || doc.mobile || "",
+    supplierEmail: doc.supplierEmail || doc.email || "",
+  } });
 }
 
 export async function PUT(req: NextRequest, ctx: Ctx) {
@@ -28,8 +33,9 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
 
   try {
     const body = await req.json();
-    const name = String(body.name || "").trim();
-    const mobile = String(body.mobile || "").trim();
+    const name = String(body.supplierName || body.name || "").trim();
+    const mobile = String(body.supplierContact || body.mobile || "").trim();
+    const email = String(body.supplierEmail || body.email || "").trim();
 
     if (!name || !mobile) {
       return NextResponse.json({ error: "missing_fields" }, { status: 400 });
@@ -40,21 +46,31 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
         ? Number(body.openingBalance)
         : undefined;
 
-    let nameBn = String(body.nameBn || "").trim();
-    if (!nameBn || isGenericSupplierLabel(nameBn)) {
-      nameBn = name;
-    }
-
     const $set: Record<string, unknown> = {
       name,
-      nameBn,
       mobile,
-      email: String(body.email || "").trim(),
-      address: String(body.address || "").trim(),
-      creditLimit: Number(body.creditLimit || 0),
+      email,
       isActive: true,
+      supplierName: name,
+      supplierContact: mobile,
+      supplierEmail: email,
     };
 
+    if (body.nameBn !== undefined) {
+      let nameBn = String(body.nameBn || "").trim();
+      if (!nameBn || isGenericSupplierLabel(nameBn)) {
+        nameBn = name;
+      }
+      $set.nameBn = nameBn;
+    }
+    if (body.address !== undefined) $set.address = String(body.address || "").trim();
+    if (body.location !== undefined) $set.location = String(body.location || "").trim();
+    if (body.supplierWhatsApp !== undefined) $set.supplierWhatsApp = String(body.supplierWhatsApp || "").trim();
+    if (body.supplierWeChat !== undefined) $set.supplierWeChat = String(body.supplierWeChat || "").trim();
+    if (body.supplierCurrencyName !== undefined) {
+      $set.supplierCurrencyName = String(body.supplierCurrencyName || "").trim();
+    }
+    if (body.creditLimit != null && body.creditLimit !== "") $set.creditLimit = Number(body.creditLimit || 0);
     if (body.nid != null && String(body.nid).trim() !== "") $set.nid = String(body.nid);
     if (body.bin != null && String(body.bin).trim() !== "") $set.bin = String(body.bin);
     if (body.tin != null && String(body.tin).trim() !== "") $set.tin = String(body.tin);
@@ -67,7 +83,6 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
       if (!existing) return NextResponse.json({ error: "not_found" }, { status: 404 });
       const oldOpening = Number(existing.openingBalance || 0);
       const oldBalance = Number(existing.balance || 0);
-      // Keep receivable/payable intact: only shift by opening delta
       $set.openingBalance = openingBalance;
       $set.balance = oldBalance - oldOpening + openingBalance;
     }

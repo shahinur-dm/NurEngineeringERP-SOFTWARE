@@ -7,7 +7,25 @@ import {
   deactivateProductLinks,
   saveProductOffers,
 } from "@/lib/product-suppliers";
-import { canDelete, canWrite } from "@/lib/rbac";
+import { canDelete, canWrite, isSuperAdmin } from "@/lib/rbac";
+
+function moneyCurrency(value: unknown) {
+  const c = String(value || "");
+  return ["BDT", "USD", "RMB"].includes(c) ? c : null;
+}
+
+function optionalDate(value: unknown) {
+  if (value === "" || value == null) return undefined;
+  const d = new Date(String(value));
+  return Number.isNaN(d.getTime()) ? undefined : d;
+}
+
+function redactCostPrice<T extends Record<string, unknown>>(doc: T, role: string): T {
+  if (isSuperAdmin(role)) return doc;
+  const next = { ...doc };
+  delete next.costPrice;
+  return next;
+}
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -19,7 +37,9 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
   const doc = await Product.findById(id).lean();
   if (!doc) return NextResponse.json({ error: "not_found" }, { status: 404 });
   const [withOffers] = await attachOffersToProducts([doc]);
-  return NextResponse.json({ data: withOffers });
+  return NextResponse.json({
+    data: redactCostPrice(withOffers as Record<string, unknown>, session.role),
+  });
 }
 
 export async function PUT(req: NextRequest, ctx: Ctx) {
@@ -75,6 +95,26 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
       $set.stockMethod = undefined;
     }
     if (Array.isArray(body.stocks)) $set.stocks = body.stocks;
+    if (body.categoryId !== undefined) $set.categoryId = body.categoryId || undefined;
+    if (body.shippingCost != null && body.shippingCost !== "") {
+      $set.shippingCost = Number(body.shippingCost);
+    }
+    const shipCur = moneyCurrency(body.shippingCurrency);
+    if (shipCur) $set.shippingCurrency = shipCur;
+    if (body.quantity != null && body.quantity !== "") {
+      $set.quantity = Number(body.quantity);
+    }
+    if (isSuperAdmin(session.role) && body.costPrice != null && body.costPrice !== "") {
+      $set.costPrice = Number(body.costPrice);
+    }
+    if (body.buyingDate !== undefined) $set.buyingDate = optionalDate(body.buyingDate);
+    if (body.receivingDate !== undefined) $set.receivingDate = optionalDate(body.receivingDate);
+    if (body.supplierName != null) $set.supplierName = String(body.supplierName);
+    if (body.supplierAddress != null) $set.supplierAddress = String(body.supplierAddress);
+    if (body.supplierMobile != null) $set.supplierMobile = String(body.supplierMobile);
+    if (body.supplierWeChat != null) $set.supplierWeChat = String(body.supplierWeChat);
+    if (body.supplierWhatsApp != null) $set.supplierWhatsApp = String(body.supplierWhatsApp);
+    if (body.supplierLocation != null) $set.supplierLocation = String(body.supplierLocation);
 
     let updated =
       Object.keys($set).length > 0
@@ -104,7 +144,9 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
 
     const lean = updated!.toObject();
     const [withOffers] = await attachOffersToProducts([lean]);
-    return NextResponse.json({ data: withOffers });
+    return NextResponse.json({
+      data: redactCostPrice(withOffers as Record<string, unknown>, session.role),
+    });
   } catch (err) {
     if (err && typeof err === "object" && "code" in err && err.code === 11000) {
       return NextResponse.json({ error: "duplicate_sku" }, { status: 409 });

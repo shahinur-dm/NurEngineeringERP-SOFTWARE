@@ -110,22 +110,22 @@ export default function SalesPage() {
         </div>
       </div>
 
-      <div className="gp-table-wrap !overflow-x-auto lg:-ml-12 lg:w-[calc(100%+3rem)]">
+      <div className="gp-table-wrap !overflow-x-auto">
         {data.length === 0 ? (
           <EmptyState message={t("common.noData")} />
         ) : (
           <table className="gp-table min-w-[900px] lg:w-full lg:min-w-0 lg:table-fixed [&_td]:py-2 [&_th]:py-2">
             <colgroup>
-              <col className="lg:w-[6.5rem]" />
-              <col className="lg:w-[5.5rem]" />
-              <col className="lg:w-[5.5rem]" />
-              <col />
-              <col className="lg:w-[5.5rem]" />
-              <col className="lg:w-[6.25rem]" />
-              <col className="lg:w-20" />
-              <col className="lg:w-[4.5rem]" />
-              <col className="lg:w-14" />
-              <col className="lg:w-[15rem]" />
+              <col className="lg:w-[8%]" />
+              <col className="lg:w-[7%]" />
+              <col className="lg:w-[10%]" />
+              <col className="lg:w-[14%]" />
+              <col className="lg:w-[9%]" />
+              <col className="lg:w-[10%]" />
+              <col className="lg:w-[8%]" />
+              <col className="lg:w-[9%]" />
+              <col className="lg:w-[6%]" />
+              <col className="lg:w-[19%]" />
             </colgroup>
             <thead>
               <tr>
@@ -170,22 +170,23 @@ export default function SalesPage() {
                       "—"
                     )}
                   </td>
-                  <td className="font-mono text-sm">{s.referenceNo || "—"}</td>
-                  <td>
+                  <td className="break-words font-mono text-sm">{s.referenceNo || "—"}</td>
+                  <td className="min-w-0">
                     {s.customerId ? (
                       <Link
                         href={`/contacts/${s.customerId}/statement`}
-                        className="font-semibold text-primary hover:underline"
+                        className="block truncate font-semibold text-primary hover:underline"
+                        title={s.customerName}
                       >
                         {s.customerName}
                       </Link>
                     ) : (
-                      s.customerName
+                      <span className="block truncate" title={s.customerName}>{s.customerName}</span>
                     )}
                   </td>
-                  <td>{formatDateBD(s.saleDate, locale)}</td>
-                  <td className="font-bold">{formatBDT(s.grandTotal, locale)}</td>
-                  <td>{formatBDT(s.dueAmount, locale)}</td>
+                  <td className="whitespace-nowrap">{formatDateBD(s.saleDate, locale)}</td>
+                  <td className="whitespace-nowrap font-bold">{formatBDT(s.grandTotal, locale)}</td>
+                  <td className="whitespace-nowrap">{formatBDT(s.dueAmount, locale)}</td>
                   <td>
                     <PaymentStatusBadge grandTotal={s.grandTotal} paidAmount={s.paidAmount} />
                   </td>

@@ -1,12 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { Pencil, Trash2 } from "lucide-react";
-import { EmptyState, Field, Modal } from "@/components/ui";
-import { CrudForm } from "@/components/CrudForm";
-import { getCrudConfig } from "@/lib/crud-config";
+import { EmptyState, Modal } from "@/components/ui";
 import { formatBDT, formatDateBD } from "@/lib/utils";
 
 type PurchaseRow = {
@@ -18,41 +16,119 @@ type PurchaseRow = {
   dueAmount: number;
   purchaseDate: string;
   note?: string;
+  productName?: string;
+  productDescription?: string;
+  categoryId?: string;
+  brand?: string;
+  buyingPrice?: number;
+  currency?: string;
+  shippingCost?: number;
+  shippingCurrency?: string;
+  quantity?: number;
+  costPrice?: number;
+  receivingDate?: string;
+  supplierAddress?: string;
+  supplierMobile?: string;
+  supplierWhatsapp?: string;
+  supplierWechat?: string;
+  supplierLocation?: string;
+  otherCost?: number;
+  discount?: number;
+  subtotal?: number;
+  paidAmount?: number;
+  paymentStatus?: string;
+  paymentMethod?: string;
+  documentName?: string;
+  documentUrl?: string;
+  items?: { productId?: string; name?: string; qty?: number; unitCost?: number }[];
 };
+
+type CatalogCategory = { _id: string; name: string; nameBn?: string };
+type CatalogProduct = {
+  _id: string;
+  name: string;
+  nameBn?: string;
+  sku: string;
+  brand?: string;
+  categoryId?: string;
+  purchasePrice: number;
+  currency?: string;
+  description?: string;
+};
+type CatalogSupplier = {
+  _id: string;
+  name: string;
+  mobile?: string;
+  phone?: string;
+  address?: string;
+  location?: string;
+  supplierWhatsApp?: string;
+  supplierWeChat?: string;
+  notes?: string;
+};
+
+const emptyForm = {
+  purchaseType: "local",
+  locationId: "",
+  productId: "",
+  productName: "",
+  productDescription: "",
+  categoryId: "",
+  brand: "",
+  buyingPrice: "",
+  currency: "BDT",
+  shippingCost: "0",
+  shippingCurrency: "BDT",
+  quantity: "1",
+  costPrice: "",
+  buyingDate: new Date().toISOString().slice(0, 10),
+  receivingDate: new Date().toISOString().slice(0, 10),
+  supplierId: "",
+  supplierName: "",
+  supplierAddress: "",
+  supplierMobile: "",
+  supplierWechat: "",
+  supplierWhatsapp: "",
+  supplierLocation: "",
+  otherCost: "0",
+  discount: "0",
+  paidAmount: "",
+  paymentMethod: "cash",
+  note: "",
+  documentName: "",
+  documentUrl: "",
+};
+
+function toDateInput(value?: string) {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toISOString().slice(0, 10);
+}
+
+function InlineField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="grid grid-cols-[6.4rem_minmax(0,1fr)] items-center gap-1.5">
+      <span className="text-[0.65rem] font-semibold leading-tight text-muted">{label}</span>
+      {children}
+    </label>
+  );
+}
 
 export default function PurchasesPage() {
   const t = useTranslations();
   const locale = useLocale();
-  const purchaseCrud = getCrudConfig("purchases");
   const [data, setData] = useState<PurchaseRow[]>([]);
   const [summary, setSummary] = useState({ grandTotal: 0, dueAmount: 0, count: 0 });
-  const [products, setProducts] = useState<{ _id: string; name: string; nameBn?: string; sku: string; brand?: string; categoryId?: string; purchasePrice: number; currency?: string }[]>([]);
-  const [suppliers, setSuppliers] = useState<{ _id: string; name: string; mobile?: string; phone?: string; notes?: string }[]>([]);
+  const [products, setProducts] = useState<CatalogProduct[]>([]);
+  const [suppliers, setSuppliers] = useState<CatalogSupplier[]>([]);
   const [locations, setLocations] = useState<{ _id: string; name: string }[]>([]);
-  const [showForm, setShowForm] = useState(false);
+  const [categories, setCategories] = useState<CatalogCategory[]>([]);
+  const [isSuper, setIsSuper] = useState(false);
   const [editing, setEditing] = useState<PurchaseRow | null>(null);
   const [formOpen, setFormOpen] = useState(false);
-  const [form, setForm] = useState({
-    purchaseType: "local",
-    locationId: "",
-    supplierId: "",
-    productId: "",
-    qty: "1",
-    unitCost: "",
-    purchaseDate: new Date().toISOString().slice(0, 10),
-    receivingDate: new Date().toISOString().slice(0, 10),
-    supplierWhatsapp: "",
-    supplierWechat: "",
-    shippingCost: "0",
-    otherCost: "0",
-    discount: "0",
-    paidAmount: "",
-    paymentMethod: "cash",
-    currency: "BDT",
-    note: "",
-    documentName: "",
-    documentUrl: "",
-  });
+  const [busy, setBusy] = useState(false);
+  const [form, setForm] = useState(emptyForm);
 
   async function load() {
     const res = await fetch("/api/purchases?limit=100");
@@ -67,7 +143,7 @@ export default function PurchasesPage() {
       .then((r) => r.json())
       .then((d) => {
         setLocations(d.locations || []);
-        if (d.locations?.[0]) setForm((f) => ({ ...f, locationId: d.locations[0]._id }));
+        if (d.locations?.[0]) setForm((f) => ({ ...f, locationId: f.locationId || d.locations[0]._id }));
       });
     fetch("/api/products?limit=100")
       .then((r) => r.json())
@@ -75,75 +151,192 @@ export default function PurchasesPage() {
     fetch("/api/contacts?type=supplier&limit=100")
       .then((r) => r.json())
       .then((d) => setSuppliers(d.data || []));
+    fetch("/api/modules/categories?limit=200")
+      .then((r) => r.json())
+      .then((d) => setCategories(d.data || []));
+    fetch("/api/meta?type=profile")
+      .then((r) => r.json())
+      .then((d) => {
+        const role = (d.data || []).find((row: { label?: string }) => row.label === "Role")?.value;
+        setIsSuper(role === "admin");
+      })
+      .catch(() => setIsSuper(false));
   }, []);
 
-  async function create() {
-    const product = products.find((p) => p._id === form.productId);
-    const supplier = suppliers.find((s) => s._id === form.supplierId);
-    if (!product || !form.locationId) return;
-    const qty = Number(form.qty || 1);
-    const unitCost = Number(form.unitCost || product.purchasePrice);
-    const subtotal = qty * unitCost;
-    const grandTotal =
-      subtotal + Number(form.shippingCost || 0) + Number(form.otherCost || 0) - Number(form.discount || 0);
-    const paidAmount = form.paidAmount === "" ? grandTotal : Number(form.paidAmount || 0);
-    const res = await fetch("/api/purchases", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        locationId: form.locationId,
-        purchaseType: form.purchaseType,
-        supplierId: form.supplierId || undefined,
-        supplierName: supplier?.name || "Supplier",
-        supplierWhatsapp: form.supplierWhatsapp,
-        supplierWechat: form.supplierWechat,
-        status: "received",
-        purchaseDate: form.purchaseDate,
-        receivingDate: form.receivingDate,
-        shippingCost: Number(form.shippingCost || 0),
-        otherCost: Number(form.otherCost || 0),
-        discount: Number(form.discount || 0),
-        currency: form.currency,
-        note: form.note,
-        documentName: form.documentName,
-        documentUrl: form.documentUrl,
-        items: [
-          {
-            productId: product._id,
-            name: product.name,
-            sku: product.sku,
-            qty,
-            unitCost,
-          },
-        ],
-        payments: [{ method: form.paymentMethod, amount: paidAmount }],
-      }),
-    });
-    if (res.ok) {
-      setShowForm(false);
-      load();
-    }
-  }
-
-  const selectedProduct = products.find((p) => p._id === form.productId);
-  const subtotal = Number(form.qty || 0) * Number(form.unitCost || 0);
+  const subtotal = Number(form.quantity || 0) * Number(form.buyingPrice || 0);
   const grandTotal = Math.max(
     0,
     subtotal + Number(form.shippingCost || 0) + Number(form.otherCost || 0) - Number(form.discount || 0),
   );
   const paidAmount = form.paidAmount === "" ? grandTotal : Number(form.paidAmount || 0);
   const dueAmount = Math.max(0, grandTotal - paidAmount);
+  const paymentStatus = dueAmount <= 0 ? "Paid" : paidAmount > 0 ? "Partial" : "Due";
 
-  async function saveEdit(payload: Record<string, unknown>) {
-    if (!editing) return;
-    await fetch(`/api/purchases/${editing._id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    setFormOpen(false);
+  const defaultLocationId = useMemo(
+    () => form.locationId || locations[0]?._id || "",
+    [form.locationId, locations],
+  );
+
+  function openCreate(purchaseType: "local" | "import") {
     setEditing(null);
-    load();
+    setForm({
+      ...emptyForm,
+      purchaseType,
+      currency: purchaseType === "import" ? "USD" : "BDT",
+      locationId: defaultLocationId,
+    });
+    setFormOpen(true);
+  }
+
+  function fillFromPurchase(p: PurchaseRow) {
+    const item = p.items?.[0];
+    setForm({
+      purchaseType: "local",
+      locationId: defaultLocationId,
+      productId: item?.productId ? String(item.productId) : "",
+      productName: p.productName || item?.name || "",
+      productDescription: p.productDescription || "",
+      categoryId: p.categoryId ? String(p.categoryId) : "",
+      brand: p.brand || "",
+      buyingPrice: String(p.buyingPrice ?? item?.unitCost ?? ""),
+      currency: p.currency || "BDT",
+      shippingCost: String(p.shippingCost ?? 0),
+      shippingCurrency: p.shippingCurrency || "BDT",
+      quantity: String(p.quantity ?? item?.qty ?? 1),
+      costPrice: p.costPrice != null ? String(p.costPrice) : "",
+      buyingDate: toDateInput(p.purchaseDate),
+      receivingDate: toDateInput(p.receivingDate),
+      supplierId: p.supplierId ? String(p.supplierId) : "",
+      supplierName: p.supplierName || "",
+      supplierAddress: p.supplierAddress || "",
+      supplierMobile: p.supplierMobile || "",
+      supplierWechat: p.supplierWechat || "",
+      supplierWhatsapp: p.supplierWhatsapp || "",
+      supplierLocation: p.supplierLocation || "",
+      otherCost: String(p.otherCost ?? 0),
+      discount: String(p.discount ?? 0),
+      paidAmount: p.paidAmount != null ? String(p.paidAmount) : "",
+      paymentMethod: p.paymentMethod || "cash",
+      note: p.note || "",
+      documentName: p.documentName || "",
+      documentUrl: p.documentUrl || "",
+    });
+  }
+
+  async function openEdit(p: PurchaseRow) {
+    setEditing(p);
+    fillFromPurchase(p);
+    setFormOpen(true);
+    try {
+      const res = await fetch(`/api/purchases/${p._id}`);
+      const json = await res.json();
+      if (res.ok && json.data) fillFromPurchase(json.data);
+    } catch {
+      /* keep list values */
+    }
+  }
+
+  function applyProductName(name: string) {
+    const match = products.find(
+      (p) => p.name === name || p.nameBn === name || p._id === name,
+    );
+    setForm((current) => ({
+      ...current,
+      productName: name,
+      productId: match?._id || "",
+      productDescription: match?.description || current.productDescription,
+      categoryId: match?.categoryId ? String(match.categoryId) : current.categoryId,
+      brand: match?.brand || current.brand,
+      buyingPrice: match ? String(match.purchasePrice ?? "") : current.buyingPrice,
+      currency: match?.currency || current.currency,
+    }));
+  }
+
+  function applySupplierName(name: string) {
+    const match = suppliers.find((s) => s.name === name);
+    setForm((current) => ({
+      ...current,
+      supplierName: name,
+      supplierId: match?._id || "",
+      supplierAddress: match?.address || current.supplierAddress,
+      supplierMobile: match?.mobile || match?.phone || current.supplierMobile,
+      supplierWhatsapp: match?.supplierWhatsApp || match?.mobile || current.supplierWhatsapp,
+      supplierWechat: match?.supplierWeChat || current.supplierWechat,
+      supplierLocation: match?.location || current.supplierLocation,
+    }));
+  }
+
+  function onDocumentPick(file: File | undefined) {
+    if (!file || file.size > 1024 * 1024) return;
+    const reader = new FileReader();
+    reader.onload = () =>
+      setForm((current) => ({
+        ...current,
+        documentName: file.name,
+        documentUrl: String(reader.result || ""),
+      }));
+    reader.readAsDataURL(file);
+  }
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!form.productName.trim()) return;
+    setBusy(true);
+    const payload: Record<string, unknown> = {
+      locationId: defaultLocationId || undefined,
+      purchaseType: form.purchaseType,
+      supplierId: form.supplierId || undefined,
+      supplierName: form.supplierName.trim() || "Supplier",
+      supplierWhatsapp: form.supplierWhatsapp,
+      supplierWechat: form.supplierWechat,
+      supplierAddress: form.supplierAddress,
+      supplierMobile: form.supplierMobile,
+      supplierLocation: form.supplierLocation,
+      productName: form.productName.trim(),
+      productDescription: form.productDescription,
+      categoryId: form.categoryId || null,
+      brand: form.brand,
+      buyingPrice: Number(form.buyingPrice || 0),
+      quantity: Number(form.quantity || 0),
+      status: "received",
+      purchaseDate: form.buyingDate,
+      receivingDate: form.receivingDate,
+      shippingCost: Number(form.shippingCost || 0),
+      shippingCurrency: form.shippingCurrency,
+      otherCost: Number(form.otherCost || 0),
+      discount: Number(form.discount || 0),
+      currency: form.currency,
+      note: form.note,
+      documentName: form.documentName,
+      documentUrl: form.documentUrl,
+      paidAmount,
+      paymentMethod: form.paymentMethod,
+      items: [
+        {
+          productId: form.productId || undefined,
+          name: form.productName.trim(),
+          qty: Number(form.quantity || 0),
+          unitCost: Number(form.buyingPrice || 0),
+        },
+      ],
+      payments: [{ method: form.paymentMethod, amount: paidAmount }],
+    };
+    if (isSuper) payload.costPrice = Number(form.costPrice || 0);
+
+    try {
+      const res = await fetch(editing ? `/api/purchases/${editing._id}` : "/api/purchases", {
+        method: editing ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        setFormOpen(false);
+        setEditing(null);
+        load();
+      }
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function removePurchase(id: string) {
@@ -175,95 +368,20 @@ export default function PurchasesPage() {
         <div className="flex shrink-0 items-center gap-2 max-sm:w-full">
           <button
             type="button"
-            className={`gp-btn min-h-8 px-3 py-1 ${showForm && form.purchaseType === "local" ? "gp-btn-primary" : "gp-btn-ghost"}`}
-            onClick={() => {
-              setForm((current) => ({ ...current, purchaseType: "local", currency: "BDT" }));
-              setShowForm(true);
-            }}
+            className={`gp-btn min-h-8 px-3 py-1 ${formOpen && !editing && form.purchaseType === "local" ? "gp-btn-primary" : "gp-btn-ghost"}`}
+            onClick={() => openCreate("local")}
           >
             Local Purchase
           </button>
           <button
             type="button"
-            className={`gp-btn min-h-8 px-3 py-1 ${showForm && form.purchaseType === "import" ? "gp-btn-primary" : "gp-btn-ghost"}`}
-            onClick={() => {
-              setForm((current) => ({ ...current, purchaseType: "import", currency: "USD" }));
-              setShowForm(true);
-            }}
+            className={`gp-btn min-h-8 px-3 py-1 ${formOpen && !editing && form.purchaseType === "import" ? "gp-btn-primary" : "gp-btn-ghost"}`}
+            onClick={() => openCreate("import")}
           >
             Import Purchase
           </button>
         </div>
       </div>
-
-      {showForm ? (
-        <div className="gp-card grid gap-x-3 gap-y-2 p-3 md:grid-cols-2">
-          <Field label="Purchase Reference No."><input className="gp-input min-h-8 py-1" value="Auto" readOnly /></Field>
-          <Field label="Purchase Date"><input className="gp-input min-h-8 py-1" type="date" value={form.purchaseDate} onChange={(e) => setForm({ ...form, purchaseDate: e.target.value })} /></Field>
-          <Field label="Receiving Date"><input className="gp-input min-h-8 py-1" type="date" value={form.receivingDate} onChange={(e) => setForm({ ...form, receivingDate: e.target.value })} /></Field>
-          <Field label={t("dashboard.location")}>
-            <select className="gp-input min-h-8 py-1" value={form.locationId} onChange={(e) => setForm({ ...form, locationId: e.target.value })}>
-              {locations.map((l) => <option key={l._id} value={l._id}>{l.name}</option>)}
-            </select>
-          </Field>
-          <Field label={t("purchases.supplier")}>
-            <select
-              className="gp-input min-h-8 py-1"
-              value={form.supplierId}
-              onChange={(e) => {
-                const supplier = suppliers.find((s) => s._id === e.target.value);
-                setForm({ ...form, supplierId: e.target.value, supplierWhatsapp: supplier?.mobile || supplier?.phone || "", supplierWechat: supplier?.notes || "" });
-              }}
-            >
-              <option value="">—</option>
-              {suppliers.map((s) => <option key={s._id} value={s._id}>{s.name}</option>)}
-            </select>
-          </Field>
-          <Field label="Supplier WhatsApp"><input className="gp-input min-h-8 py-1" value={form.supplierWhatsapp} onChange={(e) => setForm({ ...form, supplierWhatsapp: e.target.value })} /></Field>
-          <Field label="Supplier WeChat"><input className="gp-input min-h-8 py-1" value={form.supplierWechat} onChange={(e) => setForm({ ...form, supplierWechat: e.target.value })} /></Field>
-          <Field label={t("products.title")}>
-            <select className="gp-input min-h-8 py-1" value={form.productId} onChange={(e) => {
-              const p = products.find((x) => x._id === e.target.value);
-              setForm({ ...form, productId: e.target.value, unitCost: String(p?.purchasePrice ?? ""), currency: p?.currency || form.currency });
-            }}>
-              <option value="">—</option>
-              {products.map((p) => <option key={p._id} value={p._id}>{locale === "bn" && p.nameBn ? p.nameBn : p.name}</option>)}
-            </select>
-          </Field>
-          <Field label="Product Name"><input className="gp-input min-h-8 py-1" value={selectedProduct?.name || ""} readOnly /></Field>
-          <Field label="Product Name (Bangla)"><input className="gp-input min-h-8 py-1" value={selectedProduct?.nameBn || ""} readOnly /></Field>
-          <Field label="SKU / Product Code"><input className="gp-input min-h-8 py-1" value={selectedProduct?.sku || ""} readOnly /></Field>
-          <Field label="Brand"><input className="gp-input min-h-8 py-1" value={selectedProduct?.brand || ""} readOnly /></Field>
-          <Field label="Category"><input className="gp-input min-h-8 py-1" value={selectedProduct?.categoryId || ""} readOnly /></Field>
-          <Field label={t("common.quantity")}><input className="gp-input min-h-8 py-1" type="number" min="1" value={form.qty} onChange={(e) => setForm({ ...form, qty: e.target.value })} /></Field>
-          <Field label={t("products.purchasePrice")}><input className="gp-input min-h-8 py-1" type="number" min="0" value={form.unitCost} onChange={(e) => setForm({ ...form, unitCost: e.target.value })} /></Field>
-          <Field label="Currency"><select className="gp-input min-h-8 py-1" value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })}>{["BDT", "USD", "RMB"].map((c) => <option key={c}>{c}</option>)}</select></Field>
-          <Field label="Shipping Cost"><input className="gp-input min-h-8 py-1" type="number" min="0" value={form.shippingCost} onChange={(e) => setForm({ ...form, shippingCost: e.target.value })} /></Field>
-          <Field label="Other Cost"><input className="gp-input min-h-8 py-1" type="number" min="0" value={form.otherCost} onChange={(e) => setForm({ ...form, otherCost: e.target.value })} /></Field>
-          <Field label="Discount"><input className="gp-input min-h-8 py-1" type="number" min="0" value={form.discount} onChange={(e) => setForm({ ...form, discount: e.target.value })} /></Field>
-          <Field label="Subtotal"><input className="gp-input min-h-8 py-1" value={subtotal.toFixed(2)} readOnly /></Field>
-          <Field label="Grand Total"><input className="gp-input min-h-8 py-1" value={grandTotal.toFixed(2)} readOnly /></Field>
-          <Field label="Paid Amount"><input className="gp-input min-h-8 py-1" type="number" min="0" value={form.paidAmount} placeholder={grandTotal.toFixed(2)} onChange={(e) => setForm({ ...form, paidAmount: e.target.value })} /></Field>
-          <Field label="Due Amount"><input className="gp-input min-h-8 py-1" value={dueAmount.toFixed(2)} readOnly /></Field>
-          <Field label="Payment Method"><select className="gp-input min-h-8 py-1" value={form.paymentMethod} onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}>{["cash", "card", "bkash", "nagad", "rocket", "cheque", "bank", "credit"].map((m) => <option key={m} value={m}>{m}</option>)}</select></Field>
-          <Field label="Payment Status"><input className="gp-input min-h-8 py-1" value={dueAmount <= 0 ? "Paid" : paidAmount > 0 ? "Partial" : "Due"} readOnly /></Field>
-          <Field label="Supplier Invoice / Document Upload">
-            <input className="gp-input min-h-8 py-1" type="file" accept=".pdf,image/*" onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (!file || file.size > 1024 * 1024) return;
-              const reader = new FileReader();
-              reader.onload = () => setForm((current) => ({ ...current, documentName: file.name, documentUrl: String(reader.result || "") }));
-              reader.readAsDataURL(file);
-            }} />
-          </Field>
-          <Field label="Notes"><textarea className="gp-input min-h-16 py-1" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} /></Field>
-          <div className="flex items-end justify-end md:col-span-2">
-            <button type="button" className="gp-btn gp-btn-primary min-h-8 px-5 py-1" onClick={create}>
-              {t("common.save")}
-            </button>
-          </div>
-        </div>
-      ) : null}
 
       <div className="gp-card overflow-auto">
         {data.length === 0 ? (
@@ -312,10 +430,7 @@ export default function PurchasesPage() {
                       <button
                         type="button"
                         className="gp-btn gp-btn-ghost min-h-8 min-w-8 px-1.5"
-                        onClick={() => {
-                          setEditing(p);
-                          setFormOpen(true);
-                        }}
+                        onClick={() => openEdit(p)}
                       >
                         <Pencil className="h-4 w-4" />
                       </button>
@@ -336,25 +451,284 @@ export default function PurchasesPage() {
       </div>
 
       <Modal
-        open={formOpen && !!purchaseCrud}
-        title={t("common.edit")}
+        open={formOpen}
+        title={editing ? t("common.edit") : form.purchaseType === "import" ? "Import Purchase" : "Local Purchase"}
         onClose={() => {
           setFormOpen(false);
           setEditing(null);
         }}
+        wide
+        fit
+        compact
       >
-        {purchaseCrud && editing ? (
-          <CrudForm
-            config={purchaseCrud}
-            initial={editing}
-            isEdit
-            onCancel={() => {
-              setFormOpen(false);
-              setEditing(null);
-            }}
-            onSubmit={saveEdit}
-          />
-        ) : null}
+        <form
+          onSubmit={onSubmit}
+          className="grid grid-cols-1 gap-x-3 gap-y-1 lg:grid-cols-2 [&_.gp-input]:min-h-7 [&_.gp-input]:py-0.5"
+        >
+          <InlineField label="Product Name">
+            <input
+              className="gp-input"
+              required
+              list="purchase-product-names"
+              value={form.productName}
+              onChange={(e) => applyProductName(e.target.value)}
+            />
+          </InlineField>
+          <InlineField label="Product Description">
+            <textarea
+              className="gp-input min-h-7 max-h-7 resize-none py-0.5 leading-tight"
+              rows={1}
+              value={form.productDescription}
+              onChange={(e) => setForm({ ...form, productDescription: e.target.value })}
+            />
+          </InlineField>
+          <InlineField label="Category">
+            <select
+              className="gp-input"
+              value={form.categoryId}
+              onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
+            >
+              <option value="">—</option>
+              {categories.map((c) => (
+                <option key={c._id} value={c._id}>
+                  {locale === "bn" && c.nameBn ? c.nameBn : c.name}
+                </option>
+              ))}
+            </select>
+          </InlineField>
+          <InlineField label="Brand">
+            <input
+              className="gp-input"
+              value={form.brand}
+              onChange={(e) => setForm({ ...form, brand: e.target.value })}
+            />
+          </InlineField>
+          <InlineField label="Buying Price">
+            <div className="grid grid-cols-[minmax(0,1fr)_4.6rem] gap-1">
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                className="gp-input"
+                value={form.buyingPrice}
+                onChange={(e) => setForm({ ...form, buyingPrice: e.target.value })}
+              />
+              <select
+                className="gp-input px-1"
+                value={form.currency}
+                onChange={(e) => setForm({ ...form, currency: e.target.value })}
+              >
+                <option value="BDT">BDT</option>
+                <option value="USD">USD</option>
+                <option value="RMB">RMD</option>
+              </select>
+            </div>
+          </InlineField>
+          <InlineField label="Shipping Cost">
+            <div className="grid grid-cols-[minmax(0,1fr)_4.6rem] gap-1">
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                className="gp-input"
+                value={form.shippingCost}
+                onChange={(e) => setForm({ ...form, shippingCost: e.target.value })}
+              />
+              <select
+                className="gp-input px-1"
+                value={form.shippingCurrency}
+                onChange={(e) => setForm({ ...form, shippingCurrency: e.target.value })}
+              >
+                <option value="RMB">RMD</option>
+                <option value="USD">USD</option>
+                <option value="BDT">BDT</option>
+              </select>
+            </div>
+          </InlineField>
+          <InlineField label="Quantity">
+            <input
+              type="number"
+              min={0}
+              className="gp-input"
+              value={form.quantity}
+              onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+            />
+          </InlineField>
+          {isSuper ? (
+            <InlineField label="Cost Price">
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                className="gp-input"
+                value={form.costPrice}
+                onChange={(e) => setForm({ ...form, costPrice: e.target.value })}
+              />
+            </InlineField>
+          ) : (
+            <div className="hidden lg:block" />
+          )}
+          <InlineField label="Buying Date">
+            <input
+              type="date"
+              className="gp-input"
+              value={form.buyingDate}
+              onChange={(e) => setForm({ ...form, buyingDate: e.target.value })}
+            />
+          </InlineField>
+          <InlineField label="Receiving Date">
+            <input
+              type="date"
+              className="gp-input"
+              value={form.receivingDate}
+              onChange={(e) => setForm({ ...form, receivingDate: e.target.value })}
+            />
+          </InlineField>
+          <InlineField label="Supplier Name">
+            <input
+              className="gp-input"
+              list="purchase-supplier-names"
+              value={form.supplierName}
+              onChange={(e) => applySupplierName(e.target.value)}
+            />
+          </InlineField>
+          <InlineField label="Supplier Address">
+            <input
+              className="gp-input"
+              value={form.supplierAddress}
+              onChange={(e) => setForm({ ...form, supplierAddress: e.target.value })}
+            />
+          </InlineField>
+          <InlineField label="Supplier Mobile">
+            <input
+              className="gp-input"
+              value={form.supplierMobile}
+              onChange={(e) => setForm({ ...form, supplierMobile: e.target.value })}
+            />
+          </InlineField>
+          <InlineField label="Supplier WeChat">
+            <input
+              className="gp-input"
+              value={form.supplierWechat}
+              onChange={(e) => setForm({ ...form, supplierWechat: e.target.value })}
+            />
+          </InlineField>
+          <InlineField label="Supplier WhatsApp">
+            <input
+              className="gp-input"
+              value={form.supplierWhatsapp}
+              onChange={(e) => setForm({ ...form, supplierWhatsapp: e.target.value })}
+            />
+          </InlineField>
+          <InlineField label="Supplier Location">
+            <input
+              className="gp-input"
+              value={form.supplierLocation}
+              onChange={(e) => setForm({ ...form, supplierLocation: e.target.value })}
+            />
+          </InlineField>
+          <InlineField label="Other Cost">
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              className="gp-input"
+              value={form.otherCost}
+              onChange={(e) => setForm({ ...form, otherCost: e.target.value })}
+            />
+          </InlineField>
+          <InlineField label="Discount">
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              className="gp-input"
+              value={form.discount}
+              onChange={(e) => setForm({ ...form, discount: e.target.value })}
+            />
+          </InlineField>
+          <InlineField label="Sub Total">
+            <input className="gp-input" readOnly value={subtotal.toFixed(2)} />
+          </InlineField>
+          <InlineField label="Grand Total">
+            <input className="gp-input" readOnly value={grandTotal.toFixed(2)} />
+          </InlineField>
+          <InlineField label="Paid Amount">
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              className="gp-input"
+              value={form.paidAmount}
+              placeholder={grandTotal.toFixed(2)}
+              onChange={(e) => setForm({ ...form, paidAmount: e.target.value })}
+            />
+          </InlineField>
+          <InlineField label="Due Amount">
+            <input className="gp-input" readOnly value={dueAmount.toFixed(2)} />
+          </InlineField>
+          <InlineField label="Payment Status">
+            <input className="gp-input" readOnly value={paymentStatus} />
+          </InlineField>
+          <InlineField label="Payment Method">
+            <select
+              className="gp-input"
+              value={form.paymentMethod}
+              onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}
+            >
+              {["cash", "card", "bkash", "nagad", "rocket", "cheque", "bank", "credit"].map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </InlineField>
+          <InlineField label="Invoice / Document">
+            <input
+              className="gp-input"
+              type="file"
+              accept=".pdf,image/*"
+              onChange={(e) => {
+                onDocumentPick(e.target.files?.[0]);
+                e.target.value = "";
+              }}
+            />
+          </InlineField>
+          <InlineField label="Notes">
+            <textarea
+              className="gp-input min-h-7 max-h-7 resize-none py-0.5 leading-tight"
+              rows={1}
+              value={form.note}
+              onChange={(e) => setForm({ ...form, note: e.target.value })}
+            />
+          </InlineField>
+          <datalist id="purchase-product-names">
+            {products.map((p) => (
+              <option key={p._id} value={p.name} />
+            ))}
+          </datalist>
+          <datalist id="purchase-supplier-names">
+            {suppliers.map((s) => (
+              <option key={s._id} value={s.name} />
+            ))}
+          </datalist>
+          <div className="flex justify-end gap-2 lg:col-span-2">
+            <button
+              type="button"
+              className="gp-btn gp-btn-ghost min-h-8 px-3"
+              onClick={() => {
+                setFormOpen(false);
+                setEditing(null);
+              }}
+              disabled={busy}
+            >
+              {t("common.cancel")}
+            </button>
+            <button type="submit" className="gp-btn gp-btn-primary min-h-8 px-3" disabled={busy}>
+              {t("common.save")}
+            </button>
+          </div>
+        </form>
       </Modal>
     </div>
   );

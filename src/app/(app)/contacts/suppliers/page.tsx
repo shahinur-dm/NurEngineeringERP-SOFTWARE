@@ -13,24 +13,38 @@ type Supplier = {
   name: string;
   nameBn?: string;
   mobile?: string;
+  email?: string;
   address?: string;
+  location?: string;
+  supplierName?: string;
+  supplierContact?: string;
+  supplierEmail?: string;
+  supplierWhatsApp?: string;
+  supplierWeChat?: string;
+  supplierCurrencyName?: string;
   balance?: number;
   openingBalance?: number;
 };
 
 type FormState = {
-  name: string;
-  nameBn: string;
-  mobile: string;
-  address: string;
+  supplierName: string;
+  supplierContact: string;
+  supplierEmail: string;
+  location: string;
+  supplierWhatsApp: string;
+  supplierWeChat: string;
+  supplierCurrencyName: string;
   openingBalance: string;
 };
 
 const emptyForm: FormState = {
-  name: "",
-  nameBn: "",
-  mobile: "",
-  address: "",
+  supplierName: "",
+  supplierContact: "",
+  supplierEmail: "",
+  location: "",
+  supplierWhatsApp: "",
+  supplierWeChat: "",
+  supplierCurrencyName: "",
   openingBalance: "0",
 };
 
@@ -82,10 +96,13 @@ export default function SuppliersPage() {
       const doc: Supplier = json.data || row;
       setEditing(doc);
       setForm({
-        name: doc.name || "",
-        nameBn: doc.nameBn || "",
-        mobile: doc.mobile || "",
-        address: doc.address || "",
+        supplierName: doc.supplierName || doc.name || "",
+        supplierContact: doc.supplierContact || doc.mobile || "",
+        supplierEmail: doc.supplierEmail || doc.email || "",
+        location: doc.location || "",
+        supplierWhatsApp: doc.supplierWhatsApp || "",
+        supplierWeChat: doc.supplierWeChat || "",
+        supplierCurrencyName: doc.supplierCurrencyName || "",
         openingBalance: String(doc.openingBalance ?? doc.balance ?? 0),
       });
       setModalOpen(true);
@@ -98,9 +115,9 @@ export default function SuppliersPage() {
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!form.name.trim() || !form.mobile.trim()) {
+    if (!form.supplierName.trim() || !form.supplierContact.trim()) {
       setMessage(
-        locale === "bn" ? "নাম ও মোবাইল আবশ্যক" : "Name and mobile are required",
+        locale === "bn" ? "সরবরাহকারীর নাম ও যোগাযোগ আবশ্যক" : "Supplier name and contact are required",
       );
       return;
     }
@@ -109,10 +126,13 @@ export default function SuppliersPage() {
     setMessage("");
     const payload: Record<string, unknown> = {
       type: "supplier",
-      name: form.name.trim(),
-      nameBn: form.nameBn.trim(),
-      mobile: form.mobile.trim(),
-      address: form.address.trim(),
+      supplierName: form.supplierName.trim(),
+      supplierContact: form.supplierContact.trim(),
+      supplierEmail: form.supplierEmail.trim(),
+      location: form.location.trim(),
+      supplierWhatsApp: form.supplierWhatsApp.trim(),
+      supplierWeChat: form.supplierWeChat.trim(),
+      supplierCurrencyName: form.supplierCurrencyName.trim(),
       openingBalance: Number(form.openingBalance || 0),
     };
     if (!editing) {
@@ -286,7 +306,7 @@ export default function SuppliersPage() {
       <Modal
         open={modalOpen}
         title={editing ? t("common.edit") : t("common.add")}
-        compact
+        fit
         onClose={() => {
           if (busy) return;
           setModalOpen(false);
@@ -294,30 +314,59 @@ export default function SuppliersPage() {
         }}
       >
         <form onSubmit={onSubmit} className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-          <Field label={locale === "bn" ? "নাম" : "Name"}>
+          <Field label={locale === "bn" ? "সরবরাহকারীর নাম" : "Supplier Name"}>
             <input
               className="gp-input"
               required
-              value={form.name}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              value={form.supplierName}
+              onChange={(e) => setForm((f) => ({ ...f, supplierName: e.target.value }))}
             />
           </Field>
-          <Field label={locale === "bn" ? "নাম (বাংলা)" : "Name (Bangla)"}>
-            <input
-              className="gp-input"
-              value={form.nameBn}
-              onChange={(e) => setForm((f) => ({ ...f, nameBn: e.target.value }))}
-            />
-          </Field>
-          <Field label={locale === "bn" ? "মোবাইল" : "Mobile"}>
+          <Field label={locale === "bn" ? "সরবরাহকারীর যোগাযোগ" : "Supplier Contact"}>
             <input
               className="gp-input"
               required
-              value={form.mobile}
-              onChange={(e) => setForm((f) => ({ ...f, mobile: e.target.value }))}
+              value={form.supplierContact}
+              onChange={(e) => setForm((f) => ({ ...f, supplierContact: e.target.value }))}
             />
           </Field>
-          <Field label={locale === "bn" ? "প্রারম্ভিক ব্যালেন্স (Opening)" : "Opening balance"}>
+          <Field label={locale === "bn" ? "সরবরাহকারীর ইমেইল" : "Supplier Email"}>
+            <input
+              className="gp-input"
+              type="email"
+              value={form.supplierEmail}
+              onChange={(e) => setForm((f) => ({ ...f, supplierEmail: e.target.value }))}
+            />
+          </Field>
+          <Field label={locale === "bn" ? "লোকেশন" : "Location"}>
+            <input
+              className="gp-input"
+              value={form.location}
+              onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
+            />
+          </Field>
+          <Field label={locale === "bn" ? "সরবরাহকারীর হোয়াটসঅ্যাপ" : "Supplier WhatsApp"}>
+            <input
+              className="gp-input"
+              value={form.supplierWhatsApp}
+              onChange={(e) => setForm((f) => ({ ...f, supplierWhatsApp: e.target.value }))}
+            />
+          </Field>
+          <Field label={locale === "bn" ? "সরবরাহকারীর উইচ্যাট" : "Supplier WeChat"}>
+            <input
+              className="gp-input"
+              value={form.supplierWeChat}
+              onChange={(e) => setForm((f) => ({ ...f, supplierWeChat: e.target.value }))}
+            />
+          </Field>
+          <Field label={locale === "bn" ? "সরবরাহকারীর মুদ্রার নাম" : "Supplier Currency Name"}>
+            <input
+              className="gp-input"
+              value={form.supplierCurrencyName}
+              onChange={(e) => setForm((f) => ({ ...f, supplierCurrencyName: e.target.value }))}
+            />
+          </Field>
+          <Field label={locale === "bn" ? "প্রারম্ভিক ব্যালেন্স" : "Opening Balance"}>
             <input
               type="number"
               className="gp-input"
@@ -325,25 +374,6 @@ export default function SuppliersPage() {
               onChange={(e) => setForm((f) => ({ ...f, openingBalance: e.target.value }))}
             />
           </Field>
-          {editing ? (
-            <Field label={locale === "bn" ? "বর্তমান প্রদেয়" : "Current payable"}>
-              <input
-                className="gp-input"
-                readOnly
-                value={formatBDT(editing.balance || 0, locale)}
-              />
-            </Field>
-          ) : null}
-          <label className="block space-y-1 sm:col-span-2">
-            <span className="text-[0.8rem] font-semibold text-muted">
-              {locale === "bn" ? "ঠিকানা" : "Address"}
-            </span>
-            <textarea
-              className="gp-input min-h-[72px] py-2"
-              value={form.address}
-              onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-            />
-          </label>
           <div className="mt-1 flex justify-end gap-2 sm:col-span-2">
             <button
               type="button"

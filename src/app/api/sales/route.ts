@@ -181,8 +181,8 @@ export async function POST(req: NextRequest) {
     quotationNo = source.quotationNo;
     referenceNo = source.referenceNo || (await nextReferenceNo());
   } else if (status === "quotation") {
-    quotationNo = await nextQuotationNo();
-    referenceNo = await nextReferenceNo();
+    quotationNo = String(body.quotationNo || "").trim() || (await nextQuotationNo());
+    referenceNo = String(body.referenceNo || "").trim() || (await nextReferenceNo());
   } else {
     referenceNo = await nextReferenceNo();
     quotationNo = undefined;
@@ -217,7 +217,7 @@ export async function POST(req: NextRequest) {
     customerEmail,
     poDate: body.poDate ? new Date(body.poDate) : undefined,
     subject: body.subject || body.note,
-    terms: status === "quotation" ? body.terms || DEFAULT_QUOTATION_TERMS : body.terms,
+    terms: status === "quotation" ? (body.terms ?? DEFAULT_QUOTATION_TERMS) : body.terms,
     status,
     locationId: body.locationId,
     customerId: body.customerId || undefined,

@@ -756,6 +756,16 @@ h3,
   grid-template-columns: 78px 1fr 220px;
   gap: 8px;
   align-items: start;
+  min-height: 76px;
+  flex-shrink: 0;
+}
+
+.nes-logo {
+  display: flex;
+  width: 76px;
+  height: 72px;
+  align-items: center;
+  justify-content: center;
 }
 
 .nes-logo img,
@@ -763,6 +773,7 @@ h3,
   width: 70px;
   height: 70px;
   object-fit: contain;
+  object-position: center;
 }
 
 .nes-logo-mark {
@@ -828,14 +839,20 @@ h3,
 
 .nes-rule {
   height: 4px;
-  margin: 8px 0 10px;
+  margin: 6px 0 8px;
   background: linear-gradient(#e8892c 0 2.4px, #111 2.4px 100%);
+  flex-shrink: 0;
+}
+
+.nes-body {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .nes-docband {
   position: relative;
-  min-height: 92px;
-  margin-bottom: 8px;
+  min-height: 84px;
+  margin-bottom: 6px;
 }
 
 .nes-date {
@@ -863,12 +880,21 @@ h3,
 
 .nes-quote-top {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
   margin-bottom: 6px;
+}
+
+.nes-quote-top .nes-party {
+  width: auto;
+  flex: 1;
+  min-width: 0;
 }
 
 .nes-quote-top .nes-idbox {
   width: 230px;
+  flex-shrink: 0;
 }
 
 .nes-party {
@@ -876,11 +902,11 @@ h3,
 }
 
 .nes-to {
-  margin: 0 0 8px;
+  margin: 0 0 6px;
 }
 
 .nes-subject {
-  margin: 0 0 8px;
+  margin: 0 0 6px;
   width: 70%;
 }
 
@@ -905,7 +931,7 @@ h3,
 
 .nes-custbar {
   width: 100%;
-  margin: 10px 0 8px;
+  margin: 6px 0;
   border-collapse: collapse;
 }
 
@@ -920,11 +946,11 @@ h3,
 .nes-words,
 .nes-payline,
 .nes-terms {
-  margin: 8px 0;
+  margin: 6px 0;
 }
 
 .nes-items-label {
-  margin: 8px 0 4px;
+  margin: 6px 0 3px;
   font-weight: 700;
   text-align: center;
 }
@@ -938,7 +964,7 @@ h3,
 .nes-grid th,
 .nes-grid td {
   border: 1px solid #222;
-  padding: 5px 6px;
+  padding: 3px 4px;
   vertical-align: top;
 }
 
@@ -949,13 +975,18 @@ h3,
 }
 
 .nes-grid .c-sl {
-  width: 48px;
+  width: 40px;
   text-align: center;
+}
+
+.nes-grid .c-name {
+  width: 22%;
 }
 
 .nes-grid .c-qty,
 .nes-grid .c-price,
 .nes-grid .c-total {
+  width: 11%;
   text-align: center;
   white-space: nowrap;
 }
@@ -968,8 +999,8 @@ h3,
 }
 
 .nes-prod-img {
-  width: 52px;
-  height: 52px;
+  width: 40px;
+  height: 40px;
   flex-shrink: 0;
   object-fit: contain;
 }
@@ -980,7 +1011,7 @@ h3,
 }
 
 .nes-slogan {
-  margin: 14px 0;
+  margin: 10px 0 6px;
   text-align: center;
 }
 
@@ -995,7 +1026,10 @@ h3,
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 24px;
-  margin-top: 28px;
+  margin-top: auto;
+  padding-top: 10px;
+  min-height: 72px;
+  flex-shrink: 0;
 }
 
 .nes-signline {
@@ -1029,6 +1063,7 @@ h3,
 .nes-foot {
   margin: auto -10mm 0;
   padding: 8px 12px 10px;
+  min-height: 44px;
   background: #8fc9b8;
   font-size: 10px;
   text-align: center;
@@ -1037,8 +1072,11 @@ h3,
 
 .nes-no-chrome .nes-head,
 .nes-no-chrome .nes-foot,
-.nes-no-chrome .nes-rule,
-.nes-no-chrome .nes-office {
+.nes-no-chrome .nes-rule {
+  visibility: hidden;
+}
+
+.nes-no-chrome .nes-watermark {
   display: none !important;
 }
 

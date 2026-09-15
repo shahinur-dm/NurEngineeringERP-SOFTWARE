@@ -108,23 +108,36 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
 
   if (body.supplier) {
     const s = body.supplier;
-    const name = String(s.name || "").trim();
-    const mobile = String(s.mobile || "").trim();
+    const name = String(s.supplierName || s.name || "").trim();
+    const mobile = String(s.supplierContact || s.mobile || "").trim();
+    const email = String(s.supplierEmail || s.email || "").trim();
     if (!name || !mobile) {
       return NextResponse.json({ error: "missing_fields" }, { status: 400 });
     }
     const openingBalance =
       s.openingBalance != null ? Number(s.openingBalance) : undefined;
-    let nameBn = String(s.nameBn || "").trim();
-    if (!nameBn || isGenericSupplierLabel(nameBn)) {
-      nameBn = name;
-    }
     const $set: Record<string, unknown> = {
       name,
-      nameBn,
       mobile,
-      address: String(s.address || "").trim(),
+      email,
+      supplierName: name,
+      supplierContact: mobile,
+      supplierEmail: email,
     };
+    if (s.nameBn !== undefined) {
+      let nameBn = String(s.nameBn || "").trim();
+      if (!nameBn || isGenericSupplierLabel(nameBn)) {
+        nameBn = name;
+      }
+      $set.nameBn = nameBn;
+    }
+    if (s.address !== undefined) $set.address = String(s.address || "").trim();
+    if (s.location !== undefined) $set.location = String(s.location || "").trim();
+    if (s.supplierWhatsApp !== undefined) $set.supplierWhatsApp = String(s.supplierWhatsApp || "").trim();
+    if (s.supplierWeChat !== undefined) $set.supplierWeChat = String(s.supplierWeChat || "").trim();
+    if (s.supplierCurrencyName !== undefined) {
+      $set.supplierCurrencyName = String(s.supplierCurrencyName || "").trim();
+    }
     if (openingBalance != null && Number.isFinite(openingBalance)) {
       const existing = await Contact.findById(id).lean();
       if (existing) {

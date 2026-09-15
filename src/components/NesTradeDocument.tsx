@@ -161,13 +161,6 @@ export function NesTradeDocument({
 
   const title = kind === "bill" ? "Bill" : kind === "challan" ? "Delivery Challan" : "";
   const subject = sale.subject || (kind === "quotation" ? "" : sale.note) || "";
-  const defaultTerms = [
-    "Term of validity: 15 days.",
-    "Payment: 100% advance for order confirmation OR as per company policy.",
-    "Delivery area: Items delivered from stock area in Dhaka (customer's own arrangement).",
-    "Delivery Time: Ready stock item.",
-    "VAT, Tax etc.: Excluded.",
-  ];
 
   return (
     <>
@@ -179,9 +172,11 @@ export function NesTradeDocument({
       key={pageIdx}
       className={`nes-sheet nes-${kind}${showChrome ? "" : " nes-no-chrome"}`}
     >
-      <div className="nes-watermark" aria-hidden>
-        Nur Engineering Solution
-      </div>
+      {showChrome ? (
+        <div className="nes-watermark" aria-hidden>
+          Nur Engineering Solution
+        </div>
+      ) : null}
 
       <header className="nes-head">
         <div className="nes-logo">
@@ -219,6 +214,7 @@ export function NesTradeDocument({
       </header>
       <div className="nes-rule" />
 
+      <div className="nes-body">
       {pageIdx === 0 ? (
         kind !== "quotation" ? (
         <div className="nes-docband">
@@ -239,7 +235,19 @@ export function NesTradeDocument({
         </div>
       ) : (
         <div className="nes-quote-top">
-          <div />
+          <div className="nes-party">
+            <p className="nes-to">
+              <b>To</b>
+              <br />
+              {sale.customerName || ""}
+              {sale.customerAddress ? (
+                <>
+                  <br />
+                  {sale.customerAddress}
+                </>
+              ) : null}
+            </p>
+          </div>
           <table className="nes-idbox">
             <tbody>
               {metaRows.map((row) => (
@@ -252,22 +260,6 @@ export function NesTradeDocument({
           </table>
         </div>
       )
-      ) : null}
-
-      {pageIdx === 0 ? (
-      <div className="nes-party">
-        <p className="nes-to">
-          <b>To</b>
-          <br />
-          {sale.customerName || ""}
-          {sale.customerAddress ? (
-            <>
-              <br />
-              {sale.customerAddress}
-            </>
-          ) : null}
-        </p>
-      </div>
       ) : null}
 
       {pageIdx === 0 && subject ? (
@@ -409,19 +401,21 @@ export function NesTradeDocument({
         </p>
       ) : null}
 
-      {isLast && (kind === "quotation" || terms.length > 0) ? (
+      {isLast && terms.length > 0 ? (
         <div className="nes-terms">
           <p>
             <b>Terms &amp; Conditions</b>
           </p>
-          {(terms.length ? terms : defaultTerms).map((line) => (
+          {terms.map((line) => (
             <p key={line}>
               <span className="nes-diamond">◆</span> {line.replace(/^[-•◆]\s*/, "")}
             </p>
           ))}
-          <p>Please sign back to us if you confirm this P.I/Quotation.</p>
+          {kind === "quotation" ? (
+            <p>Please sign back to us if you confirm this P.I/Quotation.</p>
+          ) : null}
         </div>
-      ) : isLast ? (
+      ) : isLast && kind !== "quotation" ? (
         <p className="nes-note">
           Already we have supplied these services/items with good condition to your company. Now
           please check our bill and take necessary action to pay our bill accordingly. If you have
@@ -436,6 +430,8 @@ export function NesTradeDocument({
           <span>24/7 Best Deal, Best Service</span>
         </p>
       ) : null}
+
+      </div>
 
       {isLast ? (
       <div className="nes-signs">
@@ -468,6 +464,12 @@ export function NesTradeDocument({
             <>
               {" "}
               , <b>Wechat:</b> {wechat}
+            </>
+          ) : null}
+          {business?.website ? (
+            <>
+              {" "}
+              , <b>Website:</b> {business.website}
             </>
           ) : null}
           {business?.email ? (

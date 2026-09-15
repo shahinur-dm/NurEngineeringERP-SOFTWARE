@@ -47,6 +47,7 @@ export type TradePdfBusiness = {
   address?: string;
   phone?: string;
   email?: string;
+  website?: string;
   logoUrl?: string;
 };
 
@@ -97,6 +98,12 @@ async function loadImageDataUrl(url?: string): Promise<string | null> {
   }
 }
 
+function pdfImageFormat(dataUrl: string) {
+  if (dataUrl.includes("image/png")) return "PNG";
+  if (dataUrl.includes("image/webp")) return "WEBP";
+  return "JPEG";
+}
+
 export async function buildTradePdf(opts: {
   kind: Kind;
   sale: TradePdfSale;
@@ -117,13 +124,14 @@ export async function buildTradePdf(opts: {
   const boxW = 62;
   const images = await Promise.all(items.map((it) => loadImageDataUrl(it.imageUrl)));
 
-  const logoData = headerFooter && business?.logoUrl ? await loadImageDataUrl(business.logoUrl) : null;
+  const logoData = business?.logoUrl ? await loadImageDataUrl(business.logoUrl) : null;
+  const footerH = 16;
 
   function drawLetterhead() {
     if (!headerFooter) return;
     if (logoData) {
       try {
-        doc.addImage(logoData, "JPEG", m, 9, 18, 18);
+        doc.addImage(logoData, pdfImageFormat(logoData), m, 9, 18, 18);
       } catch {
         /* skip */
       }
@@ -201,7 +209,7 @@ export async function buildTradePdf(opts: {
           ];
 
   autoTable(doc, {
-    startY: headerFooter ? 34 : 12,
+    startY: 34,
     margin: { left: pageW - m - boxW, right: m },
     tableWidth: boxW,
     theme: "grid",
@@ -319,7 +327,7 @@ export async function buildTradePdf(opts: {
   const PAGE_ROWS = 10;
   const tableOpts = {
     head,
-    margin: { left: m, right: m, bottom: headerFooter ? 20 : 10 },
+    margin: { left: m, right: m, bottom: 22 },
     styles: { fontSize: 8, cellPadding: 2, valign: "top" as const, minCellHeight: 14, lineColor: 30, lineWidth: 0.2 },
     headStyles: { fillColor: [234, 214, 176] as [number, number, number], textColor: 20, fontStyle: "bold" as const, halign: "center" as const },
     columnStyles: (kind === "challan"
@@ -343,7 +351,7 @@ export async function buildTradePdf(opts: {
     if (pageIdx > 0) {
       doc.addPage();
       drawLetterhead();
-      y = headerFooter ? 36 : 14;
+      y = 36;
     }
     const isLast = pageIdx === chunks.length - 1;
     autoTable(doc, {
@@ -366,11 +374,11 @@ export async function buildTradePdf(opts: {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     y = ((doc as any).lastAutoTable?.finalY || y) + 6;
   });
-  const footerReserve = headerFooter ? 22 : 12;
+  const footerReserve = 22;
   if (y > pageH - footerReserve - 48) {
     doc.addPage();
     drawLetterhead();
-    y = headerFooter ? 36 : 14;
+    y = 36;
   }
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
@@ -414,27 +422,22 @@ export async function buildTradePdf(opts: {
     y += 4;
   }
   if (kind === "quotation") {
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.text("Terms & Conditions", m, y);
-    y += 5;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
     const lines = (sale.terms || "").split("\n").filter((l) => l.trim());
-    const fallback = [
-      "Term of validity: 15 days.",
-      "Payment: 100% advance for order confirmation OR as per company policy.",
-      "Delivery area: Items delivered from stock area in Dhaka (customer's own arrangement).",
-      "Delivery Time: Ready stock item.",
-      "VAT, Tax etc.: Excluded.",
-    ];
-    (lines.length ? lines : fallback).forEach((line) => {
-      doc.text(`◆  ${line.replace(/^[-•◆]\s*/, "").trim()}`, m, y, { maxWidth: pageW - m * 2 });
-      y += 4.2;
-    });
-    y += 1;
-    doc.text("Please sign back to us if you confirm this P.I/Quotation.", m, y);
-    y += 8;
+    if (lines.length) {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.text("Terms & Conditions", m, y);
+      y += 5;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      lines.forEach((line) => {
+        doc.text(`◆  ${line.replace(/^[-•◆]\s*/, "").trim()}`, m, y, { maxWidth: pageW - m * 2 });
+        y += 4.2;
+      });
+      y += 1;
+      doc.text("Please sign back to us if you confirm this P.I/Quotation.", m, y);
+      y += 8;
+    }
   } else {
     doc.setFontSize(8);
     const note =
@@ -451,52 +454,55 @@ export async function buildTradePdf(opts: {
     y += 18;
   }
 
+  const signY = pageH - footerH - 20;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
-  doc.line(m, y, m + 50, y);
-  doc.line(pageW - m - 55, y, pageW - m, y);
-  doc.text(kind === "quotation" ? "(Customer Signature)" : "(Receiver Signature)", m, y + 5);
+  doc.line(m, signY, m + 50, signY);
+  doc.line(pageW - m - 55, signY, pageW - m, signY);
+  doc.text(kind === "quotation" ? "(Customer Signature)" : "(Receiver Signature)", m, signY + 5);
   doc.setFont("helvetica", "bold");
-  doc.text(englishName(sale.soldByName), pageW - m, y + 5, { align: "right" });
+  doc.text(englishName(sale.soldByName), pageW - m, signY + 5, { align: "right" });
   doc.setFont("helvetica", "normal");
-  doc.text(`Proprietor, ${bizName}`, pageW - m, y + 9, { align: "right" });
+  doc.text(`Proprietor, ${bizName}`, pageW - m, signY + 9, { align: "right" });
 
   const wechat = wechatId(business?.phone);
   const pages = doc.getNumberOfPages();
   for (let p = 1; p <= pages; p++) {
     doc.setPage(p);
-    try {
-      doc.setGState(new GState({ opacity: 0.12 }));
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(26);
-      doc.setTextColor(150);
-      doc.text("Nur Engineering Solution", pageW / 2, 145, { align: "center", angle: 32 });
-      doc.setGState(new GState({ opacity: 1 }));
-    } catch {
-      /* watermark optional */
+    if (headerFooter) {
+      try {
+        doc.setGState(new GState({ opacity: 0.12 }));
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(26);
+        doc.setTextColor(150);
+        doc.text("Nur Engineering Solution", pageW / 2, 145, { align: "center", angle: 32 });
+        doc.setGState(new GState({ opacity: 1 }));
+      } catch {
+        /* watermark optional */
+      }
+      doc.setTextColor(20);
+      doc.setFillColor(143, 201, 184);
+      doc.rect(0, pageH - footerH, pageW, footerH, "F");
+      doc.setFontSize(7);
+      doc.setTextColor(20);
+      doc.text(`Office Address : ${business?.address || ""}`, pageW / 2, pageH - 10.5, {
+        align: "center",
+        maxWidth: pageW - 16,
+      });
+      doc.text(
+        [
+          business?.phone ? `Mobile/WhatsApp: ${business.phone}` : "",
+          wechat ? `Wechat: ${wechat}` : "",
+          business?.website ? `Website: ${business.website}` : "",
+          business?.email ? `Email: ${business.email}` : "",
+        ]
+          .filter(Boolean)
+          .join("  ,  "),
+        pageW / 2,
+        pageH - 6,
+        { align: "center", maxWidth: pageW - 16 },
+      );
     }
-    doc.setTextColor(20);
-    if (!headerFooter) continue;
-    doc.setFillColor(143, 201, 184);
-    doc.rect(0, pageH - 16, pageW, 16, "F");
-    doc.setFontSize(7);
-    doc.setTextColor(20);
-    doc.text(`Office Address : ${business?.address || ""}`, pageW / 2, pageH - 10.5, {
-      align: "center",
-      maxWidth: pageW - 16,
-    });
-    doc.text(
-      [
-        business?.phone ? `Mobile/WhatsApp: ${business.phone}` : "",
-        wechat ? `Wechat: ${wechat}` : "",
-        business?.email ? `Email: ${business.email}` : "",
-      ]
-        .filter(Boolean)
-        .join("  ,  "),
-      pageW / 2,
-      pageH - 6,
-      { align: "center", maxWidth: pageW - 16 },
-    );
   }
 
   return doc;

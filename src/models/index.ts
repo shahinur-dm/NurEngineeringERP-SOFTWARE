@@ -87,6 +87,18 @@ const ProductSchema = new Schema(
     imageUrl: String,
     hsCode: String,
     description: String,
+    shippingCost: { type: Number, default: 0 },
+    shippingCurrency: { type: String, enum: ["BDT", "USD", "RMB"], default: "BDT" },
+    quantity: { type: Number, default: 0 },
+    costPrice: { type: Number, default: 0 },
+    buyingDate: Date,
+    receivingDate: Date,
+    supplierName: String,
+    supplierAddress: String,
+    supplierMobile: String,
+    supplierWeChat: String,
+    supplierWhatsApp: String,
+    supplierLocation: String,
     /** Product warranty period in months (0 = none) */
     warrantyMonths: { type: Number, default: 0 },
     /** Serial / SL number */
@@ -165,6 +177,13 @@ const ContactSchema = new Schema(
     group: String,
     isActive: { type: Boolean, default: true },
     notes: String,
+    location: String,
+    supplierName: String,
+    supplierContact: String,
+    supplierEmail: String,
+    supplierWhatsApp: String,
+    supplierWeChat: String,
+    supplierCurrencyName: String,
   },
   { timestamps: true },
 );
@@ -269,6 +288,19 @@ const PurchaseSchema = new Schema(
     supplierName: String,
     supplierWhatsapp: String,
     supplierWechat: String,
+    supplierAddress: String,
+    supplierMobile: String,
+    supplierLocation: String,
+    productName: String,
+    productDescription: String,
+    categoryId: { type: Schema.Types.ObjectId, ref: "Category" },
+    brand: String,
+    quantity: { type: Number, default: 0 },
+    buyingPrice: { type: Number, default: 0 },
+    shippingCurrency: { type: String, enum: ["BDT", "USD", "RMB"], default: "BDT" },
+    costPrice: { type: Number, default: 0 },
+    paymentMethod: String,
+    paymentStatus: String,
     items: [
       {
         productId: { type: Schema.Types.ObjectId, ref: "Product" },
@@ -853,6 +885,50 @@ try {
   }
   if (shipItems?.schema && !shipItems.schema.path("imageUrl")) {
     shipItems.schema.add({ imageUrl: String });
+  }
+  for (const field of [
+    "location",
+    "supplierName",
+    "supplierContact",
+    "supplierEmail",
+    "supplierWhatsApp",
+    "supplierWeChat",
+    "supplierCurrencyName",
+  ] as const) {
+    if (!Contact.schema.path(field)) Contact.schema.add({ [field]: String });
+  }
+  if (!Product.schema.path("shippingCost")) {
+    Product.schema.add({
+      shippingCost: { type: Number, default: 0 },
+      shippingCurrency: { type: String, enum: ["BDT", "USD", "RMB"], default: "BDT" },
+      quantity: { type: Number, default: 0 },
+      costPrice: { type: Number, default: 0 },
+      buyingDate: Date,
+      receivingDate: Date,
+      supplierName: String,
+      supplierAddress: String,
+      supplierMobile: String,
+      supplierWeChat: String,
+      supplierWhatsApp: String,
+      supplierLocation: String,
+    });
+  }
+  if (!Purchase.schema.path("productName")) {
+    Purchase.schema.add({
+      productName: String,
+      productDescription: String,
+      categoryId: { type: Schema.Types.ObjectId, ref: "Category" },
+      brand: String,
+      quantity: { type: Number, default: 0 },
+      buyingPrice: { type: Number, default: 0 },
+      shippingCurrency: { type: String, enum: ["BDT", "USD", "RMB"], default: "BDT" },
+      costPrice: { type: Number, default: 0 },
+      supplierAddress: String,
+      supplierMobile: String,
+      supplierLocation: String,
+      paymentMethod: String,
+      paymentStatus: String,
+    });
   }
 } catch (err) {
   console.error("[models] schema patch skipped", err);

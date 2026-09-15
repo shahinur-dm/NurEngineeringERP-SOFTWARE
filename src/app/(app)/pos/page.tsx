@@ -69,6 +69,9 @@ export default function PosPage() {
   const [custOpen, setCustOpen] = useState(false);
   const [newCust, setNewCust] = useState({ name: "", mobile: "" });
   const productsRef = useRef<Product[]>([]);
+  const quotationNumberPending = useRef(false);
+  const referenceNumberPending = useRef(false);
+  const reservedQuotationNo = useRef("");
 
   useEffect(() => { productsRef.current = products; }, [products]);
   useEffect(() => {
@@ -83,9 +86,12 @@ export default function PosPage() {
       setCustomers(c.data || []); setCategories(cat.data || []); setBrands(b.data || []);
       setSavedTerms(
         [...new Set<string>(
-          (quotations.data || [])
-            .map((quotation: { terms?: string }) => quotation.terms?.trim())
-            .filter((value: string | undefined): value is string => Boolean(value)),
+          (quotations.data || []).flatMap((quotation: { terms?: string }) =>
+            String(quotation.terms || "")
+              .split("\n")
+              .map((line) => line.replace(/^[-•◆]\s*/, "").trim())
+              .filter(Boolean),
+          ),
         )],
       );
     }).catch(() => setMessage(t("common.error")));
@@ -179,6 +185,26 @@ export default function PosPage() {
     setQuotationNo(""); setReferenceNo(""); setSourceQuotationId(""); setSaleDate(today());
     setNote(""); setSavedTermQuery(""); setDiscountValue(0); setPayRows([payRow()]); setMessage("");
     setSearch(""); setBrandName(""); setCategoryId(""); setProductResultsOpen(false);
+    quotationNumberPending.current = false; referenceNumberPending.current = false; reservedQuotationNo.current = "";
+  }
+  async function ensureDocumentNumber(kind: "quotation" | "reference") {
+    const hasValue = kind === "quotation" ? quotationNo.trim() : referenceNo.trim();
+    const pending = kind === "quotation" ? quotationNumberPending : referenceNumberPending;
+    if (hasValue || pending.current) return;
+    pending.current = true;
+    try {
+      const res = await fetch(`/api/sales/numbers?kind=${kind}`);
+      const json = await res.json();
+      if (!res.ok || !json.value) return;
+      if (kind === "quotation") {
+        reservedQuotationNo.current = String(json.value);
+        setQuotationNo((current) => current || String(json.value));
+      } else {
+        setReferenceNo((current) => current || String(json.value));
+      }
+    } finally {
+      pending.current = false;
+    }
   }
   async function loadQuotation() {
     if (!quotationNo.trim()) return;
@@ -213,7 +239,7 @@ export default function PosPage() {
           locationId, customerId: customerId || undefined,
           customerName: customerName.trim() || "Walk-in Customer", customerMobile,
           customerAddress, customerEmail, saleDate, sourceQuotationId: status === "final" ? sourceQuotationId || undefined : undefined,
-          status, note, terms: note, discount: totalDiscount, tax: 0, shipping: 0,
+          status, quotationNo, referenceNo, note, terms: note, discount: totalDiscount, tax: 0, shipping: 0,
           items: cart.map((i) => ({
             productId: i._id, name: i.name, sku: i.sku, unit: i.unit || "Pcs", qty: i.qty,
             bonusQty: i.bonusQty, unitPrice: i.sellPrice, discount: Math.min(i.lineDiscount, i.qty * i.sellPrice),
@@ -270,15 +296,14 @@ export default function PosPage() {
             <Field label="Contact No"><input className="gp-input" value={customerMobile} onChange={(e) => setCustomerMobile(e.target.value)} placeholder="Contact No" /></Field>
             <Field label="Address"><div className="relative"><MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" /><input className="gp-input gp-input-icon-left" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} placeholder="Address" /></div></Field>
             <Field label="Date"><div className="relative"><CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" /><input type="date" className="gp-input gp-input-icon-left" value={saleDate} onChange={(e) => setSaleDate(e.target.value)} /></div></Field>
-            <Field label="Quotation/PI No"><div className="flex gap-2"><input className="gp-input" value={quotationNo} onChange={(e) => setQuotationNo(e.target.value.toUpperCase())} placeholder="Auto-generated on save / enter to load" /><button type="button" className="gp-btn gp-btn-ghost px-3" onClick={() => void loadQuotation()}>Load</button></div></Field>
-            <Field label="REF No"><input className="gp-input bg-slate-50" value={referenceNo} readOnly placeholder="Auto-generated on save" /></Field>
+            <Field label="Quotation/PI No"><input className="gp-input" value={quotationNo} onFocus={() => void ensureDocumentNumber("quotation")} onChange={(e) => setQuotationNo(e.target.value.toUpperCase())} onKeyDown={(e) => { if (e.key === "Enter" && quotationNo.trim() && quotationNo !== reservedQuotationNo.current) void loadQuotation(); }} placeholder="Auto-generated on focus" /></Field>
+            <Field label="REF No"><input className="gp-input bg-slate-50" value={referenceNo} onFocus={() => void ensureDocumentNumber("reference")} readOnly placeholder="Auto-generated on focus" /></Field>
           </div>
 
           <section className="rounded-xl border border-line p-2">
             <h2 className="mb-1.5 flex items-center gap-2 text-sm font-bold"><PackagePlus className="h-4 w-4 text-primary" />Order Items</h2>
-            <div className="mb-2 grid items-end gap-2 sm:grid-cols-2 lg:grid-cols-[auto_minmax(260px,1fr)_minmax(150px,0.45fr)_minmax(150px,0.45fr)]">
-              <button type="button" className="gp-btn gp-btn-primary whitespace-nowrap" onClick={() => { const p = productsRef.current.find((x) => x.sku.toLowerCase() === search.trim().toLowerCase()); if (p) addProduct(p); }}><Plus className="h-4 w-4 shrink-0" /><span>Add Product</span></button>
-              <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" /><input className="gp-input gp-input-icon-left" value={search} onChange={(e) => { const value = e.target.value; setSearch(value); setPage(1); setProductResultsOpen(Boolean(value.trim() || brandName || categoryId)); }} placeholder="Search product by name, SKU, category or brand..." /></div>
+            <div className="mb-2 grid items-end gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(150px,0.45fr)_minmax(150px,0.45fr)]">
+              <div className="relative sm:col-span-2 lg:col-span-1"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" /><input className="gp-input gp-input-icon-left" value={search} onChange={(e) => { const value = e.target.value; setSearch(value); setPage(1); setProductResultsOpen(Boolean(value.trim() || brandName || categoryId)); }} placeholder="Search product by name, SKU, category or brand..." /></div>
               <select aria-label="Brand filter" className="gp-input" value={brandName} onChange={(e) => { const value = e.target.value; setBrandName(value); setPage(1); setProductResultsOpen(Boolean(value || search.trim() || categoryId)); }}><option value="">All Brands</option>{brands.map((b) => <option key={b._id} value={b.name}>{b.name}</option>)}</select>
               <select aria-label="Category filter" className="gp-input" value={categoryId} onChange={(e) => { const value = e.target.value; setCategoryId(value); setPage(1); setProductResultsOpen(Boolean(value || search.trim() || brandName)); }}><option value="">All Categories</option>{categories.map((c) => <option key={c._id} value={c._id}>{c.name}</option>)}</select>
             </div>
@@ -310,11 +335,21 @@ export default function PosPage() {
           </section>
 
           {cart.length > 0 && <div className="overflow-x-auto rounded-xl border border-line">
-            <table className="gp-table min-w-[850px] [&_input]:min-h-8 [&_input]:py-1 [&_td]:py-1.5 [&_th]:py-1.5">
-              <thead><tr><th className="w-12">SL</th><th>Name</th><th>Description</th><th className="w-24">QTY</th><th className="w-32">Price</th><th className="w-28">Discount</th><th className="w-32">Total</th><th className="w-12" /></tr></thead>
+            <table className="gp-table w-full table-fixed min-w-[850px] [&_input]:min-h-8 [&_input]:w-full [&_input]:py-1 [&_td]:px-1.5 [&_td]:py-1.5 [&_th]:px-1.5 [&_th]:py-1.5">
+              <colgroup>
+                <col className="w-9" />
+                <col className="w-[12%]" />
+                <col />
+                <col className="w-24" />
+                <col className="w-44" />
+                <col className="w-20" />
+                <col className="w-32" />
+                <col className="w-12" />
+              </colgroup>
+              <thead><tr><th>SL</th><th>Name</th><th>Description</th><th className="w-24">QTY</th><th>Price</th><th>Discount</th><th className="w-32">Total</th><th className="w-12" /></tr></thead>
               <tbody>{cart.map((i, index) => {
                 const lineTotal = Math.max(0, i.qty * i.sellPrice - i.lineDiscount);
-                return <tr key={i._id}><td>{index + 1}</td><td><input className="gp-input min-w-40" value={i.name} onChange={(e) => updateItem(i._id, { name: e.target.value })} /></td><td><input className="gp-input min-w-52" value={i.saleDescription} onChange={(e) => updateItem(i._id, { saleDescription: e.target.value })} /></td><td><input type="number" min={1} max={i.locationQty || undefined} className="gp-input" value={i.qty} onChange={(e) => updateQuantity(i, Number(e.target.value))} /></td><td><input type="number" min={0} className="gp-input" value={i.sellPrice} onChange={(e) => updateItem(i._id, { sellPrice: Math.max(0, Number(e.target.value)) })} /></td><td><input type="number" min={0} max={i.qty * i.sellPrice} className="gp-input" value={i.lineDiscount} onChange={(e) => updateItem(i._id, { lineDiscount: Math.max(0, Number(e.target.value)) })} /></td><td className="gp-money font-bold">{formatBDT(lineTotal, locale)}</td><td><button type="button" className="p-2 text-red-500" onClick={() => setCart((old) => old.filter((x) => x._id !== i._id))}><Trash2 className="h-4 w-4" /></button></td></tr>;
+                return <tr key={i._id}><td>{index + 1}</td><td className="min-w-0"><input className="gp-input" value={i.name} onChange={(e) => updateItem(i._id, { name: e.target.value })} /></td><td className="min-w-0"><input className="gp-input overflow-x-auto" value={i.saleDescription} onChange={(e) => updateItem(i._id, { saleDescription: e.target.value })} /></td><td className="w-24"><input type="number" min={1} max={i.locationQty || undefined} className="gp-input" value={i.qty} onChange={(e) => updateQuantity(i, Number(e.target.value))} /></td><td className="min-w-0"><input type="number" min={0} className="gp-input" value={i.sellPrice} onChange={(e) => updateItem(i._id, { sellPrice: Math.max(0, Number(e.target.value)) })} /></td><td className="min-w-0"><input type="number" min={0} max={i.qty * i.sellPrice} className="gp-input" value={i.lineDiscount} onChange={(e) => updateItem(i._id, { lineDiscount: Math.max(0, Number(e.target.value)) })} /></td><td className="gp-money w-32 font-bold">{formatBDT(lineTotal, locale)}</td><td><button type="button" className="p-2 text-red-500" onClick={() => setCart((old) => old.filter((x) => x._id !== i._id))}><Trash2 className="h-4 w-4" /></button></td></tr>;
               })}</tbody>
             </table>
           </div>}
@@ -332,7 +367,16 @@ export default function PosPage() {
                     const value = e.target.value;
                     setSavedTermQuery(value);
                     const selected = savedTerms.find((term) => term === value);
-                    if (selected) setNote(selected);
+                    if (!selected) return;
+                    setNote((current) => {
+                      const existing = current
+                        .split("\n")
+                        .map((line) => line.replace(/^[-•◆]\s*/, "").trim())
+                        .filter(Boolean);
+                      if (existing.includes(selected)) return current;
+                      return current.trim() ? `${current.replace(/\s+$/, "")}\n${selected}` : selected;
+                    });
+                    setSavedTermQuery("");
                   }}
                   placeholder="Search saved terms or write directly below..."
                 />
@@ -357,11 +401,9 @@ export default function PosPage() {
         </div>
       </section>
 
-      <div className="gp-card flex flex-wrap gap-2 p-2">
-        <button type="button" className="gp-btn gp-btn-ghost" disabled={busy || !cart.length} onClick={() => void save("draft")}>Save Draft</button>
+      <div className="gp-card flex flex-wrap justify-end gap-2 p-2">
         <button type="button" className="gp-btn gp-btn-primary" disabled={busy || !cart.length} onClick={() => void save("quotation")}>Save Quotation</button>
-        <button type="button" className="gp-btn gp-btn-ghost" disabled={busy || !cart.length} onClick={() => void save("suspended")}>Hold</button>
-        <button type="button" className="gp-btn gp-btn-primary ml-auto" disabled={busy || !cart.length || paid > grandTotal + .009} onClick={() => void save("final", true)}><Wallet className="h-4 w-4" />{busy ? "Saving..." : "Complete Sale"}</button>
+        <button type="button" className="gp-btn gp-btn-primary" disabled={busy || !cart.length || paid > grandTotal + .009} onClick={() => void save("final", true)}><Wallet className="h-4 w-4" />{busy ? "Saving..." : "Complete Sale"}</button>
       </div>
       {message && <p className="rounded-xl border border-line bg-white px-4 py-3 text-sm font-semibold text-primary">{message}</p>}
 

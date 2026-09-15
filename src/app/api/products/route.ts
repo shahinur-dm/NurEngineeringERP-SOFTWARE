@@ -4,6 +4,25 @@ import { connectDB } from "@/lib/db";
 import { readSession } from "@/lib/auth";
 import { Category, Contact, Location, Product, ProductSupplier, nextSeq } from "@/models";
 import { attachOffersToProducts, saveProductOffers } from "@/lib/product-suppliers";
+import { isSuperAdmin } from "@/lib/rbac";
+
+function moneyCurrency(value: unknown, fallback = "BDT") {
+  const c = String(value || "");
+  return ["BDT", "USD", "RMB"].includes(c) ? c : fallback;
+}
+
+function optionalDate(value: unknown) {
+  if (!value) return undefined;
+  const d = new Date(String(value));
+  return Number.isNaN(d.getTime()) ? undefined : d;
+}
+
+function redactCostPrice<T extends Record<string, unknown>>(doc: T, role: string): T {
+  if (isSuperAdmin(role)) return doc;
+  const next = { ...doc };
+  delete next.costPrice;
+  return next;
+}
 
 function escapeRegex(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -136,6 +155,9 @@ export async function GET(req: NextRequest) {
   }
 
   products = (await attachOffersToProducts(products)) as typeof products;
+  if (!isSuperAdmin(session.role)) {
+    products = products.map((p) => redactCostPrice(p as Record<string, unknown>, session.role)) as typeof products;
+  }
 
   return NextResponse.json({ data: products, total, page, limit });
 }
@@ -171,7 +193,7 @@ export async function POST(req: NextRequest) {
         stocks = [
           {
             locationId: location._id,
-            qty: Number(body.openingQty || 0),
+            qty: Number(body.quantity ?? body.openingQty ?? 0),
           },
         ];
       } else {
@@ -190,9 +212,7 @@ export async function POST(req: NextRequest) {
       unitBn: body.unitBn || "পিস",
       purchasePrice: Number(body.purchasePrice || 0),
       sellPrice: Number(body.sellPrice || 0),
-      currency: ["BDT", "USD", "RMB"].includes(String(body.currency || ""))
-        ? String(body.currency)
-        : "BDT",
+      currency: moneyCurrency(body.currency),
       taxPercent: Number(body.taxPercent || 0),
       alertQty: Number(body.alertQty || 10),
       hsCode: body.hsCode,
@@ -206,6 +226,18 @@ export async function POST(req: NextRequest) {
         body.stockMethod === "fifo" || body.stockMethod === "lifo" || body.stockMethod === "avg"
           ? body.stockMethod
           : undefined,
+      shippingCost: Number(body.shippingCost || 0),
+      shippingCurrency: moneyCurrency(body.shippingCurrency),
+      quantity: Number(body.quantity ?? body.openingQty ?? 0),
+      costPrice: isSuperAdmin(session.role) ? Number(body.costPrice || 0) : 0,
+      buyingDate: optionalDate(body.buyingDate),
+      receivingDate: optionalDate(body.receivingDate),
+      supplierName: body.supplierName != null ? String(body.supplierName) : undefined,
+      supplierAddress: body.supplierAddress != null ? String(body.supplierAddress) : undefined,
+      supplierMobile: body.supplierMobile != null ? String(body.supplierMobile) : undefined,
+      supplierWeChat: body.supplierWeChat != null ? String(body.supplierWeChat) : undefined,
+      supplierWhatsApp: body.supplierWhatsApp != null ? String(body.supplierWhatsApp) : undefined,
+      supplierLocation: body.supplierLocation != null ? String(body.supplierLocation) : undefined,
       stocks,
     });
 
@@ -214,7 +246,10 @@ export async function POST(req: NextRequest) {
     }
 
     const [withOffers] = await attachOffersToProducts([product.toObject()]);
-    return NextResponse.json({ data: withOffers }, { status: 201 });
+    return NextResponse.json(
+      { data: redactCostPrice(withOffers as Record<string, unknown>, session.role) },
+      { status: 201 },
+    );
   } catch (err) {
     const parsed = parseApiError(err);
     console.error("POST /api/products", err);
