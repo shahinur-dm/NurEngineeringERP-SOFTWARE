@@ -301,10 +301,10 @@ export default function ProductsPage() {
           locale === "bn"
             ? editing
               ? "পণ্য আপডেট হয়েছে"
-              : `পণ্য যোগ হয়েছে (${json.data?.sku || form.sku})`
+              : `পণ্য যোগ হয়েছে (${json.data?.sku || ""})`
             : editing
               ? "Product updated"
-              : `Product added (${json.data?.sku || form.sku})`,
+              : `Product added (${json.data?.sku || ""})`,
       });
       await loadProducts();
     } catch {
