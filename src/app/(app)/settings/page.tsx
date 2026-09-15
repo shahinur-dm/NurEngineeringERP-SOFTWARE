@@ -4,6 +4,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Plus, Trash2 } from "lucide-react";
 import { AlertBanner, Field, Modal, PageHeader } from "@/components/ui";
+import { applySiteFavicon } from "@/components/SiteFavicon";
 
 type Business = {
   name?: string;
@@ -17,6 +18,7 @@ type Business = {
   currency?: string;
   invoicePrefix?: string;
   logoUrl?: string;
+  faviconUrl?: string;
 };
 
 type LocationRow = {
@@ -76,6 +78,7 @@ export default function SettingsPage() {
         tone: "success",
         message: locale === "bn" ? "সেটিংস সংরক্ষিত" : "Settings saved",
       });
+      applySiteFavicon();
       await loadMeta();
     } catch {
       setBanner({ tone: "error", message: t("common.error") });
@@ -264,6 +267,42 @@ export default function SettingsPage() {
                 {locale === "bn"
                   ? "আপলোড করলে Quotation, Bill ও Challan-এ ব্যবহার হবে"
                   : "Uploaded logo is used on Quotation, Bill and Challan"}
+              </p>
+            )}
+          </Field>
+          <Field label={locale === "bn" ? "ফেভিকন" : "Favicon"}>
+            <input
+              type="file"
+              accept="image/png,image/x-icon,image/vnd.microsoft.icon,image/svg+xml,image/jpeg,image/webp,.ico"
+              className="mt-1 text-sm"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (!file) return;
+                if (file.size > 200_000) {
+                  setBanner({
+                    tone: "error",
+                    message: locale === "bn" ? "ফেভিকন ২০০KB এর কম হতে হবে" : "Favicon must be under 200KB",
+                  });
+                  return;
+                }
+                const reader = new FileReader();
+                reader.onload = () => {
+                  setBusiness((b) => ({ ...b, faviconUrl: String(reader.result || "") }));
+                };
+                reader.readAsDataURL(file);
+              }}
+            />
+            {business.faviconUrl ? (
+              <div className="mt-2 flex h-12 w-12 items-center justify-center rounded-lg border border-line bg-white p-1">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={business.faviconUrl} alt="Favicon preview" className="max-h-full max-w-full object-contain" />
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-muted">
+                {locale === "bn"
+                  ? "ব্রাউজার ট্যাবে দেখানো ছোট আইকন"
+                  : "Small icon shown in the browser tab"}
               </p>
             )}
           </Field>

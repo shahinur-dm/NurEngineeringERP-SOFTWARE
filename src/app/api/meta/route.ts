@@ -100,6 +100,7 @@ export async function PUT(req: NextRequest) {
         "defaultLocale",
         "stockMethod",
         "logoUrl",
+        "faviconUrl",
       ]) {
         if (body[key] != null) $set[key] = body[key];
       }

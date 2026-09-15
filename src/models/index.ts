@@ -43,6 +43,7 @@ const BusinessSchema = new Schema(
     tin: String,
     mushak: String,
     logoUrl: String,
+    faviconUrl: String,
     currency: { type: String, default: "BDT" },
     timezone: { type: String, default: "Asia/Dhaka" },
     fiscalYearStartMonth: { type: Number, default: 7 },
@@ -822,6 +823,9 @@ export const ActivityLog = models.ActivityLog || model("ActivityLog", ActivityLo
 try {
   if (!User.schema.path("avatarUrl")) {
     User.schema.add({ avatarUrl: String });
+  }
+  if (!Business.schema.path("faviconUrl")) {
+    Business.schema.add({ faviconUrl: String });
   }
   const saleItems = Sale.schema.path("items") as mongoose.Schema.Types.DocumentArray | undefined;
   if (saleItems?.schema && !saleItems.schema.path("description")) {

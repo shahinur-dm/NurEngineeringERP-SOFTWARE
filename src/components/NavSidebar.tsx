@@ -2,13 +2,24 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { ChevronDown } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { NAV_TREE, flattenNav, type NavItem } from "@/lib/navigation";
 
 const NAV_HREFS = flattenNav().map((n) => n.href);
+
+function navLabel(t: ReturnType<typeof useTranslations>, locale: string, key: string) {
+  try {
+    const value = t(key);
+    if (value && value !== key) return value;
+  } catch {
+    /* missing key */
+  }
+  if (key === "nav.challanList") return locale === "bn" ? "সব চালান" : "All Challan";
+  return key;
+}
 
 /** Longest matching href wins so /sales and /sales/quotations cannot both be active. */
 function isNavActive(href: string | undefined, pathname: string) {
@@ -30,6 +41,7 @@ function childIsActive(item: NavItem, pathname: string) {
 
 function NavLeaf({ item, pathname }: { item: NavItem; pathname: string }) {
   const t = useTranslations();
+  const locale = useLocale();
   const Icon = item.icon;
   const active = isNavActive(item.href, pathname);
   return (
@@ -45,7 +57,7 @@ function NavLeaf({ item, pathname }: { item: NavItem; pathname: string }) {
       {Icon ? (
         <Icon className={cn("h-4 w-4 shrink-0 stroke-[1.7]", active ? "text-white" : "text-[#8491a7] group-hover:text-[#c7d2e3]")} />
       ) : null}
-      <span className="truncate">{t(item.labelKey)}</span>
+      <span className="truncate">{navLabel(t, locale, item.labelKey)}</span>
     </Link>
   );
 }
@@ -62,6 +74,7 @@ function NavGroup({
   onToggle: () => void;
 }) {
   const t = useTranslations();
+  const locale = useLocale();
   const Icon = item.icon;
   const childActive = childIsActive(item, pathname);
 
@@ -85,7 +98,7 @@ function NavGroup({
             )}
           />
         ) : null}
-        <span className="flex-1 truncate">{t(item.labelKey)}</span>
+        <span className="flex-1 truncate">{navLabel(t, locale, item.labelKey)}</span>
         <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 opacity-50 transition-transform duration-150", open && "rotate-180")} />
       </button>
       {open ? (
@@ -108,7 +121,7 @@ function NavGroup({
                 {ChildIcon ? (
                   <ChildIcon className={cn("h-3.5 w-3.5 shrink-0 stroke-[1.7]", active ? "text-white" : "text-[#738198]")} />
                 ) : null}
-                <span className="truncate">{t(child.labelKey)}</span>
+                <span className="truncate">{navLabel(t, locale, child.labelKey)}</span>
               </Link>
             );
           })}

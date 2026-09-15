@@ -104,6 +104,40 @@ function pdfImageFormat(dataUrl: string) {
   return "JPEG";
 }
 
+function termEntries(terms?: string) {
+  return String(terms || "")
+    .split(/\r?\n/)
+    .map((line) =>
+      line.replace(/^(\d+[.)]\s*|[-•◆●○▪]\s*)/, "").trim(),
+    )
+    .filter(Boolean);
+}
+
+function drawNumberedTerms(
+  doc: jsPDF,
+  terms: string | undefined,
+  m: number,
+  startY: number,
+  pageW: number,
+) {
+  const entries = termEntries(terms);
+  if (!entries.length) return startY;
+  let y = startY;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.text("Terms & Conditions", m, y);
+  y += 5;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  entries.forEach((line, index) => {
+    const body = `${index + 1}. ${line}`;
+    const wrapped = doc.splitTextToSize(body, pageW - m * 2);
+    doc.text(wrapped, m, y);
+    y += wrapped.length * 4.2;
+  });
+  return y + 4;
+}
+
 export async function buildTradePdf(opts: {
   kind: Kind;
   sale: TradePdfSale;
@@ -391,36 +425,15 @@ export async function buildTradePdf(opts: {
   }
 
   doc.setFont("helvetica", "normal");
-  const savedTermLines = (sale.terms || "").split("\n").filter((line) => line.trim());
-  if (kind !== "quotation" && savedTermLines.length) {
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.text("Terms & Conditions", m, y);
-    y += 5;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    savedTermLines.forEach((line) => {
-      doc.text(`◆  ${line.replace(/^[-•◆]\s*/, "").trim()}`, m, y, {
-        maxWidth: pageW - m * 2,
-      });
-      y += 4.2;
-    });
-    y += 4;
+  if (kind !== "quotation" && termEntries(sale.terms).length) {
+    y = drawNumberedTerms(doc, sale.terms, m, y, pageW);
   }
   if (kind === "quotation") {
-    const lines = (sale.terms || "").split("\n").filter((l) => l.trim());
-    if (lines.length) {
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(9);
-      doc.text("Terms & Conditions", m, y);
-      y += 5;
+    if (termEntries(sale.terms).length) {
+      y = drawNumberedTerms(doc, sale.terms, m, y, pageW);
+      y -= 3;
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8);
-      lines.forEach((line) => {
-        doc.text(`◆  ${line.replace(/^[-•◆]\s*/, "").trim()}`, m, y, { maxWidth: pageW - m * 2 });
-        y += 4.2;
-      });
-      y += 1;
       doc.text("Please sign back to us if you confirm this P.I/Quotation.", m, y);
       y += 8;
     }

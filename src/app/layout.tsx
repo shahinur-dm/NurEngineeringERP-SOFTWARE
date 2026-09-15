@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Manrope, Noto_Sans_Bengali, Plus_Jakarta_Sans } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
+import { SiteFavicon } from "@/components/SiteFavicon";
 import "./globals.css";
 
 const plusJakarta = Plus_Jakarta_Sans({
@@ -35,6 +36,9 @@ export const metadata: Metadata = {
   title: "Nur Engineering ERP",
   description:
     "Lightweight bilingual ERP & POS for EEE students — lab instruments, machinery & electrical equipment sales",
+  icons: {
+    icon: "/api/favicon",
+  },
 };
 
 export default async function RootLayout({
@@ -50,6 +54,7 @@ export default async function RootLayout({
     >
       <body className="min-h-full antialiased">
         <NextIntlClientProvider locale={locale} messages={messages}>
+          <SiteFavicon />
           {children}
         </NextIntlClientProvider>
       </body>

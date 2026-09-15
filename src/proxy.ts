@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 
-const PUBLIC = ["/login", "/api/auth/login", "/api/locale"];
+const PUBLIC = ["/login", "/api/auth/login", "/api/locale", "/api/favicon"];
 
 export default async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;

@@ -46,6 +46,7 @@ export const NAV_TREE: NavItem[] = [
       { href: "/pos", labelKey: "nav.pos", icon: ShoppingCart, moduleId: "pos" },
       { href: "/sales/quotations", labelKey: "nav.listQuotations", icon: FileText, moduleId: "sales-quotes" },
       { href: "/sales", labelKey: "nav.allSales", icon: List, moduleId: "sales" },
+      { href: "/sales/challans", labelKey: "nav.challanList", icon: FileText, moduleId: "shipments" },
       { href: "/sales/quotations/add", labelKey: "nav.addQuotation", icon: PlusCircle, moduleId: "sales-quote-add" },
       { href: "/sales/returns", labelKey: "nav.sellReturns", icon: RotateCcw, moduleId: "sell-returns" },
       { href: "/sales/shipments", labelKey: "nav.shipments", icon: Truck, moduleId: "shipments" },

@@ -36,6 +36,7 @@ export const PATH_TO_MODULE: Record<string, string> = {
   "sales/quotations/add": "sales-quote-add",
   "sales/quotations": "sales-quotes",
   "sales/returns": "sell-returns",
+  "sales/challans": "shipments",
   "sales/shipments": "shipments",
   "sales/discounts": "discounts",
   "sales/import": "import-sales",
