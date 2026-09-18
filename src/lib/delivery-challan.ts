@@ -8,6 +8,7 @@ export type SaleLike = {
   quotationNo?: string;
   salesOrderNo?: string;
   referenceNo?: string;
+  challanNo?: string;
   customerName?: string;
   customerAddress?: string;
   saleDate?: Date | string;
@@ -74,7 +75,7 @@ export async function ensureDeliveryChallan(sale: SaleLike, mongoSession?: Clien
   }
 
   const payload = {
-    shipmentNo: await nextChallanNo(),
+    shipmentNo: String(plain.challanNo || "").trim() || (await nextChallanNo()),
     saleId: plain._id,
     customerName: plain.customerName || "",
     status: "pending" as const,

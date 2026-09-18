@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import {
   CalendarDays, FileText, Grid2X2, ImageIcon, MapPin, PackagePlus, Plus,
   Search, Trash2, Upload, UserPlus, Wallet, X,
@@ -31,9 +32,13 @@ const METHODS = ["cash", "card", "bank", "bkash", "nagad", "rocket", "cheque", "
 const today = () => new Date().toISOString().slice(0, 10);
 const payRow = (): PayRow => ({ id: `${Date.now()}-${Math.random()}`, method: "cash", amount: 0 });
 
-export default function PosPage() {
+function PosPageInner() {
   const t = useTranslations();
   const locale = useLocale();
+  const searchParams = useSearchParams();
+  const entryMode = searchParams.get("mode");
+  const isChallanEntry = entryMode === "challan";
+  const isBillEntry = entryMode === "bill";
   const [products, setProducts] = useState<Product[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [categories, setCategories] = useState<Named[]>([]);
@@ -187,16 +192,17 @@ export default function PosPage() {
     setSearch(""); setBrandName(""); setCategoryId(""); setProductResultsOpen(false);
     quotationNumberPending.current = false; referenceNumberPending.current = false; reservedQuotationNo.current = "";
   }
-  async function ensureDocumentNumber(kind: "quotation" | "reference") {
-    const hasValue = kind === "quotation" ? quotationNo.trim() : referenceNo.trim();
-    const pending = kind === "quotation" ? quotationNumberPending : referenceNumberPending;
+  async function ensureDocumentNumber(kind: "quotation" | "reference" | "challan") {
+    const fieldKind = kind === "challan" ? "quotation" : kind;
+    const hasValue = fieldKind === "quotation" ? quotationNo.trim() : referenceNo.trim();
+    const pending = fieldKind === "quotation" ? quotationNumberPending : referenceNumberPending;
     if (hasValue || pending.current) return;
     pending.current = true;
     try {
       const res = await fetch(`/api/sales/numbers?kind=${kind}`);
       const json = await res.json();
       if (!res.ok || !json.value) return;
-      if (kind === "quotation") {
+      if (fieldKind === "quotation") {
         reservedQuotationNo.current = String(json.value);
         setQuotationNo((current) => current || String(json.value));
       } else {
@@ -238,14 +244,17 @@ export default function PosPage() {
         body: JSON.stringify({
           locationId, customerId: customerId || undefined,
           customerName: customerName.trim() || "Walk-in Customer", customerMobile,
-          customerAddress, customerEmail, saleDate, sourceQuotationId: status === "final" ? sourceQuotationId || undefined : undefined,
-          status, quotationNo, referenceNo, note, terms: note, discount: totalDiscount, tax: 0, shipping: 0,
+          customerAddress, customerEmail, saleDate, sourceQuotationId: status === "final" && !isChallanEntry ? sourceQuotationId || undefined : undefined,
+          status: isChallanEntry && status === "quotation" ? "final" : status,
+          quotationNo: isChallanEntry ? undefined : quotationNo,
+          challanNo: isChallanEntry ? quotationNo : undefined,
+          referenceNo, note, terms: note, discount: totalDiscount, tax: 0, shipping: 0,
           items: cart.map((i) => ({
             productId: i._id, name: i.name, sku: i.sku, unit: i.unit || "Pcs", qty: i.qty,
             bonusQty: i.bonusQty, unitPrice: i.sellPrice, discount: Math.min(i.lineDiscount, i.qty * i.sellPrice),
             description: i.saleDescription, imageUrl: i.imageUrl || "",
           })),
-          payments: status === "final" && usePayments
+          payments: (status === "final" || isChallanEntry) && usePayments
             ? payRows.filter((p) => p.amount > 0).map(({ method, amount }) => ({ method, amount }))
             : [],
         }),
@@ -254,7 +263,18 @@ export default function PosPage() {
       if (!res.ok) throw new Error(json.error || "Save failed");
       reset(); setMessage(`Saved: ${json.data.quotationNo || json.data.invoiceNo || json.data.referenceNo}`);
       await loadProducts();
-      if (json.data?._id) window.open(status === "quotation" ? `/sales/${json.data._id}/quotation` : `/sales/${json.data._id}/invoice`, "_blank");
+      if (json.data?._id) {
+        const id = json.data._id;
+        const savedAsFinal = isChallanEntry || status === "final";
+        window.open(
+          isChallanEntry && savedAsFinal
+            ? `/sales/${id}/challan`
+            : status === "quotation"
+              ? `/sales/${id}/quotation`
+              : `/sales/${id}/invoice`,
+          "_blank",
+        );
+      }
     } catch (e) { setMessage(e instanceof Error ? e.message : t("common.error")); } finally { setBusy(false); }
   }
   async function addCustomer() {
@@ -273,7 +293,7 @@ export default function PosPage() {
         <header className="flex flex-wrap items-center gap-2 border-b border-line px-3 py-1.5">
           <div className="flex flex-1 items-center gap-2 text-xl font-bold text-[var(--gp-ink)]">
             <span className="rounded-lg bg-[var(--gp-primary)] p-1.5 text-white"><FileText className="h-5 w-5" /></span>
-            Quotation
+            {isChallanEntry ? "Challan" : isBillEntry ? "Bill" : "Quotation"}
           </div>
           <button className="gp-btn gp-btn-primary" type="button" onClick={reset}><Plus className="h-4 w-4" />New Order</button>
           <Link className="gp-btn gp-btn-ghost" href="/contacts/import"><Upload className="h-4 w-4" />Import Customer</Link>
@@ -296,7 +316,7 @@ export default function PosPage() {
             <Field label="Contact No" className="space-y-0.5"><input className="gp-input" value={customerMobile} onChange={(e) => setCustomerMobile(e.target.value)} placeholder="Contact No" /></Field>
             <Field label="Address" className="space-y-0.5"><div className="relative"><MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" /><input className="gp-input gp-input-icon-left" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} placeholder="Address" /></div></Field>
             <Field label="Date" className="space-y-0.5"><div className="relative"><CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" /><input type="date" className="gp-input gp-input-icon-left" value={saleDate} onChange={(e) => setSaleDate(e.target.value)} /></div></Field>
-            <Field label="Quotation/PI No" className="space-y-0.5"><input className="gp-input" value={quotationNo} onFocus={() => void ensureDocumentNumber("quotation")} onChange={(e) => setQuotationNo(e.target.value.toUpperCase())} onKeyDown={(e) => { if (e.key === "Enter" && quotationNo.trim() && quotationNo !== reservedQuotationNo.current) void loadQuotation(); }} placeholder="Auto-generated on focus" /></Field>
+            <Field label={isChallanEntry ? "Challan No" : "Quotation/PI No"} className="space-y-0.5"><input className="gp-input" value={quotationNo} onFocus={() => void ensureDocumentNumber(isChallanEntry ? "challan" : "quotation")} onChange={(e) => setQuotationNo(e.target.value.toUpperCase())} onKeyDown={(e) => { if (!isChallanEntry && e.key === "Enter" && quotationNo.trim() && quotationNo !== reservedQuotationNo.current) void loadQuotation(); }} placeholder="Auto-generated on focus" /></Field>
             <Field label="REF No" className="space-y-0.5"><input className="gp-input bg-slate-50" value={referenceNo} onFocus={() => void ensureDocumentNumber("reference")} readOnly placeholder="Auto-generated on focus" /></Field>
           </div>
 
@@ -430,7 +450,7 @@ export default function PosPage() {
               <div className="mt-1.5 space-y-1.5">{payRows.map((p) => <div key={p.id} className="grid grid-cols-[1fr_1fr_auto] gap-2"><select className="gp-input" value={p.method} onChange={(e) => setPayRows((old) => old.map((x) => x.id === p.id ? { ...x, method: e.target.value } : x))}>{METHODS.map((m) => <option key={m} value={m}>{m}</option>)}</select><input type="number" min={0} className="gp-input" value={p.amount || ""} placeholder="Amount" onChange={(e) => setPayRows((old) => old.map((x) => x.id === p.id ? { ...x, amount: Math.max(0, Number(e.target.value)) } : x))} /><button type="button" className="p-2 text-red-500" disabled={payRows.length === 1} onClick={() => setPayRows((old) => old.filter((x) => x.id !== p.id))}><X className="h-4 w-4" /></button></div>)}</div>
             </section>
             <section className="rounded-xl border border-line bg-[#fbfdff] p-1.5">
-              <h2 className="mb-1.5 flex items-center gap-2 text-sm font-bold"><Grid2X2 className="h-4 w-4 text-primary" />Quotation Summary</h2>
+              <h2 className="mb-1.5 flex items-center gap-2 text-sm font-bold"><Grid2X2 className="h-4 w-4 text-primary" />{isChallanEntry ? "Challan Summary" : isBillEntry ? "Bill Summary" : "Quotation Summary"}</h2>
               <div className="space-y-1 text-sm"><div className="flex justify-between"><span>Subtotal</span><b className="gp-money">{formatBDT(subtotal, locale)}</b></div><div className="grid grid-cols-[1fr_150px] items-center gap-2"><span>Total Discount</span><div className="flex"><input type="number" min={0} className="gp-input rounded-r-none" value={discountValue} onChange={(e) => setDiscountValue(Math.max(0, Number(e.target.value)))} /><select className="gp-input w-16 rounded-l-none px-1" value={discountType} onChange={(e) => setDiscountType(e.target.value as "percentage" | "fixed")}><option value="percentage">%</option><option value="fixed">৳</option></select></div></div><div className="flex justify-between text-xs text-muted"><span>Including line discounts</span><span>{formatBDT(totalDiscount, locale)}</span></div><div className="flex justify-between rounded-lg border border-line bg-white p-1.5 text-lg"><b>Grand Total</b><b className="gp-money text-primary">{formatBDT(grandTotal, locale)}</b></div><div className="flex justify-between px-2 text-base"><b>Due Amount</b><b className="gp-money text-red-500">{formatBDT(due, locale)}</b></div></div>
             </section>
           </div>
@@ -438,7 +458,11 @@ export default function PosPage() {
       </section>
 
       <div className="gp-card flex flex-wrap justify-end gap-2 p-1.5">
-        <button type="button" className="gp-btn gp-btn-primary" disabled={busy || !cart.length} onClick={() => void save("quotation")}>Save Quotation</button>
+        {isChallanEntry ? (
+          <button type="button" className="gp-btn gp-btn-primary" disabled={busy || !cart.length} onClick={() => void save("final", true)}>Save Challan</button>
+        ) : isBillEntry ? null : (
+          <button type="button" className="gp-btn gp-btn-primary" disabled={busy || !cart.length} onClick={() => void save("quotation")}>Save Quotation</button>
+        )}
         <button type="button" className="gp-btn gp-btn-primary" disabled={busy || !cart.length || paid > grandTotal + .009} onClick={() => void save("final", true)}><Wallet className="h-4 w-4" />{busy ? "Saving..." : "Complete Sale"}</button>
       </div>
       {message && <p className="rounded-xl border border-line bg-white px-4 py-3 text-sm font-semibold text-primary">{message}</p>}
@@ -447,5 +471,13 @@ export default function PosPage() {
         <div className="grid gap-3"><Field label="Customer Name"><input className="gp-input" value={newCust.name} onChange={(e) => setNewCust((x) => ({ ...x, name: e.target.value }))} /></Field><Field label="Contact No"><input className="gp-input" value={newCust.mobile} onChange={(e) => setNewCust((x) => ({ ...x, mobile: e.target.value }))} /></Field><div className="flex justify-end gap-2"><button type="button" className="gp-btn gp-btn-ghost" onClick={() => setCustOpen(false)}>Cancel</button><button type="button" className="gp-btn gp-btn-primary" onClick={() => void addCustomer()}><UserPlus className="h-4 w-4" />Save Customer</button></div></div>
       </Modal>
     </div>
+  );
+}
+
+export default function PosPage() {
+  return (
+    <Suspense fallback={<p className="p-4 text-sm text-muted">Loading...</p>}>
+      <PosPageInner />
+    </Suspense>
   );
 }

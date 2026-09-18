@@ -5,6 +5,7 @@ import {
   ensureSaleNumberIndexes,
   nextQuotationNo,
   nextReferenceNo,
+  nextChallanNo,
 } from "@/lib/doc-numbers";
 
 export async function GET(req: NextRequest) {
@@ -22,6 +23,10 @@ export async function GET(req: NextRequest) {
   }
   if (kind === "reference") {
     return NextResponse.json({ value: await nextReferenceNo() });
+  }
+
+  if (kind === "challan") {
+    return NextResponse.json({ value: await nextChallanNo() });
   }
 
   return NextResponse.json({ error: "invalid_kind" }, { status: 400 });

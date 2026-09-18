@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { Eye, Search } from "lucide-react";
+import { Eye, FileText, Plus, Printer, Search } from "lucide-react";
 import { EmptyState } from "@/components/ui";
 import { formatDateBD } from "@/lib/utils";
 
@@ -62,14 +62,20 @@ export default function ChallanListPage() {
         <h1 className="gp-display text-2xl font-bold tracking-tight text-[var(--gp-ink)]">
           {locale === "bn" ? "সব চালান" : "All Challan"}
         </h1>
-        <div className="relative min-w-0 flex-1 sm:ml-auto sm:max-w-sm">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
-          <input
-            className="gp-input gp-input-icon-left"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder={t("common.search")}
-          />
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:ml-auto sm:max-w-xl">
+          <Link href="/pos?mode=challan" className="gp-btn gp-btn-primary shrink-0">
+            <Plus className="h-4 w-4" />
+            {locale === "bn" ? "চালান যোগ" : "Add Challan"}
+          </Link>
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+            <input
+              className="gp-input gp-input-icon-left"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder={t("common.search")}
+            />
+          </div>
         </div>
       </div>
 
@@ -77,7 +83,7 @@ export default function ChallanListPage() {
         {filtered.length === 0 ? (
           <EmptyState message={loadError ? t("common.error") : t("common.noData")} />
         ) : (
-          <table className="gp-table w-full min-w-[720px]">
+          <table className="gp-table w-full min-w-[860px]">
             <thead>
               <tr>
                 <th>{locale === "bn" ? "চালান নং" : "Challan No"}</th>
@@ -91,7 +97,10 @@ export default function ChallanListPage() {
             </thead>
             <tbody>
               {filtered.map((row) => {
-                const viewHref = row.saleId ? `/sales/${row.saleId}/challan` : "";
+                const saleId = row.saleId ? String(row.saleId) : "";
+                const viewHref = saleId ? `/sales/${saleId}/challan` : "";
+                const printHref = saleId ? `/sales/${saleId}/challan?print=1` : "";
+                const pdfHref = saleId ? `/api/sales/${saleId}/challan?format=pdf&locale=en` : "";
                 return (
                   <tr key={row._id}>
                     <td className="font-semibold">
@@ -112,15 +121,33 @@ export default function ChallanListPage() {
                     <td>
                       <span className="gp-badge gp-badge-success capitalize">{row.status || "—"}</span>
                     </td>
-                    <td>
+                    <td className="overflow-visible whitespace-nowrap">
                       {viewHref ? (
-                        <Link
-                          href={viewHref}
-                          className="gp-btn gp-btn-ghost inline-flex h-8 w-8 items-center justify-center p-0"
-                          title={locale === "bn" ? "চালান দেখুন" : "View Delivery Challan"}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Link>
+                        <div className="flex items-center gap-1">
+                          <Link
+                            href={viewHref}
+                            className="gp-btn gp-btn-ghost inline-flex h-8 w-8 shrink-0 items-center justify-center overflow-visible p-0 text-[var(--gp-ink)]"
+                            title={locale === "bn" ? "চালান দেখুন" : "View Delivery Challan"}
+                          >
+                            <Eye className="h-4 w-4 shrink-0 stroke-[2]" aria-hidden />
+                          </Link>
+                          <Link
+                            href={printHref}
+                            className="gp-btn gp-btn-ghost inline-flex h-8 w-8 shrink-0 items-center justify-center overflow-visible p-0 text-[var(--gp-ink)]"
+                            title="Print"
+                          >
+                            <Printer className="h-4 w-4 shrink-0 stroke-[2]" aria-hidden />
+                          </Link>
+                          <a
+                            href={pdfHref}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="gp-btn gp-btn-ghost inline-flex h-8 w-8 shrink-0 items-center justify-center overflow-visible p-0 text-[var(--gp-ink)]"
+                            title="PDF"
+                          >
+                            <FileText className="h-4 w-4 shrink-0 stroke-[2]" aria-hidden />
+                          </a>
+                        </div>
                       ) : (
                         "—"
                       )}
