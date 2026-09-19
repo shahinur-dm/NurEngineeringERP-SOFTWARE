@@ -3,6 +3,7 @@
 import { paymentStatusFromAmounts } from "@/lib/sale-finance";
 import { amountInWords, formatDateBD } from "@/lib/utils";
 import { DEFAULT_DOCUMENT_BODY } from "@/lib/default-document-body";
+import { resolveDocumentSubject } from "@/lib/document-subject";
 
 export type TradeDocKind = "bill" | "quotation" | "challan";
 
@@ -162,7 +163,12 @@ export function NesTradeDocument({
           ];
 
   const title = kind === "bill" ? "Bill" : kind === "challan" ? "Delivery Challan" : "";
-  const subject = sale.subject || "";
+  const subject = resolveDocumentSubject({
+    stored: sale.subject,
+    terms: sale.terms,
+    note: sale.note,
+    items,
+  });
   const documentBody =
     sale.documentBody === undefined || sale.documentBody === null
       ? DEFAULT_DOCUMENT_BODY

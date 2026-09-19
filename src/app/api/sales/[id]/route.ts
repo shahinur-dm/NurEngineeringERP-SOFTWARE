@@ -4,6 +4,7 @@ import { readSession } from "@/lib/auth";
 import { Sale, Business, Location, Shipment } from "@/models";
 import { paymentStatusFromAmounts } from "@/lib/sale-finance";
 import { nextQuotationNo, nextReferenceNo } from "@/lib/doc-numbers";
+import { resolveDocumentSubject } from "@/lib/document-subject";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -75,6 +76,14 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
       "terms",
     ]) {
       if (body[key] !== undefined) $set[key] = body[key];
+    }
+    if ($set.subject != null) {
+      $set.subject = resolveDocumentSubject({
+        stored: String($set.subject),
+        terms: body.terms,
+        note: body.note,
+        items: body.items || [],
+      });
     }
     for (const key of [
       "subtotal",

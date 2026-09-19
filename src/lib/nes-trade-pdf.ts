@@ -3,6 +3,7 @@ import autoTable from "jspdf-autotable";
 import { amountInWords, formatDateBD } from "@/lib/utils";
 import { paymentStatusFromAmounts } from "@/lib/sale-finance";
 import { DEFAULT_DOCUMENT_BODY } from "@/lib/default-document-body";
+import { resolveDocumentSubject } from "@/lib/document-subject";
 
 type Kind = "bill" | "quotation" | "challan";
 
@@ -151,10 +152,25 @@ export async function buildTradePdf(opts: {
   let headerBottom = 34;
 
   function drawLetterhead() {
-    if (!headerFooter) {
-      headerBottom = 16;
-      return;
-    }
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(17);
+    const brandMax = Math.max(40, pageW - m * 2 - boxW - 28);
+    const nameLines = doc.splitTextToSize(bizName, brandMax);
+    const nameBottom = 16 + (nameLines.length - 1) * 6;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    const officeLines = [
+      business?.address ? `Office: ${business.address}` : "",
+      business?.email ? `Email: ${business.email}` : "",
+      business?.phone ? `Mobile: ${business.phone}` : "",
+    ]
+      .filter(Boolean)
+      .flatMap((line) => doc.splitTextToSize(line, boxW - 4));
+    const officeH = Math.max(20, 6 + officeLines.length * 3.6);
+    const ruleY = Math.max(30, 10 + officeH, nameBottom + 12);
+    headerBottom = ruleY + 4;
+    if (!headerFooter) return;
+
     if (logoData) {
       try {
         doc.addImage(logoData, pdfImageFormat(logoData), m, 9, 18, 18);
@@ -174,13 +190,10 @@ export async function buildTradePdf(opts: {
       doc.setTextColor(20);
     }
 
-    const brandMax = Math.max(40, pageW - m * 2 - boxW - 28);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(26, 79, 160);
     doc.setFontSize(17);
-    const nameLines = doc.splitTextToSize(bizName, brandMax);
     doc.text(nameLines, pageW / 2, 16, { align: "center" });
-    const nameBottom = 16 + (nameLines.length - 1) * 6;
     doc.setTextColor(196, 94, 18);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
@@ -190,14 +203,6 @@ export async function buildTradePdf(opts: {
 
     doc.setFontSize(7);
     const officeFill = kind === "quotation" ? [236, 236, 236] : [215, 238, 248];
-    const officeLines = [
-      business?.address ? `Office: ${business.address}` : "",
-      business?.email ? `Email: ${business.email}` : "",
-      business?.phone ? `Mobile: ${business.phone}` : "",
-    ]
-      .filter(Boolean)
-      .flatMap((line) => doc.splitTextToSize(line, boxW - 4));
-    const officeH = Math.max(20, 6 + officeLines.length * 3.6);
     doc.setFillColor(officeFill[0], officeFill[1], officeFill[2]);
     doc.setDrawColor(51);
     doc.rect(pageW - m - boxW, 8, boxW, officeH, "FD");
@@ -207,14 +212,12 @@ export async function buildTradePdf(opts: {
       oy += 3.6;
     });
 
-    const ruleY = Math.max(30, 10 + officeH, nameBottom + 12);
     doc.setDrawColor(232, 137, 44);
     doc.setLineWidth(1.1);
     doc.line(m, ruleY, pageW - m, ruleY);
     doc.setDrawColor(0);
     doc.setLineWidth(0.25);
     doc.line(m, ruleY + 1.3, pageW - m, ruleY + 1.3);
-    headerBottom = ruleY + 4;
   }
 
   drawLetterhead();
@@ -324,7 +327,12 @@ export async function buildTradePdf(opts: {
 
   y = Math.max(y + 2, metaBottom + 3);
 
-  const subject = sale.subject || (kind === "quotation" ? "" : "");
+  const subject = resolveDocumentSubject({
+    stored: sale.subject,
+    terms: sale.terms,
+    note: sale.note,
+    items,
+  });
   if (subject) {
     writeBlock(`Subject: ${subject}`, m, contentW, 9, "bold");
     y += 2;
@@ -525,27 +533,29 @@ export async function buildTradePdf(opts: {
         /* watermark optional */
       }
       doc.setTextColor(20);
-      doc.setFillColor(143, 201, 184);
-      doc.rect(0, pageH - footerH, pageW, footerH, "F");
-      doc.setFontSize(7);
-      doc.setTextColor(20);
-      doc.text(`Office Address : ${business?.address || ""}`, pageW / 2, pageH - 10.5, {
-        align: "center",
-        maxWidth: pageW - 16,
-      });
-      doc.text(
-        [
-          business?.phone ? `Mobile/WhatsApp: ${business.phone}` : "",
-          wechat ? `Wechat: ${wechat}` : "",
-          business?.website ? `Website: ${business.website}` : "",
-          business?.email ? `Email: ${business.email}` : "",
-        ]
-          .filter(Boolean)
-          .join("  ,  "),
-        pageW / 2,
-        pageH - 6,
-        { align: "center", maxWidth: pageW - 16 },
-      );
+      if (headerFooter) {
+        doc.setFillColor(143, 201, 184);
+        doc.rect(0, pageH - footerH, pageW, footerH, "F");
+        doc.setFontSize(7);
+        doc.setTextColor(20);
+        doc.text(`Office Address : ${business?.address || ""}`, pageW / 2, pageH - 10.5, {
+          align: "center",
+          maxWidth: pageW - 16,
+        });
+        doc.text(
+          [
+            business?.phone ? `Mobile/WhatsApp: ${business.phone}` : "",
+            wechat ? `Wechat: ${wechat}` : "",
+            business?.website ? `Website: ${business.website}` : "",
+            business?.email ? `Email: ${business.email}` : "",
+          ]
+            .filter(Boolean)
+            .join("  ,  "),
+          pageW / 2,
+          pageH - 6,
+          { align: "center", maxWidth: pageW - 16 },
+        );
+      }
     }
   }
 

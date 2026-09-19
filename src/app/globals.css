@@ -1097,8 +1097,23 @@ h3,
 }
 
 .nes-no-chrome .nes-head,
-.nes-no-chrome .nes-foot,
+.nes-no-chrome .nes-rule,
+.nes-no-chrome .nes-foot {
+  visibility: hidden;
+}
+
+.nes-no-chrome .nes-head,
 .nes-no-chrome .nes-rule {
+  opacity: 0;
+}
+
+.nes-no-chrome .nes-foot {
+  background: transparent !important;
+  color: transparent !important;
+  border-color: transparent !important;
+}
+
+.nes-no-chrome .nes-foot * {
   visibility: hidden;
 }
 
