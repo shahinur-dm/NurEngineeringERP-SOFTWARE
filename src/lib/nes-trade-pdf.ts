@@ -2,6 +2,7 @@ import { GState, jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { amountInWords, formatDateBD } from "@/lib/utils";
 import { paymentStatusFromAmounts } from "@/lib/sale-finance";
+import { DEFAULT_DOCUMENT_BODY } from "@/lib/default-document-body";
 
 type Kind = "bill" | "quotation" | "challan";
 
@@ -25,6 +26,7 @@ export type TradePdfSale = {
   poNo?: string;
   poDate?: Date | string;
   subject?: string;
+  documentBody?: string;
   terms?: string;
   customerName?: string;
   customerMobile?: string;
@@ -113,29 +115,15 @@ function termEntries(terms?: string) {
     .filter(Boolean);
 }
 
-function drawNumberedTerms(
-  doc: jsPDF,
-  terms: string | undefined,
-  m: number,
-  startY: number,
-  pageW: number,
-) {
-  const entries = termEntries(terms);
-  if (!entries.length) return startY;
-  let y = startY;
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.text("Terms & Conditions", m, y);
-  y += 5;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  entries.forEach((line, index) => {
-    const body = `${index + 1}. ${line}`;
-    const wrapped = doc.splitTextToSize(body, pageW - m * 2);
-    doc.text(wrapped, m, y);
-    y += wrapped.length * 4.2;
-  });
-  return y + 4;
+function resolveDocumentBody(documentBody?: string) {
+  if (documentBody === undefined || documentBody === null) return DEFAULT_DOCUMENT_BODY;
+  return String(documentBody);
+}
+
+function lastTableY(doc: jsPDF, fallback: number) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const y = Number((doc as any).lastAutoTable?.finalY);
+  return Number.isFinite(y) ? y : fallback;
 }
 
 export async function buildTradePdf(opts: {
@@ -156,11 +144,17 @@ export async function buildTradePdf(opts: {
   const date = enDate(sale.saleDate);
   const m = 10;
   const boxW = 62;
+  const contentW = pageW - m * 2;
   const logoData = business?.logoUrl ? await loadImageDataUrl(business.logoUrl) : null;
   const footerH = 16;
+  const lineGap = 4.2;
+  let headerBottom = 34;
 
   function drawLetterhead() {
-    if (!headerFooter) return;
+    if (!headerFooter) {
+      headerBottom = 16;
+      return;
+    }
     if (logoData) {
       try {
         doc.addImage(logoData, pdfImageFormat(logoData), m, 9, 18, 18);
@@ -180,42 +174,82 @@ export async function buildTradePdf(opts: {
       doc.setTextColor(20);
     }
 
+    const brandMax = Math.max(40, pageW - m * 2 - boxW - 28);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(26, 79, 160);
     doc.setFontSize(17);
-    doc.text(bizName, pageW / 2, 16, { align: "center" });
+    const nameLines = doc.splitTextToSize(bizName, brandMax);
+    doc.text(nameLines, pageW / 2, 16, { align: "center" });
+    const nameBottom = 16 + (nameLines.length - 1) * 6;
     doc.setTextColor(196, 94, 18);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
-    doc.text("Machine, Spare parts and Technical Service Provider", pageW / 2, 21.5, { align: "center" });
+    const tagLines = doc.splitTextToSize("Machine, Spare parts and Technical Service Provider", brandMax);
+    doc.text(tagLines, pageW / 2, nameBottom + 5.5, { align: "center" });
     doc.setTextColor(20);
 
-    const officeFill = kind === "quotation" ? [236, 236, 236] : [215, 238, 248];
-    doc.setFillColor(officeFill[0], officeFill[1], officeFill[2]);
-    doc.setDrawColor(51);
-    doc.rect(pageW - m - boxW, 8, boxW, 20, "FD");
     doc.setFontSize(7);
+    const officeFill = kind === "quotation" ? [236, 236, 236] : [215, 238, 248];
     const officeLines = [
       business?.address ? `Office: ${business.address}` : "",
       business?.email ? `Email: ${business.email}` : "",
       business?.phone ? `Mobile: ${business.phone}` : "",
-    ].filter(Boolean);
+    ]
+      .filter(Boolean)
+      .flatMap((line) => doc.splitTextToSize(line, boxW - 4));
+    const officeH = Math.max(20, 6 + officeLines.length * 3.6);
+    doc.setFillColor(officeFill[0], officeFill[1], officeFill[2]);
+    doc.setDrawColor(51);
+    doc.rect(pageW - m - boxW, 8, boxW, officeH, "FD");
     let oy = 12;
     officeLines.forEach((line) => {
-      doc.text(line, pageW - m - boxW + 2, oy, { maxWidth: boxW - 4 });
-      oy += 4.4;
+      doc.text(line, pageW - m - boxW + 2, oy);
+      oy += 3.6;
     });
 
+    const ruleY = Math.max(30, 10 + officeH, nameBottom + 12);
     doc.setDrawColor(232, 137, 44);
     doc.setLineWidth(1.1);
-    doc.line(m, 30, pageW - m, 30);
+    doc.line(m, ruleY, pageW - m, ruleY);
     doc.setDrawColor(0);
     doc.setLineWidth(0.25);
-    doc.line(m, 31.3, pageW - m, 31.3);
+    doc.line(m, ruleY + 1.3, pageW - m, ruleY + 1.3);
+    headerBottom = ruleY + 4;
   }
 
   drawLetterhead();
   doc.setTextColor(20);
+  let y = headerBottom;
+
+  const contentLimit = () => pageH - footerH - 6;
+  function newContentPage() {
+    doc.addPage();
+    drawLetterhead();
+    doc.setTextColor(20);
+    y = headerBottom;
+  }
+  function ensureSpace(needed: number) {
+    if (y + needed > contentLimit()) newContentPage();
+  }
+  function writeBlock(
+    text: string,
+    x: number,
+    width: number,
+    fontSize: number,
+    style: "normal" | "bold" = "normal",
+    align: "left" | "center" | "right" = "left",
+  ) {
+    if (!text) return;
+    doc.setFont("helvetica", style);
+    doc.setFontSize(fontSize);
+    const lines = doc.splitTextToSize(text, Math.max(8, width));
+    const h = lines.length * (fontSize * 0.38 + 1.1);
+    ensureSpace(h + 1);
+    if (align === "center") doc.text(lines, x, y, { align: "center" });
+    else if (align === "right") doc.text(lines, x, y, { align: "right" });
+    else doc.text(lines, x, y);
+    y += h;
+  }
 
   const meta: [string, string][] =
     kind === "bill"
@@ -241,85 +275,88 @@ export async function buildTradePdf(opts: {
           ];
 
   autoTable(doc, {
-    startY: 34,
-    margin: { left: pageW - m - boxW, right: m },
+    startY: y,
+    margin: { left: pageW - m - boxW, right: m, bottom: footerH + 6 },
     tableWidth: boxW,
     theme: "grid",
-    styles: { fontSize: 8, cellPadding: 1.3, textColor: 20, lineColor: 40, lineWidth: 0.2 },
+    styles: {
+      fontSize: 8,
+      cellPadding: 1.4,
+      textColor: 20,
+      lineColor: 40,
+      lineWidth: 0.2,
+      overflow: "linebreak",
+      valign: "top",
+      minCellHeight: 6,
+    },
     columnStyles: {
-      0: { fontStyle: "bold", cellWidth: 28, fillColor: kind === "quotation" ? [236, 236, 236] : [207, 232, 245] },
-      1: { cellWidth: 34 },
+      0: { fontStyle: "bold", cellWidth: 26, fillColor: kind === "quotation" ? [236, 236, 236] : [207, 232, 245] },
+      1: { cellWidth: 36 },
     },
     body: meta,
   });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const metaBottom = ((doc as any).lastAutoTable?.finalY || 55) as number;
+  const metaBottom = lastTableY(doc, y + 28);
 
+  const leftW = contentW - boxW - 6;
+  const bandTop = y + 4;
   if (kind !== "quotation") {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
-    doc.text(`Date: ${date}`, m, 38);
+    const dateLines = doc.splitTextToSize(`Date: ${date}`, leftW);
+    doc.text(dateLines, m, bandTop);
     const title = kind === "bill" ? "Bill" : "Delivery Challan";
     doc.setFontSize(14);
-    doc.text(title, pageW / 2, 42, { align: "center" });
-    const tw = doc.getTextWidth(title);
+    const titleY = bandTop + 6;
+    doc.text(title, m + leftW / 2, titleY, { align: "center" });
+    const tw = Math.min(doc.getTextWidth(title), leftW);
     doc.setLineWidth(0.4);
-    doc.line(pageW / 2 - tw / 2, 43.2, pageW / 2 + tw / 2, 43.2);
+    doc.line(m + leftW / 2 - tw / 2, titleY + 1.2, m + leftW / 2 + tw / 2, titleY + 1.2);
+    y = Math.max(bandTop + dateLines.length * lineGap, titleY + 8);
+    writeBlock("To", m, leftW, 10, "bold");
+    writeBlock(sale.customerName || "", m, leftW, 9);
+    if (sale.customerAddress) writeBlock(sale.customerAddress, m, leftW, 9);
+  } else {
+    y = bandTop;
+    writeBlock("To", m, leftW, 10, "bold");
+    writeBlock(sale.customerName || "", m, leftW, 9);
+    if (sale.customerAddress) writeBlock(sale.customerAddress, m, leftW, 9);
   }
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.text("To", m, kind === "quotation" ? 38 : 52);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  let ty = kind === "quotation" ? 43 : 57;
-  doc.text(sale.customerName || "", m, ty);
-  ty += 5;
-  if (sale.customerAddress) {
-    const addr = doc.splitTextToSize(sale.customerAddress, 110);
-    doc.text(addr, m, ty);
-    ty += addr.length * 4.2;
-  }
+  y = Math.max(y + 2, metaBottom + 3);
 
-  const subject = sale.subject || (kind === "quotation" ? "" : sale.note) || "";
-  let y = Math.max(ty + 3, kind === "quotation" ? 48 : metaBottom + 2);
+  const subject = sale.subject || (kind === "quotation" ? "" : "");
   if (subject) {
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    const sub = doc.splitTextToSize(`Subject: ${subject}`, pageW - m * 2 - boxW - 8);
-    doc.text(sub, m, y);
-    y += sub.length * 4.2 + 2;
+    writeBlock(`Subject: ${subject}`, m, contentW, 9, "bold");
+    y += 2;
   }
 
   if (kind !== "quotation") {
     autoTable(doc, {
       startY: y,
-      margin: { left: m, right: m },
+      margin: { left: m, right: m, bottom: footerH + 6 },
       theme: "grid",
-      styles: { fontSize: 9, cellPadding: 2, lineColor: 40, lineWidth: 0.2 },
+      styles: { fontSize: 9, cellPadding: 2, lineColor: 40, lineWidth: 0.2, overflow: "linebreak", valign: "top" },
       body: [[`Customer: ${sale.customerName || ""}`, `Contact: ${sale.customerMobile || ""}`]],
-      columnStyles: { 0: { cellWidth: (pageW - m * 2) / 2 }, 1: { cellWidth: (pageW - m * 2) / 2 } },
+      columnStyles: { 0: { cellWidth: contentW / 2 }, 1: { cellWidth: contentW / 2 } },
     });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    y = ((doc as any).lastAutoTable?.finalY || y) + 6;
+    y = lastTableY(doc, y) + 5;
   } else {
     y = Math.max(y, metaBottom + 4);
+  }
+
+  const bodyText = resolveDocumentBody(sale.documentBody);
+  if (bodyText.trim()) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
-    doc.text("Dear Sir,", m, y);
-    y += 5;
-    const intro = [
-      "Thank you for your inquiry. We are submitting herewith our quotation for the following items / services.",
-      "We are a Machine, Spare parts and Technical Service Provider with expertise in PLC automation, servo systems, robotics and industrial machinery.",
-    ];
-    intro.forEach((para) => {
-      const lines = doc.splitTextToSize(para, pageW - m * 2);
-      doc.text(lines, m, y);
-      y += lines.length * 4.2 + 2;
-    });
+    for (const para of bodyText.split(/\r?\n/)) {
+      const line = para.trim() ? para : " ";
+      writeBlock(line, m, contentW, 9);
+      y += para.trim() ? 1 : 0;
+    }
     y += 2;
   }
 
+  ensureSpace(10);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
   doc.text(kind === "quotation" ? "Quotation" : "Items/Services:", pageW / 2, y, { align: "center" });
@@ -356,113 +393,121 @@ export async function buildTradePdf(opts: {
     totalRows.push(["", "", "Total =", String(qtyTotal), ""]);
   }
 
-  const PAGE_ROWS = 10;
   const tableOpts = {
     head,
-    margin: { left: m, right: m, bottom: 22 },
-    styles: { fontSize: 8, cellPadding: 2, valign: "top" as const, minCellHeight: 14, lineColor: 30, lineWidth: 0.2 },
-    headStyles: { fillColor: [234, 214, 176] as [number, number, number], textColor: 20, fontStyle: "bold" as const, halign: "center" as const },
+    margin: { left: m, right: m, top: headerBottom, bottom: footerH + 8 },
+    styles: {
+      fontSize: 8,
+      cellPadding: 2,
+      valign: "top" as const,
+      minCellHeight: 8,
+      lineColor: 30,
+      lineWidth: 0.2,
+      overflow: "linebreak" as const,
+    },
+    headStyles: {
+      fillColor: [234, 214, 176] as [number, number, number],
+      textColor: 20,
+      fontStyle: "bold" as const,
+      halign: "center" as const,
+      overflow: "linebreak" as const,
+    },
     columnStyles: (kind === "challan"
-      ? { 0: { cellWidth: 16, halign: "center" as const }, 2: { cellWidth: 70 }, 3: { halign: "center" as const } }
+      ? {
+          0: { cellWidth: 16, halign: "center" as const },
+          1: { cellWidth: 46 },
+          2: { cellWidth: 58 },
+          3: { cellWidth: 28, halign: "center" as const },
+          4: { cellWidth: 42 },
+        }
       : {
           0: { cellWidth: 14, halign: "center" as const },
-          2: { cellWidth: 58 },
-          3: { halign: "center" as const },
-          4: { halign: "center" as const },
-          5: { halign: "center" as const },
+          1: { cellWidth: 36 },
+          2: { cellWidth: 48 },
+          3: { cellWidth: 24, halign: "center" as const },
+          4: { cellWidth: 34, halign: "center" as const },
+          5: { cellWidth: 34, halign: "center" as const },
         }) as Record<string, { cellWidth?: number; halign?: "center" }>,
   };
 
-  const chunks: typeof itemRows[] = [];
-  for (let i = 0; i < Math.max(itemRows.length, 1); i += PAGE_ROWS) {
-    chunks.push(itemRows.slice(i, i + PAGE_ROWS));
-  }
-  if (!chunks.length) chunks.push([]);
-
-  chunks.forEach((chunk, pageIdx) => {
-    if (pageIdx > 0) {
-      doc.addPage();
-      drawLetterhead();
-      y = 36;
-    }
-    const isLast = pageIdx === chunks.length - 1;
-    autoTable(doc, {
-      ...tableOpts,
-      startY: y,
-      body: isLast ? [...chunk, ...totalRows] : chunk,
-    });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    y = ((doc as any).lastAutoTable?.finalY || y) + 6;
+  autoTable(doc, {
+    ...tableOpts,
+    startY: y,
+    body: [...itemRows, ...totalRows],
+    pageBreak: "auto",
+    rowPageBreak: "auto",
+    showHead: "everyPage",
+    didDrawPage: (hook) => {
+      if (hook.pageNumber > 1) drawLetterhead();
+    },
   });
-  const footerReserve = 22;
-  if (y > pageH - footerReserve - 48) {
-    doc.addPage();
-    drawLetterhead();
-    y = 36;
+  y = lastTableY(doc, y) + 6;
+
+  function drawTermsAtCursor() {
+    const entries = termEntries(sale.terms);
+    if (!entries.length) return;
+    ensureSpace(10);
+    writeBlock("Terms & Conditions", m, contentW, 9, "bold");
+    entries.forEach((line, index) => {
+      writeBlock(`${index + 1}. ${line}`, m, contentW, 8);
+    });
+    y += 3;
   }
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
 
   if (kind !== "challan") {
-    doc.setFont("helvetica", "bold");
-    doc.text(`In Word: ${amountInWords(sale.grandTotal || 0, "en")}`, pageW - m, y, {
-      align: "right",
-      maxWidth: pageW - m * 2,
-    });
-    y += 7;
+    ensureSpace(10);
+    writeBlock(`In Word: ${amountInWords(sale.grandTotal || 0, "en")}`, pageW - m, contentW, 9, "bold", "right");
+    y += 2;
   }
   if (kind === "bill") {
     const pay = paymentStatusFromAmounts(sale.grandTotal || 0, sale.paidAmount || 0);
     const payLabel = pay === "paid" ? "Paid" : pay === "partial" ? "Partial Paid" : "Due";
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    doc.text(
+    writeBlock(
       `Paid Amount: ${taka(sale.paidAmount)}    Due Amount: ${taka(sale.dueAmount)}    Payment Status: ${payLabel}`,
       m,
-      y,
+      contentW,
+      8,
+      "bold",
     );
-    y += 8;
+    y += 2;
   }
 
-  doc.setFont("helvetica", "normal");
-  if (kind !== "quotation" && termEntries(sale.terms).length) {
-    y = drawNumberedTerms(doc, sale.terms, m, y, pageW);
-  }
   if (kind === "quotation") {
+    drawTermsAtCursor();
     if (termEntries(sale.terms).length) {
-      y = drawNumberedTerms(doc, sale.terms, m, y, pageW);
-      y -= 3;
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(8);
-      doc.text("Please sign back to us if you confirm this P.I/Quotation.", m, y);
-      y += 8;
+      writeBlock("Please sign back to us if you confirm this P.I/Quotation.", m, contentW, 8);
+      y += 4;
     }
   } else {
-    doc.setFontSize(8);
+    if (termEntries(sale.terms).length) drawTermsAtCursor();
     const note =
       "Already we have supplied these services/items with good condition to your company. Now please check our bill and take necessary action to pay our bill accordingly. If you have any confusion or have any query then please inform to us feel freely and we will support you accordingly.";
-    const noteLines = doc.splitTextToSize(note, pageW - m * 2);
-    doc.text(noteLines, m, y);
-    y += noteLines.length * 3.8 + 4;
-    doc.text(`- ${bizName}`, pageW - m, y, { align: "right" });
-    y += 8;
+    writeBlock(note, m, contentW, 8);
+    writeBlock(`- ${bizName}`, pageW - m, contentW, 8, "normal", "right");
+    y += 4;
+    ensureSpace(14);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
     doc.rect(pageW / 2 - 38, y - 4, 76, 8);
     doc.text("24/7 Best Deal, Best Service", pageW / 2, y + 1.5, { align: "center" });
-    y += 18;
+    y += 16;
   }
 
-  const signY = pageH - footerH - 20;
+  const signH = 22;
+  if (y + signH > pageH - footerH - 4) newContentPage();
+  const signY = Math.max(y + 10, pageH - footerH - 22);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.line(m, signY, m + 50, signY);
   doc.line(pageW - m - 55, signY, pageW - m, signY);
   doc.text(kind === "quotation" ? "(Customer Signature)" : "(Receiver Signature)", m, signY + 5);
   doc.setFont("helvetica", "bold");
-  doc.text(englishName(sale.soldByName), pageW - m, signY + 5, { align: "right" });
+  const propName = englishName(sale.soldByName);
+  const propLines = doc.splitTextToSize(propName, 70);
+  doc.text(propLines, pageW - m, signY + 5, { align: "right" });
   doc.setFont("helvetica", "normal");
-  doc.text(`Proprietor, ${bizName}`, pageW - m, signY + 9, { align: "right" });
+  const propRole = doc.splitTextToSize(`Proprietor, ${bizName}`, 70);
+  doc.text(propRole, pageW - m, signY + 5 + propLines.length * 4, { align: "right" });
 
   const wechat = wechatId(business?.phone);
   const pages = doc.getNumberOfPages();

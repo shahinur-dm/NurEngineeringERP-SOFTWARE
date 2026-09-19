@@ -187,7 +187,7 @@ export function ModulePage({ moduleId }: { moduleId: string }) {
   const title = locale === "bn" ? mod.titleBn : mod.titleEn;
   const readOnly = isReadOnlyModule(moduleId);
   const showCrud = crud && !readOnly;
-  const hasInvoiceCol = mod.columns.some((c) => c.key === "invoiceNo");
+  const hasInvoiceCol = moduleId !== "sell-returns" && mod.columns.some((c) => c.key === "invoiceNo");
   const statementModules = new Set(["customers", "suppliers"]);
   const canOpenStatement = statementModules.has(moduleId);
   const showActions = showCrud || hasInvoiceCol || canOpenStatement;
@@ -200,6 +200,12 @@ export function ModulePage({ moduleId }: { moduleId: string }) {
         actions={
           <>
             {showCrud && crud.canCreate ? (
+              moduleId === "sell-returns" ? (
+                <Link href="/sales/returns/add" className="gp-btn gp-btn-primary">
+                  <Plus className="h-5 w-5" />
+                  {t("common.add")}
+                </Link>
+              ) : (
               <button
                 type="button"
                 className="gp-btn gp-btn-primary"
@@ -211,6 +217,7 @@ export function ModulePage({ moduleId }: { moduleId: string }) {
                 <Plus className="h-5 w-5" />
                 {t("common.add")}
               </button>
+              )
             ) : null}
             <button type="button" className="gp-btn gp-btn-ghost" onClick={() => window.print()}>
               <Download className="h-5 w-5" />
@@ -302,6 +309,15 @@ export function ModulePage({ moduleId }: { moduleId: string }) {
                           ) : null}
                           {showInvoice ? <InvoiceActions saleId={rowId} compact /> : null}
                           {showCrud && crud.canUpdate ? (
+                            moduleId === "sell-returns" && rowId ? (
+                              <Link
+                                href={`/sales/returns/${rowId}`}
+                                className="gp-btn gp-btn-ghost min-h-9 px-2"
+                                title={t("common.edit")}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Link>
+                            ) : (
                             <button
                               type="button"
                               className="gp-btn gp-btn-ghost min-h-9 px-2"
@@ -313,6 +329,7 @@ export function ModulePage({ moduleId }: { moduleId: string }) {
                             >
                               <Pencil className="h-4 w-4" />
                             </button>
+                            )
                           ) : null}
                           {showCrud && crud.canDelete ? (
                             <button

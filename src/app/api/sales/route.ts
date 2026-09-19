@@ -12,6 +12,7 @@ import {
 } from "@/lib/doc-numbers";
 import { calcDueAmount, roundMoney } from "@/lib/sale-finance";
 import { ensureDeliveryChallan } from "@/lib/delivery-challan";
+import { DEFAULT_DOCUMENT_BODY } from "@/lib/default-document-body";
 
 function escapeRegex(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -236,6 +237,8 @@ export async function POST(req: NextRequest) {
     customerEmail,
     poDate: body.poDate ? new Date(body.poDate) : undefined,
     subject: body.subject || body.note,
+    attention: body.attention != null ? String(body.attention) : "",
+    documentBody: body.documentBody != null ? String(body.documentBody) : DEFAULT_DOCUMENT_BODY,
     terms: status === "quotation" ? (body.terms ?? DEFAULT_QUOTATION_TERMS) : body.terms,
     status,
     locationId: body.locationId,

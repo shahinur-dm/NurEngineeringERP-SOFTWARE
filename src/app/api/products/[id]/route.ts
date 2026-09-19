@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import { readSession } from "@/lib/auth";
-import { Product } from "@/models";
+import { Location, Product } from "@/models";
 import {
   attachOffersToProducts,
   deactivateProductLinks,
@@ -37,8 +37,15 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
   const doc = await Product.findById(id).lean();
   if (!doc) return NextResponse.json({ error: "not_found" }, { status: 404 });
   const [withOffers] = await attachOffersToProducts([doc]);
+  const locationQty = (doc.stocks || []).reduce(
+    (a: number, s: { qty?: number }) => a + Number(s.qty || 0),
+    0,
+  );
   return NextResponse.json({
-    data: redactCostPrice(withOffers as Record<string, unknown>, session.role),
+    data: redactCostPrice(
+      { ...(withOffers as Record<string, unknown>), locationQty },
+      session.role,
+    ),
   });
 }
 
@@ -103,6 +110,27 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
     if (shipCur) $set.shippingCurrency = shipCur;
     if (body.quantity != null && body.quantity !== "") {
       $set.quantity = Number(body.quantity);
+    }
+    if (
+      body.quantity != null &&
+      body.quantity !== "" &&
+      !Array.isArray(body.stocks) &&
+      body.stockUpdate?.locationId == null
+    ) {
+      const qty = Math.max(0, Number(body.quantity) || 0);
+      const current = await Product.findById(id).lean();
+      const stocks = [...((current?.stocks || []) as { locationId?: unknown; qty?: number; batchNo?: string; expiryDate?: Date }[])];
+      if (stocks.length === 0) {
+        const location = await Location.findOne({ isActive: true }).sort({ createdAt: 1 }).lean();
+        if (location) stocks.push({ locationId: location._id, qty });
+      } else if (stocks.length === 1) {
+        stocks[0]!.qty = qty;
+      } else {
+        stocks.forEach((s, i) => {
+          s.qty = i === 0 ? qty : 0;
+        });
+      }
+      $set.stocks = stocks;
     }
     if (isSuperAdmin(session.role) && body.costPrice != null && body.costPrice !== "") {
       $set.costPrice = Number(body.costPrice);

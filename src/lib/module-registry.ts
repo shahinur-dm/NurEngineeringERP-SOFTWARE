@@ -169,12 +169,17 @@ export const MODULE_REGISTRY: Record<string, ModuleDef> = {
   "sell-returns": {
     id: "sell-returns",
     titleBn: "বিক্রি ফেরত",
-    titleEn: "Sell Returns",
+    titleEn: "Sell Return List",
     apiPath: "/api/modules/sell-returns",
+    canAdd: true,
+    addHref: "/sales/returns/add",
     columns: [
-      { key: "returnNo", labelBn: "রিটার্ন নং", labelEn: "Return No" },
+      { key: "challanNo", labelBn: "চালান নং", labelEn: "Challan No" },
+      { key: "returnDate", labelBn: "তারিখ", labelEn: "Date", format: "date" },
       { key: "customerName", labelBn: "গ্রাহক", labelEn: "Customer" },
-      { key: "grandTotal", labelBn: "মোট", labelEn: "Total", format: "money" },
+      { key: "referenceNo", labelBn: "রেফারেন্স নং", labelEn: "Reference No" },
+      { key: "invoiceNo", labelBn: "ইনভয়েস নং", labelEn: "Invoice No" },
+      { key: "status", labelBn: "স্ট্যাটাস", labelEn: "Status" },
     ],
   },
   "purchase-returns": {

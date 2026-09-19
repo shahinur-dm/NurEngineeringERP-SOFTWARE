@@ -71,6 +71,7 @@ export async function POST(_req: NextRequest, ctx: Ctx) {
           challanNo: existing.challanNo,
           binNo: existing.binNo,
           subject: existing.subject,
+          documentBody: existing.documentBody,
           terms: existing.terms,
           status: "final" as const,
           locationId: existing.locationId,

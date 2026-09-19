@@ -45,9 +45,13 @@ export async function GET(req: NextRequest) {
   if (locationId) filter.locationId = locationId;
   if (supplierId) filter.supplierId = supplierId;
   if (q) {
+    const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const rx = new RegExp(escaped, "i");
     filter.$or = [
-      { referenceNo: new RegExp(q, "i") },
-      { supplierName: new RegExp(q, "i") },
+      { referenceNo: rx },
+      { supplierName: rx },
+      { productName: rx },
+      { "items.name": rx },
     ];
   }
 

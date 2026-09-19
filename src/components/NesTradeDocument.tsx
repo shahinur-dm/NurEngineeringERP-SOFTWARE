@@ -2,6 +2,7 @@
 
 import { paymentStatusFromAmounts } from "@/lib/sale-finance";
 import { amountInWords, formatDateBD } from "@/lib/utils";
+import { DEFAULT_DOCUMENT_BODY } from "@/lib/default-document-body";
 
 export type TradeDocKind = "bill" | "quotation" | "challan";
 
@@ -27,6 +28,7 @@ export type TradeSale = {
   poNo?: string;
   poDate?: string;
   subject?: string;
+  documentBody?: string;
   terms?: string;
   status?: string;
   customerName?: string;
@@ -160,7 +162,12 @@ export function NesTradeDocument({
           ];
 
   const title = kind === "bill" ? "Bill" : kind === "challan" ? "Delivery Challan" : "";
-  const subject = sale.subject || (kind === "quotation" ? "" : sale.note) || "";
+  const subject = sale.subject || "";
+  const documentBody =
+    sale.documentBody === undefined || sale.documentBody === null
+      ? DEFAULT_DOCUMENT_BODY
+      : String(sale.documentBody);
+  const documentBodyParas = documentBody.split(/\r?\n/);
 
   return (
     <>
@@ -269,7 +276,8 @@ export function NesTradeDocument({
       ) : null}
 
       {pageIdx === 0 ? (
-        kind !== "quotation" ? (
+        <>
+        {kind !== "quotation" ? (
         <table className="nes-custbar">
           <tbody>
             <tr>
@@ -282,19 +290,15 @@ export function NesTradeDocument({
             </tr>
           </tbody>
         </table>
-      ) : (
+      ) : null}
+        {documentBody.trim() ? (
         <div className="nes-intro">
-          <p>Dear Sir,</p>
-          <p>
-            Thank you for your inquiry. We are submitting herewith our quotation for the following
-            items / services.
-          </p>
-          <p>
-            We are a Machine, Spare parts and Technical Service Provider with expertise in PLC
-            automation, servo systems, robotics and industrial machinery.
-          </p>
+          {documentBodyParas.map((para, idx) => (
+            <p key={`body-${idx}`}>{para.trim() ? para : "\u00a0"}</p>
+          ))}
         </div>
-      )
+      ) : null}
+        </>
       ) : null}
 
       <p className="nes-items-label">{kind === "quotation" ? "Quotation" : "Items/Services:"}</p>

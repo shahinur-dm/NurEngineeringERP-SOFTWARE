@@ -128,6 +128,23 @@ export async function POST(
       body.grandTotal = Number(body.grandTotal || 0);
     }
 
+    if (module === "sell-returns") {
+      body.status = body.status || "Returned";
+      const challanNo = String(body.challanNo || "").trim();
+      if (challanNo) {
+        body.challanNo = challanNo;
+        const existing = await handler.model.findOne({ challanNo });
+        if (existing) {
+          delete body.returnNo;
+          const updated = await handler.model.findByIdAndUpdate(existing._id, body, {
+            new: true,
+            runValidators: true,
+          });
+          return NextResponse.json({ data: updated });
+        }
+      }
+    }
+
     const created = await handler.model.create(body);
     return NextResponse.json({ data: created }, { status: 201 });
   } catch (err) {

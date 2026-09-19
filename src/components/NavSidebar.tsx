@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import { ChevronDown } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -18,12 +18,22 @@ function navLabel(t: ReturnType<typeof useTranslations>, locale: string, key: st
     /* missing key */
   }
   if (key === "nav.challanList") return locale === "bn" ? "সব চালান" : "All Challan";
+  if (key === "nav.sellReturnForm") return locale === "bn" ? "সেল রিটার্ন" : "Sell Return";
+  if (key === "nav.sellReturnList") return locale === "bn" ? "সেল রিটার্ন তালিকা" : "Sell Return List";
   return key;
 }
 
 /** Longest matching href wins so /sales and /sales/quotations cannot both be active. */
-function isNavActive(href: string | undefined, pathname: string) {
+function isNavActive(href: string | undefined, pathname: string, posMode?: string | null) {
   if (!href) return false;
+  if (pathname === "/pos") {
+    if (posMode === "challan") return href === "/sales/challans";
+    return href === "/pos";
+  }
+  if (href === "/sales/returns" && pathname.startsWith("/sales/returns/")) return false;
+  if (href === "/sales/returns/add" && pathname.startsWith("/sales/returns/") && pathname !== "/sales/returns") {
+    return true;
+  }
   if (pathname === href) return true;
   if (href === "/") return false;
   if (!pathname.startsWith(`${href}/`)) return false;
@@ -35,15 +45,15 @@ function isNavActive(href: string | undefined, pathname: string) {
   );
 }
 
-function childIsActive(item: NavItem, pathname: string) {
-  return !!item.children?.some((c) => isNavActive(c.href, pathname));
+function childIsActive(item: NavItem, pathname: string, posMode?: string | null) {
+  return !!item.children?.some((c) => isNavActive(c.href, pathname, posMode));
 }
 
-function NavLeaf({ item, pathname }: { item: NavItem; pathname: string }) {
+function NavLeaf({ item, pathname, posMode }: { item: NavItem; pathname: string; posMode?: string | null }) {
   const t = useTranslations();
   const locale = useLocale();
   const Icon = item.icon;
-  const active = isNavActive(item.href, pathname);
+  const active = isNavActive(item.href, pathname, posMode);
   return (
     <Link
       href={item.href!}
@@ -65,18 +75,20 @@ function NavLeaf({ item, pathname }: { item: NavItem; pathname: string }) {
 function NavGroup({
   item,
   pathname,
+  posMode,
   open,
   onToggle,
 }: {
   item: NavItem;
   pathname: string;
+  posMode?: string | null;
   open: boolean;
   onToggle: () => void;
 }) {
   const t = useTranslations();
   const locale = useLocale();
   const Icon = item.icon;
-  const childActive = childIsActive(item, pathname);
+  const childActive = childIsActive(item, pathname, posMode);
 
   return (
     <div>
@@ -105,7 +117,7 @@ function NavGroup({
         <div className="ml-[1.15rem] mt-1 space-y-0.5 border-l border-white/10 pl-2.5">
           {item.children?.map((child) => {
             if (!child.href) return null;
-            const active = isNavActive(child.href, pathname);
+            const active = isNavActive(child.href, pathname, posMode);
             const ChildIcon = child.icon || item.icon;
             return (
               <Link
@@ -133,25 +145,28 @@ function NavGroup({
 
 export function NavSidebar() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const posMode = searchParams.get("mode");
   const activeGroup =
-    NAV_TREE.find((item) => item.children?.length && childIsActive(item, pathname))?.labelKey ?? null;
+    NAV_TREE.find((item) => item.children?.length && childIsActive(item, pathname, posMode))?.labelKey ?? null;
   const [openKey, setOpenKey] = useState<string | null>(activeGroup);
 
   useEffect(() => {
     setOpenKey(activeGroup);
-  }, [pathname, activeGroup]);
+  }, [pathname, posMode, activeGroup]);
 
   return (
     <nav className="erp-nav-scroll flex-1 space-y-1 overflow-y-auto px-2.5 py-3">
       {NAV_TREE.map((item) => {
         if (!item.children?.length) {
-          return <NavLeaf key={item.labelKey} item={item} pathname={pathname} />;
+          return <NavLeaf key={item.labelKey} item={item} pathname={pathname} posMode={posMode} />;
         }
         return (
           <NavGroup
             key={item.labelKey}
             item={item}
             pathname={pathname}
+            posMode={posMode}
             open={openKey === item.labelKey}
             onToggle={() => setOpenKey((prev) => (prev === item.labelKey ? null : item.labelKey))}
           />

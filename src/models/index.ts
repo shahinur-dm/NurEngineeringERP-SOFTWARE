@@ -239,6 +239,8 @@ const SaleSchema = new Schema(
     poNo: String,
     poDate: Date,
     subject: String,
+    attention: String,
+    documentBody: String,
     terms: String,
     status: {
       type: String,
@@ -568,8 +570,11 @@ const ReturnItemSchema = new Schema(
   {
     productId: { type: Schema.Types.ObjectId, ref: "Product" },
     name: String,
+    sku: String,
+    description: String,
     qty: Number,
     unitPrice: Number,
+    discount: Number,
     lineTotal: Number,
   },
   { _id: false },
@@ -579,9 +584,26 @@ const SellReturnSchema = new Schema(
   {
     returnNo: { type: String, required: true, unique: true },
     saleId: { type: Schema.Types.ObjectId, ref: "Sale" },
+    customerId: { type: Schema.Types.ObjectId, ref: "Contact" },
     customerName: String,
+    customerMobile: String,
+    customerAddress: String,
+    customerEmail: String,
+    attention: String,
+    challanNo: String,
+    referenceNo: String,
+    invoiceNo: String,
+    locationId: { type: Schema.Types.ObjectId, ref: "Location" },
+    terms: String,
+    documentBody: String,
+    note: String,
     items: [ReturnItemSchema],
+    discount: { type: Number, default: 0 },
     grandTotal: { type: Number, default: 0 },
+    paidAmount: { type: Number, default: 0 },
+    dueAmount: { type: Number, default: 0 },
+    payments: [PaymentSchema],
+    status: { type: String, default: "Returned" },
     returnDate: { type: Date, default: Date.now },
   },
   { timestamps: true },
@@ -840,6 +862,8 @@ try {
     "salesOrderNo",
     "poNo",
     "subject",
+    "attention",
+    "documentBody",
     "terms",
     "customerEmail",
     "pfNo",
@@ -847,6 +871,21 @@ try {
     "binNo",
   ] as const) {
     if (!Sale.schema.path(field)) Sale.schema.add({ [field]: String });
+  }
+  for (const field of [
+    "customerMobile",
+    "customerAddress",
+    "customerEmail",
+    "attention",
+    "challanNo",
+    "referenceNo",
+    "invoiceNo",
+    "terms",
+    "documentBody",
+    "note",
+    "status",
+  ] as const) {
+    if (!SellReturn.schema.path(field)) SellReturn.schema.add({ [field]: String });
   }
   if (!Sale.schema.path("sourceQuotationId")) {
     Sale.schema.add({ sourceQuotationId: { type: Schema.Types.ObjectId, ref: "Sale" } });

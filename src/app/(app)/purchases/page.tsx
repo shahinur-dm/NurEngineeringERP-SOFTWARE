@@ -1,11 +1,12 @@
 "use client";
 
-import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
+import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Search, Trash2 } from "lucide-react";
 import { EmptyState, Modal } from "@/components/ui";
 import { formatBDT, formatDateBD } from "@/lib/utils";
+import { useDebouncedValue } from "@/lib/hooks";
 
 type PurchaseRow = {
   _id: string;
@@ -106,6 +107,18 @@ function toDateInput(value?: string) {
   return d.toISOString().slice(0, 10);
 }
 
+function purchaseProductNames(p: PurchaseRow) {
+  const names = (p.items || []).map((it) => String(it.name || "").trim()).filter(Boolean);
+  if (names.length) return names;
+  return p.productName?.trim() ? [p.productName.trim()] : [];
+}
+
+function purchaseQuantity(p: PurchaseRow) {
+  const fromItems = (p.items || []).reduce((sum, it) => sum + Number(it.qty || 0), 0);
+  if (fromItems) return fromItems;
+  return Number(p.quantity || 0);
+}
+
 function InlineField({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="grid min-w-0 grid-cols-[5.4rem_minmax(0,1fr)] items-center gap-1.5">
@@ -129,16 +142,23 @@ export default function PurchasesPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState(emptyForm);
+  const [q, setQ] = useState("");
+  const debouncedQ = useDebouncedValue(q, 250);
 
-  async function load() {
-    const res = await fetch("/api/purchases?limit=100");
+  const load = useCallback(async () => {
+    const qs = new URLSearchParams({ limit: "100" });
+    if (debouncedQ.trim()) qs.set("q", debouncedQ.trim());
+    const res = await fetch(`/api/purchases?${qs}`);
     const json = await res.json();
     setData(json.data || []);
     setSummary(json.summary || { grandTotal: 0, dueAmount: 0, count: 0 });
-  }
+  }, [debouncedQ]);
 
   useEffect(() => {
-    load();
+    void load();
+  }, [load]);
+
+  useEffect(() => {
     fetch("/api/meta")
       .then((r) => r.json())
       .then((d) => {
@@ -348,9 +368,18 @@ export default function PurchasesPage() {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2 border-b border-[var(--gp-border)] pb-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-[var(--gp-ink)]">
+        <h1 className="shrink-0 text-2xl font-semibold tracking-tight text-[var(--gp-ink)]">
           {t("purchases.title")}
         </h1>
+        <div className="relative min-w-0 flex-1 max-w-xl">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+          <input
+            className="gp-input gp-input-icon-left h-9"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder={locale === "bn" ? "সরবরাহকারী বা পণ্যের নাম খুঁজুন" : "Search by supplier or product name"}
+          />
+        </div>
         <div className="ml-auto grid min-w-0 grid-cols-3 gap-2 max-sm:order-3 max-sm:ml-0 max-sm:w-full">
           <div className="gp-card min-w-0 px-3 py-1.5">
             <p className="text-[0.68rem] leading-tight text-muted">{t("common.total")}</p>
@@ -387,56 +416,84 @@ export default function PurchasesPage() {
         {data.length === 0 ? (
           <EmptyState message={t("common.noData")} />
         ) : (
-          <table className="gp-table min-w-[720px] lg:w-full lg:min-w-0 lg:table-fixed [&_td]:py-2 [&_th]:py-2">
+          <table className="gp-table min-w-[980px] table-fixed lg:w-full [&_td]:align-top [&_td]:py-2 [&_th]:py-2">
             <colgroup>
-              <col className="lg:w-[15%]" />
-              <col className="lg:w-[25%]" />
-              <col className="lg:w-[15%]" />
-              <col className="lg:w-[16%]" />
-              <col className="lg:w-[14%]" />
-              <col className="lg:w-[15%]" />
+              <col className="w-10" />
+              <col className="w-[12%]" />
+              <col className="w-[16%]" />
+              <col className="w-[22%]" />
+              <col className="w-[11%]" />
+              <col className="w-[8%]" />
+              <col className="w-[12%]" />
+              <col className="w-[10%]" />
+              <col className="w-[9%]" />
             </colgroup>
             <thead>
               <tr>
+                <th>SL</th>
                 <th>{t("purchases.reference")}</th>
                 <th>{t("purchases.supplier")}</th>
+                <th>{locale === "bn" ? "পণ্যের নাম" : "Product Name"}</th>
                 <th>{t("common.date")}</th>
+                <th>{locale === "bn" ? "পরিমাণ" : "Quantity"}</th>
                 <th>{t("common.grandTotal")}</th>
                 <th>{t("common.due")}</th>
                 <th>{t("common.actions")}</th>
               </tr>
             </thead>
             <tbody>
-              {data.map((p) => (
+              {data.map((p, index) => {
+                const names = purchaseProductNames(p);
+                return (
                 <tr key={p._id}>
-                  <td className="font-semibold">{p.referenceNo}</td>
-                  <td>
+                  <td className="whitespace-nowrap">{index + 1}</td>
+                  <td className="min-w-0 font-semibold">
+                    <span className="block truncate" title={p.referenceNo}>{p.referenceNo}</span>
+                  </td>
+                  <td className="min-w-0">
                     {p.supplierId ? (
                       <Link
                         href={`/contacts/${p.supplierId}/statement`}
-                        className="font-semibold text-primary hover:underline"
+                        className="block truncate font-semibold text-primary hover:underline"
+                        title={p.supplierName}
                       >
                         {p.supplierName}
                       </Link>
                     ) : (
-                      p.supplierName
+                      <span className="block truncate" title={p.supplierName}>{p.supplierName}</span>
                     )}
                   </td>
-                  <td>{formatDateBD(p.purchaseDate, locale)}</td>
-                  <td className="font-bold">{formatBDT(p.grandTotal, locale)}</td>
-                  <td>{formatBDT(p.dueAmount, locale)}</td>
-                  <td>
+                  <td className="min-w-0">
+                    {names.length ? (
+                      <div className="space-y-0.5">
+                        {names.map((name, i) => (
+                          <div key={`${p._id}-n-${i}`} className="truncate" title={name}>{name}</div>
+                        ))}
+                      </div>
+                    ) : "—"}
+                  </td>
+                  <td className="min-w-0 whitespace-nowrap">
+                    <span className="block truncate">{formatDateBD(p.purchaseDate, locale)}</span>
+                  </td>
+                  <td className="min-w-0 whitespace-nowrap">{purchaseQuantity(p)}</td>
+                  <td className="min-w-0 font-bold">
+                    <span className="gp-money block truncate">{formatBDT(p.grandTotal, locale)}</span>
+                  </td>
+                  <td className="min-w-0">
+                    <span className="gp-money block truncate">{formatBDT(p.dueAmount, locale)}</span>
+                  </td>
+                  <td className="overflow-visible">
                     <div className="flex flex-nowrap gap-1">
                       <button
                         type="button"
-                        className="gp-btn gp-btn-ghost min-h-8 min-w-8 px-1.5"
+                        className="gp-btn gp-btn-ghost min-h-8 min-w-8 shrink-0 px-1.5"
                         onClick={() => openEdit(p)}
                       >
                         <Pencil className="h-4 w-4" />
                       </button>
                       <button
                         type="button"
-                        className="gp-btn gp-btn-danger min-h-8 min-w-8 px-1.5"
+                        className="gp-btn gp-btn-danger min-h-8 min-w-8 shrink-0 px-1.5"
                         onClick={() => removePurchase(p._id)}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -444,7 +501,8 @@ export default function PurchasesPage() {
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         )}

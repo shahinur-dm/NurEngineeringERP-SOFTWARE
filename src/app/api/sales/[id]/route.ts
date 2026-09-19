@@ -70,6 +70,8 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
       "challanNo",
       "binNo",
       "subject",
+      "attention",
+      "documentBody",
       "terms",
     ]) {
       if (body[key] !== undefined) $set[key] = body[key];

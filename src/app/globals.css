@@ -693,13 +693,13 @@ h3,
 
   .nes-sheet {
     width: 210mm;
-    height: 297mm;
     min-height: 297mm;
-    max-height: 297mm;
+    height: auto;
+    max-height: none;
     margin: 0 auto;
     page-break-after: always;
-    page-break-inside: avoid;
-    overflow: hidden;
+    page-break-inside: auto;
+    overflow: visible;
   }
 
   .nes-sheet:last-of-type {
@@ -715,7 +715,7 @@ h3,
   min-height: 297mm;
   margin: 0 auto 8mm;
   padding: 8mm 10mm 0;
-  overflow: hidden;
+  overflow: visible;
   background: #fff;
   color: #111;
   font-family: Arial, Helvetica, sans-serif;
@@ -822,6 +822,8 @@ h3,
   padding: 6px 8px;
   font-size: 10px;
   line-height: 1.4;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .nes-quotation .nes-office {
@@ -850,32 +852,34 @@ h3,
 }
 
 .nes-docband {
-  position: relative;
-  min-height: 84px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) minmax(170px, 230px);
+  align-items: start;
+  gap: 8px 10px;
   margin-bottom: 6px;
 }
 
 .nes-date {
   margin: 0;
+  grid-column: 1;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .nes-title {
-  position: absolute;
-  top: 2px;
-  left: 50%;
+  grid-column: 2;
   margin: 0;
-  transform: translateX(-50%);
   font-size: 20px;
   font-weight: 800;
   text-align: center;
   text-decoration: underline;
+  overflow-wrap: anywhere;
 }
 
 .nes-docband .nes-idbox {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 230px;
+  grid-column: 3;
+  grid-row: 1 / span 3;
+  width: 100%;
 }
 
 .nes-quote-top {
@@ -907,7 +911,9 @@ h3,
 
 .nes-subject {
   margin: 0 0 6px;
-  width: 70%;
+  width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .nes-idbox {
@@ -921,6 +927,10 @@ h3,
   border: 1px solid #333;
   padding: 4px 6px;
   text-align: left;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+  vertical-align: top;
 }
 
 .nes-idbox th {
@@ -939,6 +949,10 @@ h3,
   width: 50%;
   border: 1px solid #333;
   padding: 5px 8px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+  vertical-align: top;
 }
 
 .nes-intro,
@@ -947,6 +961,8 @@ h3,
 .nes-payline,
 .nes-terms {
   margin: 6px 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .nes-items-label {
@@ -966,6 +982,9 @@ h3,
   border: 1px solid #222;
   padding: 3px 4px;
   vertical-align: top;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
 }
 
 .nes-grid thead th {
@@ -983,12 +1002,19 @@ h3,
   width: 22%;
 }
 
+.nes-grid .c-desc {
+  width: 32%;
+}
+
+.nes-grid .c-remarks {
+  width: 18%;
+}
+
 .nes-grid .c-qty,
 .nes-grid .c-price,
 .nes-grid .c-total {
   width: 11%;
   text-align: center;
-  white-space: nowrap;
 }
 
 .nes-desc-wrap {
@@ -1082,6 +1108,8 @@ h3,
 
 .nes-foot p {
   margin: 0 0 3px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* Shell / sidebar / login — visual only */
@@ -1143,6 +1171,78 @@ h3,
 .pos-quote .gp-input {
   min-height: 32px;
   padding-block: 0.28rem;
+}
+
+.pos-quote .pos-quote-items {
+  width: 100%;
+  min-width: 720px;
+  table-layout: auto;
+  border-collapse: collapse;
+}
+
+.pos-quote .pos-quote-items th,
+.pos-quote .pos-quote-items td {
+  padding: 0.12rem 0.28rem;
+  line-height: 1.2;
+  vertical-align: middle;
+}
+
+.pos-quote .pos-quote-items .gp-input {
+  min-height: 28px;
+  padding-block: 0.1rem;
+  padding-inline: 0.4rem;
+}
+
+.pos-quote .pos-quote-items .pos-quote-desc {
+  display: block;
+  height: 28px;
+  max-height: 28px;
+  min-height: 28px;
+  resize: none;
+  overflow-x: hidden;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.25;
+  field-sizing: fixed;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.pos-quote .pos-quote-items .pos-quote-desc::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.pos-quote .pos-quote-items th:nth-child(1),
+.pos-quote .pos-quote-items td:nth-child(1) {
+  width: 2.1rem;
+  text-align: center;
+  padding-inline: 0.2rem;
+}
+
+.pos-quote .pos-quote-items th:nth-child(4),
+.pos-quote .pos-quote-items td:nth-child(4),
+.pos-quote .pos-quote-items th:nth-child(5),
+.pos-quote .pos-quote-items td:nth-child(5),
+.pos-quote .pos-quote-items th:nth-child(6),
+.pos-quote .pos-quote-items td:nth-child(6) {
+  width: 5.25rem;
+  white-space: nowrap;
+}
+
+.pos-quote .pos-quote-items th:nth-child(7),
+.pos-quote .pos-quote-items td:nth-child(7) {
+  width: 6.25rem;
+  white-space: nowrap;
+}
+
+.pos-quote .pos-quote-items th:nth-child(8),
+.pos-quote .pos-quote-items td:nth-child(8) {
+  width: 2rem;
+  padding: 0.08rem;
+  text-align: center;
 }
 
 .dash-premium {

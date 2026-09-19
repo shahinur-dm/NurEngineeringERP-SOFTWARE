@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, Suspense } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import {
   LogOut,
@@ -211,7 +211,9 @@ export function AppShell({
       <p className="px-3 pt-3 text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-[var(--gp-sidebar-muted)]">
         {locale === "bn" ? "মডিউল" : "Modules"}
       </p>
-      <NavSidebar />
+      <Suspense fallback={null}>
+        <NavSidebar />
+      </Suspense>
       <div className="space-y-2 border-t border-white/10 bg-[var(--gp-sidebar-elevated)] p-2.5">
         {imageError ? <p className="px-1 text-[0.68rem] text-red-300">{imageError}</p> : null}
         <div className="flex items-center gap-2 rounded-xl px-1.5 py-1.5">

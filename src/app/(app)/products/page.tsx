@@ -188,7 +188,7 @@ export default function ProductsPage() {
       currency: p.currency || "BDT",
       shippingCost: String(p.shippingCost ?? ""),
       shippingCurrency: p.shippingCurrency || "BDT",
-      quantity: String(p.quantity ?? p.locationQty ?? 0),
+      quantity: String(p.locationQty ?? p.quantity ?? 0),
       costPrice: p.costPrice != null ? String(p.costPrice) : "",
       buyingDate: toDateInput(p.buyingDate),
       receivingDate: toDateInput(p.receivingDate),
@@ -425,7 +425,7 @@ export default function ProductsPage() {
                 <th className="w-12">Image</th>
                 <th>{t("products.name")}</th>
                 <th>{t("products.brand")}</th>
-                <th>{t("products.sku")}</th>
+                <th>{locale === "bn" ? "স্টক" : "STOCK"}</th>
                 <th>{locale === "bn" ? "খরচ মূল্য" : "Cost"}</th>
                 <th>{locale === "bn" ? "বিক্রয় মূল্য" : "Sales price"}</th>
                 <th>{t("products.supplierPrices")}</th>
@@ -457,7 +457,7 @@ export default function ProductsPage() {
                       ) : null}
                     </td>
                     <td><span className="block max-w-[10rem] truncate" title={p.brand || ""}>{p.brand || "—"}</span></td>
-                    <td className="gp-money whitespace-nowrap">{p.sku}</td>
+                    <td className="gp-money whitespace-nowrap">{p.locationQty ?? 0}</td>
                     <td className="gp-money whitespace-nowrap">
                       {formatMoney(p.purchasePrice || 0, p.currency || "BDT", locale)}
                     </td>
