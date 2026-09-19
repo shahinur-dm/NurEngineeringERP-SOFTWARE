@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { ChevronDown, ImageIcon, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { AlertBanner, EmptyState, Field, Modal, PageHeader, TableSkeleton } from "@/components/ui";
+import { DateRangeExcelBar, downloadExcelResponse } from "@/components/DateRangeExcelBar";
 import { formatMoney } from "@/lib/utils";
 import { displaySupplierLabel } from "@/lib/supplier-label";
 import { useDebouncedValue } from "@/lib/hooks";
@@ -370,7 +371,13 @@ export default function ProductsPage() {
             : "পণ্য তালিকা — লিংকড সরবরাহকারী মূল্যসহ"
         }
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <DateRangeExcelBar
+              onExport={async (from, to) => {
+                const res = await fetch(`/api/exports/products?from=${from}&to=${to}`);
+                await downloadExcelResponse(res, `products_${from}_to_${to}.xlsx`);
+              }}
+            />
             <Link href="/products/categories" className="gp-btn gp-btn-ghost">
               {t("nav.categories")}
             </Link>

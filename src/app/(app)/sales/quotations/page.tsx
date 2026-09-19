@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { Pencil, Search } from "lucide-react";
 import { EmptyState, Field, Modal } from "@/components/ui";
 import { InvoiceActions } from "@/components/InvoiceActions";
+import { DateRangeExcelBar, downloadExcelResponse } from "@/components/DateRangeExcelBar";
 import { formatBDT, formatDateBD } from "@/lib/utils";
 
 const PAGE_SIZE = 20;
@@ -154,7 +155,14 @@ export default function QuotationsPage() {
         <h1 className="gp-display text-2xl font-bold tracking-tight text-[var(--gp-ink)]">
           {t("nav.listQuotations")}
         </h1>
-        <form className="flex min-w-0 flex-1 gap-2 sm:ml-auto sm:max-w-xl" onSubmit={(e) => { e.preventDefault(); void load(1); }}>
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+          <DateRangeExcelBar
+            onExport={async (from, to) => {
+              const res = await fetch(`/api/exports/quotations?from=${from}&to=${to}`);
+              await downloadExcelResponse(res, `quotations_${from}_to_${to}.xlsx`);
+            }}
+          />
+          <form className="flex min-w-0 flex-1 gap-2 sm:ml-auto sm:max-w-xl" onSubmit={(e) => { e.preventDefault(); void load(1); }}>
           <div className="relative min-w-0 flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
             <input
@@ -173,6 +181,7 @@ export default function QuotationsPage() {
             {t("nav.addQuotation")}
           </Link>
         </form>
+        </div>
       </div>
 
       <div className="gp-table-wrap !overflow-x-auto lg:-ml-12 lg:w-[calc(100%+3rem)]">

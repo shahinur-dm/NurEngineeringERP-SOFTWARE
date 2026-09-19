@@ -128,18 +128,18 @@ export default function SalesPage() {
         {data.length === 0 ? (
           <EmptyState message={loadError ? t("common.error") : t("common.noData")} />
         ) : (
-          <table className="gp-table min-w-[900px] lg:w-full lg:min-w-0 lg:table-fixed [&_td]:py-2 [&_th]:py-2">
+          <table className="gp-table min-w-[960px] lg:w-full lg:min-w-0 lg:table-fixed [&_td]:py-2 [&_th]:py-2">
             <colgroup>
               <col className="lg:w-[11%]" />
-              <col className="lg:w-[10%]" />
-              <col className="lg:w-[12%]" />
-              <col className="lg:w-[16%]" />
+              <col className="lg:w-[13%]" />
+              <col className="lg:w-[13%]" />
+              <col className="lg:w-[14%]" />
               <col className="lg:w-[9%]" />
               <col className="lg:w-[11%]" />
+              <col className="lg:w-[8%]" />
               <col className="lg:w-[9%]" />
-              <col className="lg:w-[10%]" />
-              <col className="lg:w-[8%]" />
-              <col className="lg:w-[8%]" />
+              <col className="lg:w-[7%]" />
+              <col className="lg:w-[5%]" />
             </colgroup>
             <thead>
               <tr>
@@ -175,16 +175,24 @@ export default function SalesPage() {
                       </Link>
                     )}
                   </td>
-                  <td>
+                  <td className="min-w-0 max-w-0 overflow-hidden align-top">
                     {s.quotationNo ? (
-                      <Link href={`/sales/${s._id}/quotation`} className="text-primary hover:underline">
+                      <Link
+                        href={`/sales/${s._id}/quotation`}
+                        className="block max-w-full break-all text-primary hover:underline"
+                        title={s.quotationNo}
+                      >
                         {s.quotationNo}
                       </Link>
                     ) : (
                       "—"
                     )}
                   </td>
-                  <td className="break-words font-mono text-sm">{s.referenceNo || "—"}</td>
+                  <td className="min-w-0 max-w-0 overflow-hidden align-top">
+                    <span className="block max-w-full break-all font-mono text-sm" title={s.referenceNo || ""}>
+                      {s.referenceNo || "—"}
+                    </span>
+                  </td>
                   <td className="min-w-0">
                     {s.customerId ? (
                       <Link

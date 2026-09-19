@@ -154,7 +154,13 @@ export async function buildTradePdf(opts: {
   function drawLetterhead() {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(17);
-    const brandMax = Math.max(40, pageW - m * 2 - boxW - 28);
+    const logoW = 18;
+    const officeGap = 4;
+    const officeLeft = pageW - m - boxW;
+    const brandLeft = m + logoW + officeGap;
+    const brandRight = officeLeft - officeGap;
+    const brandMax = Math.max(40, brandRight - brandLeft);
+    const brandCenter = (brandLeft + brandRight) / 2;
     const nameLines = doc.splitTextToSize(bizName, brandMax);
     const nameBottom = 16 + (nameLines.length - 1) * 6;
     doc.setFont("helvetica", "normal");
@@ -173,7 +179,7 @@ export async function buildTradePdf(opts: {
 
     if (logoData) {
       try {
-        doc.addImage(logoData, pdfImageFormat(logoData), m, 9, 18, 18);
+        doc.addImage(logoData, pdfImageFormat(logoData), m, 9, logoW, logoW);
       } catch {
         /* skip */
       }
@@ -193,22 +199,22 @@ export async function buildTradePdf(opts: {
     doc.setFont("helvetica", "bold");
     doc.setTextColor(26, 79, 160);
     doc.setFontSize(17);
-    doc.text(nameLines, pageW / 2, 16, { align: "center" });
+    doc.text(nameLines, brandCenter, 16, { align: "center" });
     doc.setTextColor(196, 94, 18);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     const tagLines = doc.splitTextToSize("Machine, Spare parts and Technical Service Provider", brandMax);
-    doc.text(tagLines, pageW / 2, nameBottom + 5.5, { align: "center" });
+    doc.text(tagLines, brandCenter, nameBottom + 5.5, { align: "center" });
     doc.setTextColor(20);
 
     doc.setFontSize(7);
     const officeFill = kind === "quotation" ? [236, 236, 236] : [215, 238, 248];
     doc.setFillColor(officeFill[0], officeFill[1], officeFill[2]);
     doc.setDrawColor(51);
-    doc.rect(pageW - m - boxW, 8, boxW, officeH, "FD");
+    doc.rect(officeLeft, 8, boxW, officeH, "FD");
     let oy = 12;
     officeLines.forEach((line) => {
-      doc.text(line, pageW - m - boxW + 2, oy);
+      doc.text(line, officeLeft + 2, oy);
       oy += 3.6;
     });
 
