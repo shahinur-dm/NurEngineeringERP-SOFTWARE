@@ -50,7 +50,7 @@ function isNavActive(href: string | undefined, pathname: string, posMode?: strin
   );
 }
 
-function childIsActive(item: NavItem, pathname: string, posMode?: string | null) {
+function childIsActive(item: NavItem, pathname: string, posMode?: string | null): boolean {
   return !!item.children?.some(
     (c) => isNavActive(c.href, pathname, posMode) || childIsActive(c, pathname, posMode),
   );
