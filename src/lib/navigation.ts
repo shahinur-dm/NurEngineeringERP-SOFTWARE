@@ -6,15 +6,11 @@ import {
   Package,
   Truck,
   ShoppingCart,
-  ArrowLeftRight,
   SlidersHorizontal,
   Wallet,
   Landmark,
   BarChart3,
-  Bell,
   Settings,
-  Briefcase,
-  Calendar,
   UserCircle,
   Wrench,
   FileText,
@@ -60,11 +56,7 @@ export const NAV_TREE: NavItem[] = [
     defaultOpen: true,
     children: [
       { href: "/contacts/customers", labelKey: "nav.customers", moduleId: "customers" },
-      { href: "/contacts/suppliers", labelKey: "nav.suppliers", moduleId: "suppliers" },
       { href: "/contacts/employees", labelKey: "nav.employees", moduleId: "employees" },
-      { href: "/contacts/payslips", labelKey: "nav.payslips", moduleId: "payslips" },
-      { href: "/contacts/groups", labelKey: "nav.customerGroups", moduleId: "customer-groups" },
-      { href: "/contacts/import", labelKey: "nav.importContacts", moduleId: "import-contacts" },
     ],
   },
   {
@@ -113,14 +105,6 @@ export const NAV_TREE: NavItem[] = [
     ],
   },
   {
-    labelKey: "nav.stockTransfers",
-    icon: ArrowLeftRight,
-    children: [
-      { href: "/stock/transfers", labelKey: "nav.listTransfers", moduleId: "stock-transfers" },
-      { href: "/stock/transfers/add", labelKey: "nav.addTransfer", moduleId: "stock-transfers-add" },
-    ],
-  },
-  {
     labelKey: "nav.adjustments",
     icon: SlidersHorizontal,
     children: [
@@ -144,10 +128,15 @@ export const NAV_TREE: NavItem[] = [
     children: [
       { href: "/accounts", labelKey: "nav.listAccounts", moduleId: "accounts" },
       { href: "/accounts/chart", labelKey: "nav.chartOfAccounts", moduleId: "chart-of-accounts" },
-      { href: "/accounts/journals", labelKey: "nav.journals", moduleId: "journals" },
-      { href: "/accounts/balance-sheet", labelKey: "nav.balanceSheet", moduleId: "balance-sheet" },
-      { href: "/accounts/trial-balance", labelKey: "nav.trialBalance", moduleId: "trial-balance" },
-      { href: "/accounts/cash-flow", labelKey: "nav.cashFlow", moduleId: "cash-flow" },
+      {
+        href: "/accounts/journals",
+        labelKey: "nav.journals",
+        moduleId: "journals",
+        children: [
+          { href: "/accounts/journals/customer-payment", labelKey: "nav.customerPayment", moduleId: "journals" },
+          { href: "/accounts/journals/supplier-payment", labelKey: "nav.supplierPayment", moduleId: "journals" },
+        ],
+      },
       { href: "/accounts/report", labelKey: "nav.accountReport", moduleId: "account-report" },
     ],
   },
@@ -176,7 +165,6 @@ export const NAV_TREE: NavItem[] = [
       { href: "/reports/activity-log", labelKey: "reports.activityLog", moduleId: "report-activity-log" },
     ],
   },
-  { href: "/notification-templates", labelKey: "nav.notifications", icon: Bell, moduleId: "notification-templates" },
   {
     labelKey: "nav.settings",
     icon: Settings,
@@ -195,16 +183,18 @@ export const NAV_TREE: NavItem[] = [
     icon: Contact,
     children: [
       { href: "/crm", labelKey: "nav.crmDashboard", moduleId: "crm-dashboard" },
-      { href: "/crm/leads", labelKey: "crm.leads", moduleId: "crm-leads" },
-      { href: "/crm/followups", labelKey: "crm.followups", moduleId: "crm-followups" },
+      {
+        labelKey: "crm.leads",
+        children: [
+          { href: "/crm/leads", labelKey: "nav.allLeads", moduleId: "crm-leads" },
+          { href: "/crm/followups", labelKey: "crm.followups", moduleId: "crm-followups" },
+        ],
+      },
+      { href: "/crm/clients", labelKey: "nav.clients", moduleId: "crm-clients" },
+      { href: "/crm/deals", labelKey: "nav.dealsPipeline", moduleId: "crm-deals" },
       { href: "/crm/campaigns", labelKey: "crm.campaigns", moduleId: "crm-campaigns" },
-      { href: "/crm/proposals", labelKey: "nav.proposals", moduleId: "crm-proposals" },
-      { href: "/crm/reports", labelKey: "nav.crmReports", moduleId: "crm-reports" },
-      { href: "/crm/settings", labelKey: "nav.crmSettings", moduleId: "crm-settings" },
     ],
   },
-  { href: "/project", labelKey: "nav.project", icon: Briefcase, moduleId: "project" },
-  { href: "/calendar", labelKey: "nav.calendar", icon: Calendar, moduleId: "calendar" },
   { href: "/profile", labelKey: "nav.profile", icon: UserCircle, moduleId: "profile" },
 ];
 

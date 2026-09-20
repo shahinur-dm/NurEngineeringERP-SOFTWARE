@@ -83,6 +83,8 @@
     "listAccounts": "অ্যাকাউন্ট তালিকা",
     "chartOfAccounts": "চার্ট অব অ্যাকাউন্টস",
     "journals": "জার্নাল এন্ট্রি",
+    "customerPayment": "কাস্টমার পেমেন্ট",
+    "supplierPayment": "সাপ্লায়ার পেমেন্ট",
     "balanceSheet": "ব্যালেন্স শীট",
     "trialBalance": "ট্রায়াল ব্যালেন্স",
     "cashFlow": "ক্যাশ ফ্লো",
@@ -96,6 +98,9 @@
     "taxRates": "কর হার",
     "subscription": "সাবস্ক্রিপশন",
     "crmDashboard": "সিআরএম ড্যাশবোর্ড",
+    "allLeads": "সব লিড",
+    "clients": "ক্লায়েন্ট",
+    "dealsPipeline": "ডিল পাইপলাইন",
     "proposals": "প্রস্তাবনা",
     "crmReports": "সিআরএম রিপোর্ট",
     "crmSettings": "সিআরএম সেটিংস",
@@ -404,7 +409,10 @@
     "title": "সিআরএম",
     "leads": "লিড",
     "followups": "ফলো-আপ",
-    "campaigns": "ক্যাম্পেইন"
+    "campaigns": "ক্যাম্পেইন",
+    "clients": "ক্লায়েন্ট",
+    "deals": "ডিল পাইপলাইন",
+    "subtitle": "লিড, ডিল ও ফলো-আপের সারসংক্ষেপ।"
   },
   "manufacturing": {
     "title": "উৎপাদন",

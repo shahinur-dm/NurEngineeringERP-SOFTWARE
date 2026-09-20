@@ -83,6 +83,8 @@
     "listAccounts": "Account List",
     "chartOfAccounts": "Chart of Accounts",
     "journals": "Journal Entries",
+    "customerPayment": "Customer Payment",
+    "supplierPayment": "Supplier Payment",
     "balanceSheet": "Balance Sheet",
     "trialBalance": "Trial Balance",
     "cashFlow": "Cash Flow",
@@ -96,6 +98,9 @@
     "taxRates": "Tax Rates",
     "subscription": "Subscription",
     "crmDashboard": "CRM Dashboard",
+    "allLeads": "All Leads",
+    "clients": "Clients",
+    "dealsPipeline": "Deals Pipeline",
     "proposals": "Proposals",
     "crmReports": "CRM Reports",
     "crmSettings": "CRM Settings",
@@ -404,7 +409,10 @@
     "title": "CRM",
     "leads": "Leads",
     "followups": "Follow-ups",
-    "campaigns": "Campaigns"
+    "campaigns": "Campaigns",
+    "clients": "Clients",
+    "deals": "Deals Pipeline",
+    "subtitle": "Overview of leads, deals and follow-ups."
   },
   "manufacturing": {
     "title": "Manufacturing",

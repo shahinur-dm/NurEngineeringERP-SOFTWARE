@@ -510,6 +510,69 @@ const LeadSchema = new Schema(
     notes: String,
     nextFollowUp: Date,
     status: { type: String, enum: ["open", "won", "lost"], default: "open" },
+    company: String,
+    product: String,
+    ownerName: String,
+    rating: { type: String, default: "warm" },
+  },
+  { timestamps: true },
+);
+
+const CrmFollowUpSchema = new Schema(
+  {
+    leadId: { type: Schema.Types.ObjectId, ref: "Lead" },
+    leadName: String,
+    clientId: String,
+    clientName: String,
+    scheduledAt: { type: Date, required: true },
+    status: { type: String, default: "scheduled" },
+    notes: String,
+    conversations: [
+      {
+        at: { type: Date, default: Date.now },
+        text: String,
+        userName: String,
+      },
+    ],
+  },
+  { timestamps: true },
+);
+
+const CrmClientSchema = new Schema(
+  {
+    name: { type: String, required: true },
+    mobile: String,
+    email: String,
+    company: String,
+    leadId: { type: Schema.Types.ObjectId, ref: "Lead" },
+    notes: String,
+    status: { type: String, default: "active" },
+  },
+  { timestamps: true },
+);
+
+const CrmDealSchema = new Schema(
+  {
+    title: { type: String, required: true },
+    value: { type: Number, default: 0 },
+    stage: { type: String, default: "prospect" },
+    clientId: String,
+    clientName: String,
+    leadId: String,
+    leadName: String,
+    notes: String,
+  },
+  { timestamps: true },
+);
+
+const CrmCampaignSchema = new Schema(
+  {
+    name: { type: String, required: true },
+    source: String,
+    status: { type: String, default: "draft" },
+    startsAt: Date,
+    endsAt: Date,
+    notes: String,
   },
   { timestamps: true },
 );
@@ -815,6 +878,10 @@ export const CylinderMovement =
   models.CylinderMovement || model("CylinderMovement", CylinderMovementSchema);
 export const Payslip = models.Payslip || model("Payslip", PayslipSchema);
 export const Lead = models.Lead || model("Lead", LeadSchema);
+export const CrmFollowUp = models.CrmFollowUp || model("CrmFollowUp", CrmFollowUpSchema);
+export const CrmClient = models.CrmClient || model("CrmClient", CrmClientSchema);
+export const CrmDeal = models.CrmDeal || model("CrmDeal", CrmDealSchema);
+export const CrmCampaign = models.CrmCampaign || model("CrmCampaign", CrmCampaignSchema);
 export const Recipe = models.Recipe || model("Recipe", RecipeSchema);
 export const Counter = models.Counter || model("Counter", CounterSchema);
 export const Role = models.Role || model("Role", RoleSchema);
@@ -843,6 +910,9 @@ export const ActivityLog = models.ActivityLog || model("ActivityLog", ActivityLo
 
 // Hot-reload: compiled models keep the first schema. Patch new sale/challan fields.
 try {
+  for (const field of ["company", "product", "ownerName", "rating"] as const) {
+    if (!Lead.schema.path(field)) Lead.schema.add({ [field]: String });
+  }
   if (!User.schema.path("avatarUrl")) {
     User.schema.add({ avatarUrl: String });
   }

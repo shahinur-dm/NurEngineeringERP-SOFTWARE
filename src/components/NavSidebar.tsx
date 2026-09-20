@@ -20,6 +20,11 @@ function navLabel(t: ReturnType<typeof useTranslations>, locale: string, key: st
   if (key === "nav.challanList") return locale === "bn" ? "সব চালান" : "All Challan";
   if (key === "nav.sellReturnForm") return locale === "bn" ? "সেল রিটার্ন" : "Sell Return";
   if (key === "nav.sellReturnList") return locale === "bn" ? "সেল রিটার্ন তালিকা" : "Sell Return List";
+  if (key === "nav.customerPayment") return locale === "bn" ? "কাস্টমার পেমেন্ট" : "Customer Payment";
+  if (key === "nav.supplierPayment") return locale === "bn" ? "সাপ্লায়ার পেমেন্ট" : "Supplier Payment";
+  if (key === "nav.allLeads") return locale === "bn" ? "সব লিড" : "All Leads";
+  if (key === "nav.clients") return locale === "bn" ? "ক্লায়েন্ট" : "Clients";
+  if (key === "nav.dealsPipeline") return locale === "bn" ? "ডিল পাইপলাইন" : "Deals Pipeline";
   return key;
 }
 
@@ -46,7 +51,9 @@ function isNavActive(href: string | undefined, pathname: string, posMode?: strin
 }
 
 function childIsActive(item: NavItem, pathname: string, posMode?: string | null) {
-  return !!item.children?.some((c) => isNavActive(c.href, pathname, posMode));
+  return !!item.children?.some(
+    (c) => isNavActive(c.href, pathname, posMode) || childIsActive(c, pathname, posMode),
+  );
 }
 
 function NavLeaf({ item, pathname, posMode }: { item: NavItem; pathname: string; posMode?: string | null }) {
@@ -116,9 +123,60 @@ function NavGroup({
       {open ? (
         <div className="ml-[1.15rem] mt-1 space-y-0.5 border-l border-white/10 pl-2.5">
           {item.children?.map((child) => {
+            const ChildIcon = child.icon || item.icon;
+            if (child.children?.length) {
+              const parentActive = isNavActive(child.href, pathname, posMode);
+              return (
+                <div key={child.labelKey} className="space-y-0.5">
+                  {child.href ? (
+                    <Link
+                      href={child.href}
+                      className={cn(
+                        "flex min-h-8 items-center gap-2.5 rounded-md border border-transparent px-2.5 py-1.5 text-[0.79rem] font-medium tracking-[-0.005em] transition-all duration-150",
+                        parentActive
+                          ? "border-white/10 bg-[#2563eb] text-white shadow-sm"
+                          : "text-[#94a1b5] hover:border-white/5 hover:bg-white/[0.07] hover:text-[#e5eaf2]",
+                      )}
+                    >
+                      {ChildIcon ? (
+                        <ChildIcon className={cn("h-3.5 w-3.5 shrink-0 stroke-[1.7]", parentActive ? "text-white" : "text-[#738198]")} />
+                      ) : null}
+                      <span className="truncate">{navLabel(t, locale, child.labelKey)}</span>
+                    </Link>
+                  ) : (
+                    <p className="px-2.5 py-1 text-[0.72rem] font-semibold uppercase tracking-wide text-[#738198]">
+                      {navLabel(t, locale, child.labelKey)}
+                    </p>
+                  )}
+                  <div className="ml-[0.85rem] space-y-0.5 border-l border-white/10 pl-2">
+                    {child.children.map((nested) => {
+                      if (!nested.href) return null;
+                      const active = isNavActive(nested.href, pathname, posMode);
+                      const NestedIcon = nested.icon || ChildIcon;
+                      return (
+                        <Link
+                          key={nested.href}
+                          href={nested.href}
+                          className={cn(
+                            "flex min-h-8 items-center gap-2.5 rounded-md border border-transparent px-2.5 py-1.5 text-[0.79rem] font-medium tracking-[-0.005em] transition-all duration-150",
+                            active
+                              ? "border-white/10 bg-[#2563eb] text-white shadow-sm"
+                              : "text-[#94a1b5] hover:border-white/5 hover:bg-white/[0.07] hover:text-[#e5eaf2]",
+                          )}
+                        >
+                          {NestedIcon ? (
+                            <NestedIcon className={cn("h-3.5 w-3.5 shrink-0 stroke-[1.7]", active ? "text-white" : "text-[#738198]")} />
+                          ) : null}
+                          <span className="truncate">{navLabel(t, locale, nested.labelKey)}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            }
             if (!child.href) return null;
             const active = isNavActive(child.href, pathname, posMode);
-            const ChildIcon = child.icon || item.icon;
             return (
               <Link
                 key={child.href}

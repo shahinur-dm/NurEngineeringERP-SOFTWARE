@@ -53,7 +53,7 @@ export const MODULE_MODEL_MAP: Record<string, ModuleHandler> = {
   projects: { model: Project as never, search: ["name"] },
   productions: { model: Production as never, sort: "-productionDate" },
   recipes: { model: Recipe as never },
-  leads: { model: Lead as never, search: ["name", "mobile"] },
+  leads: { model: Lead as never, search: ["name", "mobile", "email", "company", "product", "ownerName", "source"] },
   accounts: { model: Account as never, search: ["name"], softDelete: true },
   "stock-transfers": { model: StockTransfer as never, sort: "-transferDate" },
   "stock-adjustments": { model: StockAdjustment as never, sort: "-adjustmentDate" },
