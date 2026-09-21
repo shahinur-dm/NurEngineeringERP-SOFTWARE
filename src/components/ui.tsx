@@ -91,10 +91,22 @@ export function KpiCard({
   );
 }
 
-export function EmptyState({ message }: { message: string }) {
+export function EmptyState({
+  message,
+  title,
+  description,
+  action,
+}: {
+  message?: string;
+  title?: string;
+  description?: string;
+  action?: React.ReactNode;
+}) {
   return (
-    <div className="rounded-xl border border-dashed border-line bg-[#fafbfc] px-6 py-14 text-center text-[0.95rem] text-muted">
-      {message}
+    <div className="rounded-2xl border border-dashed border-[#d9e3ef] bg-white px-6 py-14 text-center">
+      <p className="text-base font-semibold text-slate-800">{title || message}</p>
+      {description ? <p className="mx-auto mt-1 max-w-md text-sm text-slate-500">{description}</p> : null}
+      {action ? <div className="mt-4 flex justify-center">{action}</div> : null}
     </div>
   );
 }

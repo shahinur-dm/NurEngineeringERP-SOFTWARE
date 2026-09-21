@@ -509,7 +509,11 @@ const LeadSchema = new Schema(
     assignedTo: { type: Schema.Types.ObjectId, ref: "User" },
     notes: String,
     nextFollowUp: Date,
-    status: { type: String, enum: ["open", "won", "lost"], default: "open" },
+    status: {
+      type: String,
+      enum: ["open", "new", "contacted", "qualified", "unqualified", "won", "lost"],
+      default: "open",
+    },
     company: String,
     product: String,
     ownerName: String,
@@ -527,6 +531,11 @@ const CrmFollowUpSchema = new Schema(
     scheduledAt: { type: Date, required: true },
     status: { type: String, default: "scheduled" },
     notes: String,
+    campaignId: String,
+    campaignName: String,
+    ownerName: String,
+    company: String,
+    phone: String,
     conversations: [
       {
         at: { type: Date, default: Date.now },
@@ -547,6 +556,17 @@ const CrmClientSchema = new Schema(
     leadId: { type: Schema.Types.ObjectId, ref: "Lead" },
     notes: String,
     status: { type: String, default: "active" },
+    campaignId: String,
+    campaignName: String,
+    dealId: String,
+    source: String,
+    ownerName: String,
+    photoUrl: String,
+    website: String,
+    address: String,
+    city: String,
+    country: String,
+    passwordHash: String,
   },
   { timestamps: true },
 );
@@ -561,6 +581,13 @@ const CrmDealSchema = new Schema(
     leadId: String,
     leadName: String,
     notes: String,
+    campaignId: String,
+    campaignName: String,
+    ownerName: String,
+    company: String,
+    phone: String,
+    email: String,
+    expectedClose: Date,
   },
   { timestamps: true },
 );
@@ -573,6 +600,10 @@ const CrmCampaignSchema = new Schema(
     startsAt: Date,
     endsAt: Date,
     notes: String,
+    description: String,
+    budget: Number,
+    audience: String,
+    ownerName: String,
   },
   { timestamps: true },
 );
@@ -912,6 +943,28 @@ export const ActivityLog = models.ActivityLog || model("ActivityLog", ActivityLo
 try {
   for (const field of ["company", "product", "ownerName", "rating"] as const) {
     if (!Lead.schema.path(field)) Lead.schema.add({ [field]: String });
+  }
+  if (!Lead.schema.path("value")) Lead.schema.add({ value: Number });
+  for (const field of ["campaignId", "campaignName"] as const) {
+    if (!Lead.schema.path(field)) Lead.schema.add({ [field]: String });
+  }
+  for (const field of ["campaignId", "campaignName", "ownerName", "company", "phone", "email"] as const) {
+    if (!CrmDeal.schema.path(field)) CrmDeal.schema.add({ [field]: String });
+  }
+  if (!CrmDeal.schema.path("expectedClose")) CrmDeal.schema.add({ expectedClose: Date });
+  for (const field of ["description", "audience", "ownerName"] as const) {
+    if (!CrmCampaign.schema.path(field)) CrmCampaign.schema.add({ [field]: String });
+  }
+  if (!CrmCampaign.schema.path("budget")) CrmCampaign.schema.add({ budget: Number });
+  for (const field of ["campaignId", "campaignName", "dealId", "source", "ownerName", "photoUrl", "website", "address", "city", "country", "passwordHash"] as const) {
+    if (!CrmClient.schema.path(field)) CrmClient.schema.add({ [field]: String });
+  }
+  for (const field of ["campaignId", "campaignName", "ownerName", "company", "phone"] as const) {
+    if (!CrmFollowUp.schema.path(field)) CrmFollowUp.schema.add({ [field]: String });
+  }
+  const leadStatus = Lead.schema.path("status") as { enumValues?: string[] } | undefined;
+  if (leadStatus) {
+    leadStatus.enumValues = ["open", "new", "contacted", "qualified", "unqualified", "won", "lost"];
   }
   if (!User.schema.path("avatarUrl")) {
     User.schema.add({ avatarUrl: String });

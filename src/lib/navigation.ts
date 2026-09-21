@@ -11,7 +11,6 @@ import {
   Landmark,
   BarChart3,
   Settings,
-  UserCircle,
   Wrench,
   FileText,
   List,
@@ -172,10 +171,7 @@ export const NAV_TREE: NavItem[] = [
       { href: "/settings", labelKey: "nav.businessSettings", moduleId: "settings-business" },
       { href: "/settings/locations", labelKey: "nav.locations", moduleId: "settings-locations" },
       { href: "/settings/invoices", labelKey: "nav.invoiceSettings", moduleId: "settings-invoices" },
-      { href: "/settings/barcodes", labelKey: "nav.barcodeSettings", moduleId: "settings-barcodes" },
-      { href: "/settings/printers", labelKey: "nav.printers", moduleId: "settings-printers" },
-      { href: "/settings/tax", labelKey: "nav.taxRates", moduleId: "settings-tax" },
-      { href: "/settings/subscription", labelKey: "nav.subscription", moduleId: "settings-subscription" },
+      { href: "/profile", labelKey: "nav.profile", moduleId: "profile" },
     ],
   },
   {
@@ -195,7 +191,6 @@ export const NAV_TREE: NavItem[] = [
       { href: "/crm/campaigns", labelKey: "crm.campaigns", moduleId: "crm-campaigns" },
     ],
   },
-  { href: "/profile", labelKey: "nav.profile", icon: UserCircle, moduleId: "profile" },
 ];
 
 export function flattenNav(items: NavItem[] = NAV_TREE): { href: string; moduleId?: string }[] {

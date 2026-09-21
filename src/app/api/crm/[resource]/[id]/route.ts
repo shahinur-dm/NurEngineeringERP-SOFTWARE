@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db";
 import { readSession } from "@/lib/auth";
 import { canDelete, canWrite } from "@/lib/rbac";
 import { CRM_RESOURCES, isCrmResource } from "@/lib/crm-resources";
+import { publicClient, prepareClientBody } from "@/lib/crm-client";
 
 type Ctx = { params: Promise<{ resource: string; id: string }> };
 
@@ -14,7 +15,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
   await connectDB();
   const doc = await CRM_RESOURCES[resource].model.findById(id).lean();
   if (!doc) return NextResponse.json({ error: "not_found" }, { status: 404 });
-  return NextResponse.json({ data: doc });
+  return NextResponse.json({ data: resource === "clients" ? publicClient(doc) : doc });
 }
 
 export async function PUT(req: NextRequest, ctx: Ctx) {
@@ -25,6 +26,16 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   if (!isCrmResource(resource)) return NextResponse.json({ error: "not_found" }, { status: 404 });
   const body = await req.json();
   await connectDB();
+  if (resource === "clients") {
+    const prepared = await prepareClientBody(body, { isUpdate: true });
+    if ("error" in prepared) {
+      return NextResponse.json({ error: prepared.error, field: prepared.field }, { status: 400 });
+    }
+    delete prepared.body._id;
+    const doc = await CRM_RESOURCES.clients.model.findByIdAndUpdate(id, prepared.body, { new: true });
+    if (!doc) return NextResponse.json({ error: "not_found" }, { status: 404 });
+    return NextResponse.json({ data: publicClient(doc) });
+  }
   const update: Record<string, unknown> = { ...body };
   delete update._id;
   if (resource === "followups" && typeof body.conversation === "string" && body.conversation.trim()) {

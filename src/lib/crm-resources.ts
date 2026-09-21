@@ -3,7 +3,7 @@ import { Lead, CrmFollowUp, CrmClient, CrmDeal, CrmCampaign } from "@/models";
 export const CRM_RESOURCES = {
   leads: {
     model: Lead,
-    search: ["name", "mobile", "email", "company", "product", "ownerName", "source"],
+    search: ["name", "mobile", "email", "company", "product", "ownerName", "source", "campaignName", "notes"],
     required: ["name"],
   },
   followups: {
@@ -13,12 +13,12 @@ export const CRM_RESOURCES = {
   },
   clients: {
     model: CrmClient,
-    search: ["name", "mobile", "email", "company"],
+    search: ["name", "mobile", "email", "company", "city", "address", "website"],
     required: ["name"],
   },
   deals: {
     model: CrmDeal,
-    search: ["title", "clientName", "leadName", "stage"],
+    search: ["title", "clientName", "leadName", "stage", "campaignName", "company"],
     required: ["title"],
   },
   campaigns: {
