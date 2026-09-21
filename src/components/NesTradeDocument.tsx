@@ -132,7 +132,7 @@ export function NesTradeDocument({
   const qtyTotal = items.reduce((a, i) => a + Number(i.qty || 0), 0);
   const wechat = wechatId(business?.phone);
   const signName = englishName(sale.soldByName);
-  const ITEMS_PER_PAGE = 10;
+  const ITEMS_PER_PAGE = 999;
   const itemPages: TradeItem[][] = [];
   for (let i = 0; i < items.length; i += ITEMS_PER_PAGE) {
     itemPages.push(items.slice(i, i + ITEMS_PER_PAGE));

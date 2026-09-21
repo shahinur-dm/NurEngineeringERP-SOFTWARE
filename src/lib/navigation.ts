@@ -74,10 +74,8 @@ export const NAV_TREE: NavItem[] = [
       { href: "/products", labelKey: "nav.listProducts", moduleId: "products" },
       { href: "/products/price", labelKey: "nav.updatePrice", moduleId: "products-price" },
       { href: "/products/labels", labelKey: "nav.printLabels", moduleId: "products-labels" },
-      { href: "/products/variations", labelKey: "nav.variations", moduleId: "variations" },
       { href: "/products/import", labelKey: "nav.importProducts", moduleId: "products-import" },
       { href: "/products/opening-stock", labelKey: "nav.openingStock", moduleId: "opening-stock" },
-      { href: "/products/price-groups", labelKey: "nav.priceGroups", moduleId: "price-groups" },
       { href: "/products/units", labelKey: "nav.units", moduleId: "units" },
       { href: "/products/categories", labelKey: "nav.categories", moduleId: "categories" },
       { href: "/products/brands", labelKey: "nav.brands", moduleId: "brands" },
@@ -88,7 +86,6 @@ export const NAV_TREE: NavItem[] = [
     labelKey: "nav.purchases",
     icon: Truck,
     children: [
-      { href: "/purchases/requisition", labelKey: "nav.purchaseRequisition", moduleId: "purchase-requisition" },
       { href: "/purchases", labelKey: "nav.listPurchases", moduleId: "purchases" },
       { href: "/purchases/add", labelKey: "nav.addPurchase", moduleId: "purchases-add" },
       { href: "/purchases/returns", labelKey: "nav.purchaseReturns", moduleId: "purchase-returns" },

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import { readSession } from "@/lib/auth";
 import { Sale, Business, Location, Shipment } from "@/models";
-import { paymentStatusFromAmounts } from "@/lib/sale-finance";
+import { calcDueAmount, paymentStatusFromAmounts, roundMoney } from "@/lib/sale-finance";
 import { nextQuotationNo, nextReferenceNo } from "@/lib/doc-numbers";
 import { resolveDocumentSubject } from "@/lib/document-subject";
 
@@ -52,7 +52,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   const { id } = await ctx.params;
   await connectDB();
   const body = await req.json();
-  const existing = await Sale.findById(id).select("status").lean();
+  const existing = await Sale.findById(id).lean();
   if (!existing) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
   const $set: Record<string, unknown> = {};
@@ -97,6 +97,61 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
       if (body[key] !== undefined) $set[key] = Number(body[key] || 0);
     }
     if (body.saleDate !== undefined) $set.saleDate = new Date(body.saleDate);
+    if (body.customerId !== undefined) $set.customerId = body.customerId || undefined;
+    if (Array.isArray(body.items)) {
+      const items = body.items.map(
+        (it: {
+          productId?: string;
+          name?: string;
+          sku?: string;
+          unit?: string;
+          description?: string;
+          imageUrl?: string;
+          qty?: number;
+          bonusQty?: number;
+          unitPrice?: number;
+          discount?: number;
+          taxPercent?: number;
+        }) => {
+          const qty = Number(it.qty || 0);
+          const unitPrice = Number(it.unitPrice || 0);
+          const discount = Number(it.discount || 0);
+          const taxPercent = Number(it.taxPercent || 0);
+          const base = qty * unitPrice - discount;
+          const lineTotal = roundMoney(base + (base * taxPercent) / 100);
+          return {
+            productId: it.productId && /^[a-f0-9]{24}$/i.test(String(it.productId)) ? it.productId : undefined,
+            name: String(it.name || "").trim() || it.sku || "Item",
+            sku: it.sku,
+            unit: it.unit || "Pcs",
+            description: it.description != null ? String(it.description) : "",
+            imageUrl: it.imageUrl ? String(it.imageUrl) : "",
+            qty,
+            bonusQty: Number(it.bonusQty || 0),
+            unitPrice: roundMoney(unitPrice),
+            discount: roundMoney(discount),
+            taxPercent,
+            lineTotal,
+          };
+        },
+      );
+      $set.items = items;
+      const subtotal = roundMoney(items.reduce((a, i) => a + i.qty * i.unitPrice, 0));
+      const tax = body.tax !== undefined ? Number(body.tax || 0) : Number(existing.tax || 0);
+      const shipping =
+        body.shipping !== undefined ? Number(body.shipping || 0) : Number(existing.shipping || 0);
+      const discount =
+        body.discount !== undefined ? Number(body.discount || 0) : Number(existing.discount || 0);
+      const paidAmount =
+        body.paidAmount !== undefined ? Number(body.paidAmount || 0) : Number(existing.paidAmount || 0);
+      $set.subtotal = subtotal;
+      $set.discount = roundMoney(discount);
+      $set.tax = roundMoney(tax);
+      $set.shipping = roundMoney(shipping);
+      $set.grandTotal = roundMoney(Math.max(0, subtotal - discount + tax + shipping));
+      $set.paidAmount = roundMoney(paidAmount);
+      $set.dueAmount = calcDueAmount(Number($set.grandTotal), Number($set.paidAmount));
+    }
   }
 
   const updated = await Sale.findByIdAndUpdate(

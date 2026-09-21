@@ -277,7 +277,7 @@ export function Modal({
                 ? "w-full max-w-[560px]"
                 : "w-full max-w-[480px]",
           scrollBody
-            ? "flex max-h-[calc(100vh-1.5rem)] flex-col overflow-hidden"
+            ? "flex max-h-[calc(100vh-2rem)] flex-col overflow-hidden"
             : fit
               ? "overflow-visible"
               : "max-h-[min(90vh,720px)] overflow-auto",

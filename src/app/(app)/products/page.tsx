@@ -4,7 +4,7 @@ import { FormEvent, ReactNode, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { ChevronDown, ImageIcon, Pencil, Plus, Search, Trash2 } from "lucide-react";
-import { AlertBanner, EmptyState, Field, Modal, PageHeader, TableSkeleton } from "@/components/ui";
+import { AlertBanner, EmptyState, Field, Modal, TableSkeleton } from "@/components/ui";
 import { DateRangeExcelBar, downloadExcelResponse } from "@/components/DateRangeExcelBar";
 import { formatMoney } from "@/lib/utils";
 import { displaySupplierLabel } from "@/lib/supplier-label";
@@ -362,32 +362,32 @@ export default function ProductsPage() {
   }
 
   return (
-    <div className="[&>div:first-child]:mb-2 [&>div:first-child]:pb-2">
-      <PageHeader
-        title={t("products.title")}
-        subtitle={
-          locale === "en"
-            ? "Product list with linked supplier prices"
-            : "পণ্য তালিকা — লিংকড সরবরাহকারী মূল্যসহ"
-        }
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <DateRangeExcelBar
-              onExport={async (from, to) => {
-                const res = await fetch(`/api/exports/products?from=${from}&to=${to}`);
-                await downloadExcelResponse(res, `products_${from}_to_${to}.xlsx`);
-              }}
-            />
-            <Link href="/products/categories" className="gp-btn gp-btn-ghost">
-              {t("nav.categories")}
-            </Link>
-            <button type="button" className="gp-btn gp-btn-primary" onClick={openCreate}>
-              <Plus className="h-4 w-4" />
-              {t("products.add")}
-            </button>
-          </div>
-        }
-      />
+    <div>
+      <div className="mb-2 flex flex-nowrap items-center gap-2 overflow-x-auto border-b border-line pb-2">
+        <div className="min-w-0 shrink-0">
+          <h1 className="gp-display text-2xl font-bold tracking-tight text-[var(--gp-ink)]">
+            {t("products.title")}
+          </h1>
+          <p className="text-xs text-muted">
+            {locale === "en"
+              ? "Product list with linked supplier prices"
+              : "পণ্য তালিকা — লিংকড সরবরাহকারী মূল্যসহ"}
+          </p>
+        </div>
+        <DateRangeExcelBar
+          onExport={async (from, to) => {
+            const res = await fetch(`/api/exports/products?from=${from}&to=${to}`);
+            await downloadExcelResponse(res, `products_${from}_to_${to}.xlsx`);
+          }}
+        />
+        <Link href="/products/categories" className="gp-btn gp-btn-ghost h-8 shrink-0 px-2.5 text-xs">
+          {t("nav.categories")}
+        </Link>
+        <button type="button" className="gp-btn gp-btn-primary h-8 shrink-0 px-2.5 text-xs" onClick={openCreate}>
+          <Plus className="h-4 w-4" />
+          {t("products.add")}
+        </button>
+      </div>
 
       {banner ? (
         <AlertBanner tone={banner.tone} message={banner.message} onClose={() => setBanner(null)} />

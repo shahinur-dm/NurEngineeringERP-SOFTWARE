@@ -334,7 +334,7 @@ export default function CrmClientsPage() {
         </div>
       ) : null}
 
-      <Modal open={open} title={editing ? "Edit Client" : "New Client"} onClose={() => !busy && setOpen(false)} fit>
+      <Modal open={open} title={editing ? "Edit Client" : "New Client"} onClose={() => !busy && setOpen(false)} fit scrollBody>
         <form className="space-y-4" onSubmit={onSubmit}>
           {formError ? <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{formError}</p> : null}
 

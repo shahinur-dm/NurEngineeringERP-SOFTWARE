@@ -36,26 +36,26 @@ export function DateRangeExcelBar({
   }
 
   return (
-    <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+    <div className="flex shrink-0 flex-nowrap items-center gap-1.5">
       <input
         type="date"
         aria-label={locale === "bn" ? "শুরুর তারিখ" : "From date"}
-        className="gp-input h-9 w-[9.75rem] min-w-0 px-2 text-sm"
+        className="gp-input h-8 !w-[9.25rem] !min-w-[9.25rem] !max-w-[9.25rem] shrink-0 px-1.5 text-xs"
         value={from}
         onChange={(e) => { setFrom(e.target.value); setError(""); }}
       />
       <input
         type="date"
         aria-label={locale === "bn" ? "শেষ তারিখ" : "To date"}
-        className="gp-input h-9 w-[9.75rem] min-w-0 px-2 text-sm"
+        className="gp-input h-8 !w-[9.25rem] !min-w-[9.25rem] !max-w-[9.25rem] shrink-0 px-1.5 text-xs"
         value={to}
         onChange={(e) => { setTo(e.target.value); setError(""); }}
       />
-      <button type="button" className="gp-btn gp-btn-ghost h-9 shrink-0 px-3 text-sm" disabled={busy} onClick={() => void exportRange()}>
+      <button type="button" className="gp-btn gp-btn-ghost h-8 shrink-0 px-2.5 text-xs" disabled={busy} onClick={() => void exportRange()}>
         <Download className="h-4 w-4" />
         {busy ? (locale === "bn" ? "Export..." : "Export...") : "Excel"}
       </button>
-      {error ? <span className="w-full text-xs font-semibold text-red-600 sm:w-auto">{error}</span> : null}
+      {error ? <span className="whitespace-nowrap text-xs font-semibold text-red-600">{error}</span> : null}
     </div>
   );
 }

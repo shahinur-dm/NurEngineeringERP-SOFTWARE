@@ -11,6 +11,19 @@ import { formatBDT, formatDateBD } from "@/lib/utils";
 
 const PAGE_SIZE = 20;
 
+type QuoteItem = {
+  productId?: string;
+  name: string;
+  sku: string;
+  description: string;
+  qty: number;
+  unitPrice: number;
+  discount: number;
+  taxPercent: number;
+  unit?: string;
+  imageUrl?: string;
+};
+
 type Quote = {
   _id: string;
   quotationNo?: string;
@@ -28,6 +41,8 @@ type Quote = {
   subject?: string;
   note?: string;
   terms?: string;
+  documentBody?: string;
+  items?: QuoteItem[];
   subtotal?: number;
   discount?: number;
   tax?: number;
@@ -49,7 +64,17 @@ export default function QuotationsPage() {
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [editing, setEditing] = useState<Quote | null>(null);
   const [editForm, setEditForm] = useState<Record<string, string>>({});
+  const [editItems, setEditItems] = useState<QuoteItem[]>([]);
   const [saving, setSaving] = useState(false);
+
+  const lineDisc = editItems.reduce((a, i) => a + Number(i.discount || 0), 0);
+  const calcSubtotal = editItems.reduce((a, i) => a + Number(i.qty || 0) * Number(i.unitPrice || 0), 0);
+  const orderDisc = Number(editForm.discount || 0);
+  const calcGrand = Math.max(
+    0,
+    calcSubtotal - lineDisc - orderDisc + Number(editForm.tax || 0) + Number(editForm.shipping || 0),
+  );
+  const calcDue = Math.max(0, calcGrand - Number(editForm.paidAmount || 0));
 
   async function load(nextPage = 1, search = q) {
     const qs = new URLSearchParams({
@@ -85,36 +110,56 @@ export default function QuotationsPage() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
 
-  function openEdit(quote: Quote) {
-    setEditing(quote);
+  async function openEdit(quote: Quote) {
+    const res = await fetch(`/api/sales/${quote._id}`);
+    const json = await res.json();
+    const full = (json.data || quote) as Quote;
+    const items = (full.items || []).map((it) => ({
+      productId: it.productId,
+      name: String(it.name || ""),
+      sku: String(it.sku || ""),
+      description: String(it.description || ""),
+      qty: Number(it.qty || 0),
+      unitPrice: Number(it.unitPrice || 0),
+      discount: Number(it.discount || 0),
+      taxPercent: Number(it.taxPercent || 0),
+      unit: it.unit,
+      imageUrl: it.imageUrl,
+    }));
+    const line = items.reduce((a, i) => a + i.discount, 0);
+    setEditing(full);
+    setEditItems(items);
     setEditForm({
-      quotationNo: quote.quotationNo || "",
-      referenceNo: quote.referenceNo || "",
-      customerName: quote.customerName || "",
-      customerMobile: quote.customerMobile || "",
-      customerAddress: quote.customerAddress || "",
-      customerEmail: quote.customerEmail || "",
-      pfNo: quote.pfNo || quote.poNo || "",
-      challanNo: quote.challanNo || "",
-      binNo: quote.binNo || "",
-      subject: quote.subject || "",
-      saleDate: quote.saleDate ? quote.saleDate.slice(0, 10) : "",
-      subtotal: String(quote.subtotal || 0),
-      discount: String(quote.discount || 0),
-      tax: String(quote.tax || 0),
-      shipping: String(quote.shipping || 0),
-      grandTotal: String(quote.grandTotal || 0),
-      paidAmount: String(quote.paidAmount || 0),
-      dueAmount: String(quote.dueAmount || 0),
-      note: quote.note || "",
-      terms: quote.terms || "",
+      quotationNo: full.quotationNo || "",
+      referenceNo: full.referenceNo || "",
+      customerName: full.customerName || "",
+      customerMobile: full.customerMobile || "",
+      customerAddress: full.customerAddress || "",
+      customerEmail: full.customerEmail || "",
+      pfNo: full.pfNo || full.poNo || "",
+      challanNo: full.challanNo || "",
+      binNo: full.binNo || "",
+      subject: full.subject || "",
+      saleDate: full.saleDate ? String(full.saleDate).slice(0, 10) : "",
+      discount: String(Math.max(0, Number(full.discount || 0) - line)),
+      tax: String(full.tax || 0),
+      shipping: String(full.shipping || 0),
+      paidAmount: String(full.paidAmount || 0),
+      note: full.note || "",
+      terms: full.terms || "",
+      documentBody: full.documentBody || "",
     });
+  }
+
+  function updateEditItem(index: number, patch: Partial<QuoteItem>) {
+    setEditItems((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
   }
 
   async function saveEdit() {
     if (!editing) return;
     setSaving(true);
     try {
+      const storedDiscount = lineDisc + orderDisc;
       const res = await fetch(`/api/sales/${editing._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -130,15 +175,25 @@ export default function QuotationsPage() {
           binNo: editForm.binNo,
           subject: editForm.subject,
           saleDate: editForm.saleDate,
-          subtotal: Number(editForm.subtotal || 0),
-          discount: Number(editForm.discount || 0),
+          discount: storedDiscount,
           tax: Number(editForm.tax || 0),
           shipping: Number(editForm.shipping || 0),
-          grandTotal: Number(editForm.grandTotal || 0),
           paidAmount: Number(editForm.paidAmount || 0),
-          dueAmount: Number(editForm.dueAmount || 0),
           note: editForm.note,
           terms: editForm.terms,
+          documentBody: editForm.documentBody,
+          items: editItems.map((it) => ({
+            productId: it.productId,
+            name: it.name,
+            sku: it.sku,
+            unit: it.unit || "Pcs",
+            description: it.description,
+            imageUrl: it.imageUrl || "",
+            qty: it.qty,
+            unitPrice: it.unitPrice,
+            discount: it.discount,
+            taxPercent: it.taxPercent,
+          })),
         }),
       });
       if (!res.ok) throw new Error("update_failed");
@@ -151,18 +206,17 @@ export default function QuotationsPage() {
 
   return (
     <div>
-      <div className="mb-2 flex flex-col gap-2 border-b border-line pb-2 sm:flex-row sm:items-center">
-        <h1 className="gp-display text-2xl font-bold tracking-tight text-[var(--gp-ink)]">
+      <div className="mb-2 flex flex-nowrap items-center gap-2 overflow-x-auto border-b border-line pb-2">
+        <h1 className="gp-display shrink-0 text-2xl font-bold tracking-tight text-[var(--gp-ink)]">
           {t("nav.listQuotations")}
         </h1>
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-          <DateRangeExcelBar
+        <DateRangeExcelBar
             onExport={async (from, to) => {
               const res = await fetch(`/api/exports/quotations?from=${from}&to=${to}`);
               await downloadExcelResponse(res, `quotations_${from}_to_${to}.xlsx`);
             }}
           />
-          <form className="flex min-w-0 flex-1 gap-2 sm:ml-auto sm:max-w-xl" onSubmit={(e) => { e.preventDefault(); void load(1); }}>
+          <form className="flex min-w-0 flex-1 gap-2" onSubmit={(e) => { e.preventDefault(); void load(1); }}>
           <div className="relative min-w-0 flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
             <input
@@ -181,7 +235,6 @@ export default function QuotationsPage() {
             {t("nav.addQuotation")}
           </Link>
         </form>
-        </div>
       </div>
 
       <div className="gp-table-wrap !overflow-x-auto lg:-ml-12 lg:w-[calc(100%+3rem)]">
@@ -235,7 +288,7 @@ export default function QuotationsPage() {
                   <td className="whitespace-nowrap font-bold">{formatBDT(s.grandTotal, locale)}</td>
                   <td>
                     <div className="flex flex-nowrap items-center gap-1">
-                      <button type="button" className="gp-btn gp-btn-ghost min-h-8 shrink-0 px-2 text-xs" onClick={() => openEdit(s)}>
+                      <button type="button" className="gp-btn gp-btn-ghost min-h-8 shrink-0 px-2 text-xs" onClick={() => void openEdit(s)}>
                         <Pencil className="h-3.5 w-3.5" />
                         <span className="sr-only">{t("common.edit")}</span>
                       </button>
@@ -305,13 +358,10 @@ export default function QuotationsPage() {
             ["challanNo", "Challan No", "text"],
             ["binNo", "BIN No", "text"],
             ["subject", "Subject", "text"],
-            ["subtotal", "Subtotal", "number"],
             ["discount", t("common.discount"), "number"],
             ["tax", t("common.tax"), "number"],
             ["shipping", "Shipping", "number"],
-            ["grandTotal", t("common.grandTotal"), "number"],
             ["paidAmount", "Paid Amount", "number"],
-            ["dueAmount", t("common.due"), "number"],
           ].map(([key, label, type]) => (
             <Field key={key} label={label}>
               <input
@@ -323,6 +373,86 @@ export default function QuotationsPage() {
               />
             </Field>
           ))}
+          <Field label="Subtotal">
+            <input className="gp-input bg-slate-50" readOnly value={formatBDT(calcSubtotal, locale)} />
+          </Field>
+          <Field label={t("common.grandTotal")}>
+            <input className="gp-input bg-slate-50" readOnly value={formatBDT(calcGrand, locale)} />
+          </Field>
+          <Field label={t("common.due")}>
+            <input className="gp-input bg-slate-50" readOnly value={formatBDT(calcDue, locale)} />
+          </Field>
+          <div className="sm:col-span-2 lg:col-span-3">
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-[0.8rem] font-semibold text-muted">Line items</p>
+              <button
+                type="button"
+                className="gp-btn gp-btn-ghost min-h-8 px-2 text-xs"
+                onClick={() =>
+                  setEditItems((rows) => [
+                    ...rows,
+                    { name: "", sku: "", description: "", qty: 1, unitPrice: 0, discount: 0, taxPercent: 0 },
+                  ])
+                }
+              >
+                Add item
+              </button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="gp-table gp-table-compact w-full min-w-[720px]">
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th>SKU</th>
+                    <th>Description</th>
+                    <th>Qty</th>
+                    <th>Unit Price</th>
+                    <th>Discount</th>
+                    <th>Tax %</th>
+                    <th>Line Total</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {editItems.map((it, idx) => {
+                    const lineTotal = Math.max(0, it.qty * it.unitPrice - it.discount);
+                    const taxed = lineTotal + (lineTotal * Number(it.taxPercent || 0)) / 100;
+                    return (
+                      <tr key={idx}>
+                        <td>
+                          <input className="gp-input min-w-28" value={it.name} onChange={(e) => updateEditItem(idx, { name: e.target.value })} />
+                        </td>
+                        <td>
+                          <input className="gp-input min-w-20" value={it.sku} onChange={(e) => updateEditItem(idx, { sku: e.target.value })} />
+                        </td>
+                        <td>
+                          <input className="gp-input min-w-36" value={it.description} onChange={(e) => updateEditItem(idx, { description: e.target.value })} />
+                        </td>
+                        <td>
+                          <input type="number" min={0} step="0.01" className="gp-input w-20" value={it.qty} onChange={(e) => updateEditItem(idx, { qty: Number(e.target.value) })} />
+                        </td>
+                        <td>
+                          <input type="number" min={0} step="0.01" className="gp-input w-24" value={it.unitPrice} onChange={(e) => updateEditItem(idx, { unitPrice: Number(e.target.value) })} />
+                        </td>
+                        <td>
+                          <input type="number" min={0} step="0.01" className="gp-input w-20" value={it.discount} onChange={(e) => updateEditItem(idx, { discount: Number(e.target.value) })} />
+                        </td>
+                        <td>
+                          <input type="number" min={0} step="0.01" className="gp-input w-16" value={it.taxPercent} onChange={(e) => updateEditItem(idx, { taxPercent: Number(e.target.value) })} />
+                        </td>
+                        <td className="whitespace-nowrap font-semibold">{formatBDT(taxed, locale)}</td>
+                        <td>
+                          <button type="button" className="gp-btn gp-btn-ghost px-2 text-xs" onClick={() => setEditItems((rows) => rows.filter((_, i) => i !== idx))}>
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
           <label className="block space-y-1 sm:col-span-2 lg:col-span-3">
             <span className="text-[0.8rem] font-semibold text-muted">{t("common.note")}</span>
             <textarea className="gp-input min-h-20 resize-y" value={editForm.note || ""} onChange={(e) => setEditForm((form) => ({ ...form, note: e.target.value }))} />
@@ -330,6 +460,10 @@ export default function QuotationsPage() {
           <label className="block space-y-1 sm:col-span-2 lg:col-span-3">
             <span className="text-[0.8rem] font-semibold text-muted">Terms &amp; Conditions</span>
             <textarea className="gp-input min-h-20 resize-y" value={editForm.terms || ""} onChange={(e) => setEditForm((form) => ({ ...form, terms: e.target.value }))} />
+          </label>
+          <label className="block space-y-1 sm:col-span-2 lg:col-span-3">
+            <span className="text-[0.8rem] font-semibold text-muted">Quotation Description</span>
+            <textarea className="gp-input min-h-20 resize-y" value={editForm.documentBody || ""} onChange={(e) => setEditForm((form) => ({ ...form, documentBody: e.target.value }))} />
           </label>
           <div className="flex justify-end gap-2 sm:col-span-2 lg:col-span-3">
             <button type="button" className="gp-btn gp-btn-ghost" onClick={() => setEditing(null)}>{t("common.cancel")}</button>

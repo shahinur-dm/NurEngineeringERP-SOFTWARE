@@ -63,6 +63,10 @@ function PosPageInner() {
   const [challanMenu, setChallanMenu] = useState(false);
   type ChallanHit = { _id: string; shipmentNo?: string; saleId?: string; customerName?: string; invoiceNo?: string; referenceNo?: string };
   const [challanHits, setChallanHits] = useState<ChallanHit[]>([]);
+  type QuoteHit = { _id: string; quotationNo?: string; pfNo?: string; poNo?: string; customerName?: string; referenceNo?: string };
+  const [quoteSearch, setQuoteSearch] = useState("");
+  const [quoteHits, setQuoteHits] = useState<QuoteHit[]>([]);
+  const [quoteMenu, setQuoteMenu] = useState(false);
   const [brandName, setBrandName] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [search, setSearch] = useState("");
@@ -207,6 +211,7 @@ function PosPageInner() {
     setNote(""); setDocumentBody(DEFAULT_DOCUMENT_BODY); setSavedTermQuery(""); setDiscountValue(0); setPayRows([payRow()]); setMessage("");
     setSearch(""); setBrandName(""); setCategoryId(""); setProductResultsOpen(false);
     quotationNumberPending.current = false; referenceNumberPending.current = false; reservedQuotationNo.current = "";
+    setQuoteSearch(""); setQuoteHits([]); setQuoteMenu(false);
   }
   async function ensureDocumentNumber(kind: "quotation" | "reference" | "challan") {
     if (isReturnEntry) return;
@@ -229,26 +234,91 @@ function PosPageInner() {
       pending.current = false;
     }
   }
+  function applyQuotation(quote: Record<string, unknown>) {
+    setSourceQuotationId(String(quote._id));
+    setQuotationNo(String(quote.quotationNo || ""));
+    setQuoteSearch(String(quote.quotationNo || quote.pfNo || ""));
+    setReferenceNo(String(quote.referenceNo || ""));
+    setCustomerId(String(quote.customerId || ""));
+    setCustomerName(String(quote.customerName || ""));
+    setCustomerQuery(String(quote.customerName || ""));
+    setCustomerMobile(String(quote.customerMobile || ""));
+    setCustomerAddress(String(quote.customerAddress || ""));
+    setCustomerEmail(String(quote.customerEmail || ""));
+    setAttention(String(quote.attention || ""));
+    setSaleDate(String(quote.saleDate || "").slice(0, 10) || today());
+    setNote(String(quote.terms || quote.note || ""));
+    setDocumentBody(quote.documentBody != null ? String(quote.documentBody) : DEFAULT_DOCUMENT_BODY);
+    setSavedTermQuery("");
+    const loaded = (Array.isArray(quote.items) ? quote.items : []).map((i: Record<string, unknown>, idx: number) => ({
+      _id: String(i.productId || `${quote._id}-${i.sku || idx}`),
+      name: String(i.name || ""),
+      sku: String(i.sku || ""),
+      sellPrice: Number(i.unitPrice || 0),
+      unit: String(i.unit || "Pcs"),
+      imageUrl: String(i.imageUrl || ""),
+      qty: Number(i.qty || 1),
+      bonusQty: Number(i.bonusQty || 0),
+      saleDescription: String(i.description || ""),
+      lineDiscount: Number(i.discount || 0),
+    }));
+    setCart(loaded);
+    setDiscountValue(Math.max(0, Number(quote.discount || 0) - loaded.reduce((s: number, i: CartItem) => s + i.lineDiscount, 0)));
+    setDiscountType("fixed");
+    const pays = Array.isArray(quote.payments) ? quote.payments : [];
+    setPayRows(
+      pays.length
+        ? pays.map((p: Record<string, unknown>) => ({
+            id: `${Date.now()}-${Math.random()}`,
+            method: String(p.method || "cash"),
+            amount: Number(p.amount || 0),
+          }))
+        : [payRow()],
+    );
+    reservedQuotationNo.current = String(quote.quotationNo || "");
+    setMessage(`Loaded quotation: ${quote.quotationNo}`);
+  }
+
   async function loadQuotation() {
     if (!quotationNo.trim()) return;
     try {
-      const json = await fetch(`/api/sales?quotationNo=${encodeURIComponent(quotationNo.trim())}&status=quotation&limit=1`).then((r) => r.json());
-      const quote = json.data?.[0];
-      if (!quote) return setMessage("Quotation not found");
-      setSourceQuotationId(String(quote._id)); setQuotationNo(quote.quotationNo || "");
-      setReferenceNo(quote.referenceNo || ""); setCustomerId(String(quote.customerId || ""));
-      setCustomerName(quote.customerName || ""); setCustomerQuery(quote.customerName || "");
-      setCustomerMobile(quote.customerMobile || ""); setCustomerAddress(quote.customerAddress || "");
-      setCustomerEmail(quote.customerEmail || ""); setAttention(quote.attention || ""); setSaleDate(String(quote.saleDate || "").slice(0, 10) || today());
-      setNote(quote.terms || quote.note || ""); setDocumentBody(quote.documentBody != null ? String(quote.documentBody) : DEFAULT_DOCUMENT_BODY); setSavedTermQuery("");
-      const loaded = (quote.items || []).map((i: Record<string, unknown>) => ({
-        _id: String(i.productId || `${quote._id}-${i.sku}`), name: String(i.name || ""),
-        sku: String(i.sku || ""), sellPrice: Number(i.unitPrice || 0), unit: String(i.unit || "Pcs"),
-        imageUrl: String(i.imageUrl || ""), qty: Number(i.qty || 1), bonusQty: Number(i.bonusQty || 0),
-        saleDescription: String(i.description || ""), lineDiscount: Number(i.discount || 0),
-      }));
-      setCart(loaded); setDiscountValue(Math.max(0, Number(quote.discount || 0) - loaded.reduce((s: number, i: CartItem) => s + i.lineDiscount, 0)));
-      setDiscountType("fixed"); setMessage(`Loaded quotation: ${quote.quotationNo}`);
+      const needle = quotationNo.trim();
+      const json = await fetch(
+        `/api/sales?status=quotation&limit=10&q=${encodeURIComponent(needle)}`,
+      ).then((r) => r.json());
+      const rows = (json.data || []) as Record<string, unknown>[];
+      const up = needle.toUpperCase();
+      const exact = rows.filter((r) =>
+        [r.quotationNo, r.pfNo, r.poNo].some((v) => String(v || "").toUpperCase() === up),
+      );
+      const quote = exact[0] || (rows.length === 1 ? rows[0] : null);
+      if (!quote) return setMessage(rows.length ? "Select the exact quotation" : "Quotation not found");
+      applyQuotation(quote);
+    } catch { setMessage(t("common.error")); }
+  }
+
+  async function searchQuotations(needle: string) {
+    const q = needle.trim();
+    if (!q) { setQuoteHits([]); return; }
+    try {
+      const json = await fetch(`/api/sales?status=quotation&limit=20&q=${encodeURIComponent(q)}`).then((r) => r.json());
+      const rows = (json.data || []) as QuoteHit[];
+      const up = q.toUpperCase();
+      const ranked = [...rows].sort((a, b) => {
+        const ax = [a.quotationNo, a.pfNo, a.poNo].some((v) => String(v || "").toUpperCase() === up) ? 0 : 1;
+        const bx = [b.quotationNo, b.pfNo, b.poNo].some((v) => String(v || "").toUpperCase() === up) ? 0 : 1;
+        return ax - bx;
+      });
+      setQuoteHits(ranked.slice(0, 8));
+      setQuoteMenu(true);
+    } catch { setQuoteHits([]); }
+  }
+
+  async function chooseQuotation(hit: QuoteHit) {
+    setQuoteMenu(false);
+    try {
+      const json = await fetch(`/api/sales/${hit._id}`).then((r) => r.json());
+      if (json.data) applyQuotation(json.data);
     } catch { setMessage(t("common.error")); }
   }
 
@@ -368,26 +438,29 @@ function PosPageInner() {
     if (!cart.length || !locationId) return setMessage("Location and order items are required");
     if (usePayments && paid > grandTotal + .009) return setMessage("Payment cannot exceed grand total");
     setBusy(true); setMessage("");
+    const payload = {
+      locationId, customerId: customerId || undefined,
+      customerName: customerName.trim() || "Walk-in Customer", customerMobile,
+      customerAddress, customerEmail, attention, saleDate, sourceQuotationId: status === "final" && !isChallanEntry ? sourceQuotationId || undefined : undefined,
+      status: isChallanEntry && status === "quotation" ? "final" : status,
+      quotationNo: isChallanEntry ? undefined : quotationNo,
+      challanNo: isChallanEntry ? quotationNo : undefined,
+      referenceNo, note, terms: note, documentBody, discount: totalDiscount, tax: 0, shipping: 0,
+      items: cart.map((i) => ({
+        productId: /^[a-f0-9]{24}$/i.test(String(i._id)) ? i._id : undefined, name: i.name, sku: i.sku, unit: i.unit || "Pcs", qty: i.qty,
+        bonusQty: i.bonusQty, unitPrice: i.sellPrice, discount: Math.min(i.lineDiscount, i.qty * i.sellPrice),
+        description: i.saleDescription, imageUrl: i.imageUrl || "",
+      })),
+      payments: (status === "final" || isChallanEntry) && usePayments
+        ? payRows.filter((p) => p.amount > 0).map(({ method, amount }) => ({ method, amount }))
+        : [],
+    };
     try {
-      const res = await fetch("/api/sales", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          locationId, customerId: customerId || undefined,
-          customerName: customerName.trim() || "Walk-in Customer", customerMobile,
-          customerAddress, customerEmail, attention, saleDate, sourceQuotationId: status === "final" && !isChallanEntry ? sourceQuotationId || undefined : undefined,
-          status: isChallanEntry && status === "quotation" ? "final" : status,
-          quotationNo: isChallanEntry ? undefined : quotationNo,
-          challanNo: isChallanEntry ? quotationNo : undefined,
-          referenceNo, note, terms: note, documentBody, discount: totalDiscount, tax: 0, shipping: 0,
-          items: cart.map((i) => ({
-            productId: i._id, name: i.name, sku: i.sku, unit: i.unit || "Pcs", qty: i.qty,
-            bonusQty: i.bonusQty, unitPrice: i.sellPrice, discount: Math.min(i.lineDiscount, i.qty * i.sellPrice),
-            description: i.saleDescription, imageUrl: i.imageUrl || "",
-          })),
-          payments: (status === "final" || isChallanEntry) && usePayments
-            ? payRows.filter((p) => p.amount > 0).map(({ method, amount }) => ({ method, amount }))
-            : [],
-        }),
+      const updatingQuote = status === "quotation" && !isChallanEntry && !isBillEntry && !!sourceQuotationId;
+      const res = await fetch(updatingQuote ? `/api/sales/${sourceQuotationId}` : "/api/sales", {
+        method: updatingQuote ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Save failed");
@@ -446,6 +519,39 @@ function PosPageInner() {
                       >
                         {hit.shipmentNo}
                         <span className="ml-2 text-muted">{hit.customerName}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : !isChallanEntry && !isBillEntry ? (
+              <div className="relative min-w-0 flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+                <input
+                  className="gp-input gp-input-icon-left h-9 text-sm font-normal"
+                  value={quoteSearch}
+                  placeholder="Search Quotation / PI No"
+                  onFocus={() => { if (quoteHits.length) setQuoteMenu(true); }}
+                  onChange={(e) => { const value = e.target.value; setQuoteSearch(value); void searchQuotations(value); }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && quoteHits[0]) {
+                      e.preventDefault();
+                      void chooseQuotation(quoteHits[0]);
+                    }
+                  }}
+                />
+                {quoteMenu && quoteHits.length > 0 && (
+                  <div className="absolute z-30 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-line bg-white p-1 text-left text-sm font-normal shadow-xl">
+                    {quoteHits.map((hit) => (
+                      <button
+                        key={hit._id}
+                        type="button"
+                        onClick={() => void chooseQuotation(hit)}
+                        className="block w-full rounded-md px-3 py-2 text-left hover:bg-[var(--gp-primary-soft)]"
+                      >
+                        {hit.quotationNo || hit.pfNo || hit.poNo}
+                        <span className="ml-2 text-muted">{hit.customerName}</span>
+                        {hit.referenceNo ? <span className="ml-2 text-muted">{hit.referenceNo}</span> : null}
                       </button>
                     ))}
                   </div>
