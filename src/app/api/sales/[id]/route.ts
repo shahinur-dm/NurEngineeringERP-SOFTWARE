@@ -136,7 +136,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
         },
       );
       $set.items = items;
-      const subtotal = roundMoney(items.reduce((a, i) => a + i.qty * i.unitPrice, 0));
+      const subtotal = roundMoney(items.reduce((a: number, i: { qty: number; unitPrice: number }) => a + i.qty * i.unitPrice, 0));
       const tax = body.tax !== undefined ? Number(body.tax || 0) : Number(existing.tax || 0);
       const shipping =
         body.shipping !== undefined ? Number(body.shipping || 0) : Number(existing.shipping || 0);
