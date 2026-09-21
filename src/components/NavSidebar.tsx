@@ -20,6 +20,7 @@ function navLabel(t: ReturnType<typeof useTranslations>, locale: string, key: st
   if (key === "nav.challanList") return locale === "bn" ? "সব চালান" : "All Challan";
   if (key === "nav.sellReturnForm") return locale === "bn" ? "সেল রিটার্ন" : "Sell Return";
   if (key === "nav.sellReturnList") return locale === "bn" ? "সেল রিটার্ন তালিকা" : "Sell Return List";
+  if (key === "nav.accountsDashboard") return locale === "bn" ? "হিসাব ড্যাশবোর্ড" : "Accounts Dashboard";
   if (key === "nav.customerPayment") return locale === "bn" ? "কাস্টমার পেমেন্ট" : "Customer Payment";
   if (key === "nav.supplierPayment") return locale === "bn" ? "সাপ্লায়ার পেমেন্ট" : "Supplier Payment";
   if (key === "nav.allLeads") return locale === "bn" ? "সব লিড" : "All Leads";

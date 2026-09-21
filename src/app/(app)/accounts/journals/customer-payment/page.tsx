@@ -1,7 +1,7 @@
 "use client";
 
-import { JournalPaymentPage } from "../JournalPaymentPage";
+import { PartyPaymentPage } from "../../PartyPaymentPage";
 
 export default function CustomerPaymentPage() {
-  return <JournalPaymentPage kind="customer" />;
+  return <PartyPaymentPage kind="customer" />;
 }

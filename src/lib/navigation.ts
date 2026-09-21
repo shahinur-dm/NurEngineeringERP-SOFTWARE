@@ -125,17 +125,10 @@ export const NAV_TREE: NavItem[] = [
     labelKey: "nav.accounts",
     icon: Landmark,
     children: [
-      { href: "/accounts", labelKey: "nav.listAccounts", moduleId: "accounts" },
-      { href: "/accounts/chart", labelKey: "nav.chartOfAccounts", moduleId: "chart-of-accounts" },
-      {
-        href: "/accounts/journals",
-        labelKey: "nav.journals",
-        moduleId: "journals",
-        children: [
-          { href: "/accounts/journals/customer-payment", labelKey: "nav.customerPayment", moduleId: "journals" },
-          { href: "/accounts/journals/supplier-payment", labelKey: "nav.supplierPayment", moduleId: "journals" },
-        ],
-      },
+      { href: "/accounts", labelKey: "nav.accountsDashboard", moduleId: "accounts" },
+      { href: "/accounts/list", labelKey: "nav.listAccounts", moduleId: "accounts" },
+      { href: "/accounts/customer-payments", labelKey: "nav.customerPayment", moduleId: "journals" },
+      { href: "/accounts/supplier-payments", labelKey: "nav.supplierPayment", moduleId: "journals" },
       { href: "/accounts/report", labelKey: "nav.accountReport", moduleId: "account-report" },
     ],
   },
