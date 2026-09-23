@@ -25,7 +25,16 @@ type Customer = {
 type Named = { _id: string; name: string; nameBn?: string };
 type CartItem = Product & {
   qty: number; bonusQty: number; saleDescription: string; lineDiscount: number;
+  lineDiscountType?: "percentage" | "fixed";
 };
+
+function cartLineDiscount(i: CartItem) {
+  const base = i.qty * i.sellPrice;
+  const raw = i.lineDiscountType === "percentage"
+    ? (base * Math.min(100, Number(i.lineDiscount) || 0)) / 100
+    : Number(i.lineDiscount) || 0;
+  return Math.min(base, Math.max(0, raw));
+}
 type PayRow = { id: string; method: string; amount: number };
 
 const PAGE_SIZE = 20;
@@ -159,7 +168,7 @@ function PosPageInner() {
   ).slice(0, 8);
 
   const subtotal = cart.reduce((sum, i) => sum + i.qty * i.sellPrice, 0);
-  const lineDiscount = cart.reduce((sum, i) => sum + Math.min(i.lineDiscount, i.qty * i.sellPrice), 0);
+  const lineDiscount = cart.reduce((sum, i) => sum + cartLineDiscount(i), 0);
   const discountBase = Math.max(0, subtotal - lineDiscount);
   const orderDiscount = Math.min(
     discountBase,
@@ -187,7 +196,7 @@ function PosPageInner() {
       }
       return found
         ? old.map((x) => x._id === p._id ? { ...x, qty: x.qty + 1 } : x)
-        : [...old, { ...p, qty: 1, bonusQty: 0, saleDescription: p.description || "", lineDiscount: 0 }];
+        : [...old, { ...p, qty: 1, bonusQty: 0, saleDescription: p.description || "", lineDiscount: 0, lineDiscountType: "fixed" }];
     });
     setProductResultsOpen(false);
   }
@@ -261,9 +270,10 @@ function PosPageInner() {
       bonusQty: Number(i.bonusQty || 0),
       saleDescription: String(i.description || ""),
       lineDiscount: Number(i.discount || 0),
+      lineDiscountType: "fixed" as const,
     }));
     setCart(loaded);
-    setDiscountValue(Math.max(0, Number(quote.discount || 0) - loaded.reduce((s: number, i: CartItem) => s + i.lineDiscount, 0)));
+    setDiscountValue(Math.max(0, Number(quote.discount || 0) - loaded.reduce((s: number, i: CartItem) => s + cartLineDiscount(i), 0)));
     setDiscountType("fixed");
     const pays = Array.isArray(quote.payments) ? quote.payments : [];
     setPayRows(
@@ -347,10 +357,11 @@ function PosPageInner() {
       bonusQty: Number(i.bonusQty || 0),
       saleDescription: String(i.description || ""),
       lineDiscount: Number(i.discount || 0),
+      lineDiscountType: "fixed" as const,
       locationQty: Number(i.qty || 0) + 99999,
     }));
     setCart(loaded);
-    setDiscountValue(Math.max(0, Number(sale.discount || 0) - loaded.reduce((s, i) => s + i.lineDiscount, 0)));
+    setDiscountValue(Math.max(0, Number(sale.discount || 0) - loaded.reduce((s, i) => s + cartLineDiscount(i), 0)));
     setDiscountType("fixed");
     const pays = Array.isArray(sale.payments) ? sale.payments : [];
     setPayRows(pays.length
@@ -422,8 +433,8 @@ function PosPageInner() {
             description: i.saleDescription,
             qty: i.qty,
             unitPrice: i.sellPrice,
-            discount: Math.min(i.lineDiscount, i.qty * i.sellPrice),
-            lineTotal: Math.max(0, i.qty * i.sellPrice - i.lineDiscount),
+            discount: cartLineDiscount(i),
+            lineTotal: Math.max(0, i.qty * i.sellPrice - cartLineDiscount(i)),
           })),
         }),
       });
@@ -448,7 +459,7 @@ function PosPageInner() {
       referenceNo, note, terms: note, documentBody, discount: totalDiscount, tax: 0, shipping: 0,
       items: cart.map((i) => ({
         productId: /^[a-f0-9]{24}$/i.test(String(i._id)) ? i._id : undefined, name: i.name, sku: i.sku, unit: i.unit || "Pcs", qty: i.qty,
-        bonusQty: i.bonusQty, unitPrice: i.sellPrice, discount: Math.min(i.lineDiscount, i.qty * i.sellPrice),
+        bonusQty: i.bonusQty, unitPrice: i.sellPrice, discount: cartLineDiscount(i),
         description: i.saleDescription, imageUrl: i.imageUrl || "",
       })),
       payments: (status === "final" || isChallanEntry) && usePayments
@@ -580,7 +591,7 @@ function PosPageInner() {
               </Field>
               <Field label="Date" className="flex min-w-0 flex-row items-center gap-1.5 space-y-0 [&>span]:shrink-0 [&>span]:whitespace-nowrap"><div className="relative min-w-0 flex-1"><CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" /><input type="date" className="gp-input gp-input-icon-left" value={saleDate} onChange={(e) => setSaleDate(e.target.value)} /></div></Field>
               <Field label={isReturnEntry || isChallanEntry ? "Challan No" : "Quotation/PI No"} className="flex min-w-0 flex-row items-center gap-1.5 space-y-0 [&>span]:shrink-0 [&>span]:whitespace-nowrap"><input className="gp-input min-w-0 flex-1" value={quotationNo} onFocus={() => { if (!isReturnEntry) void ensureDocumentNumber(isChallanEntry ? "challan" : "quotation"); }} onChange={(e) => setQuotationNo(e.target.value.toUpperCase())} onKeyDown={(e) => { if (!isChallanEntry && !isReturnEntry && e.key === "Enter" && quotationNo.trim() && quotationNo !== reservedQuotationNo.current) void loadQuotation(); }} placeholder={isReturnEntry ? "From selected challan" : "Auto-generated on focus"} /></Field>
-              <Field label="REF No" className="flex min-w-0 flex-row items-center gap-1.5 space-y-0 [&>span]:shrink-0 [&>span]:whitespace-nowrap"><input className="gp-input min-w-0 flex-1 bg-slate-50" value={referenceNo} onFocus={() => { if (!isReturnEntry) void ensureDocumentNumber("reference"); }} readOnly={!isReturnEntry} placeholder={isReturnEntry ? "From selected challan" : "Auto-generated on focus"} /></Field>
+              <Field label="REF No" className="flex min-w-0 flex-row items-center gap-1.5 space-y-0 [&>span]:shrink-0 [&>span]:whitespace-nowrap"><input className="gp-input min-w-0 flex-1" value={referenceNo} onFocus={() => { if (!isReturnEntry) void ensureDocumentNumber("reference"); }} onChange={(e) => setReferenceNo(e.target.value)} placeholder={isReturnEntry ? "From selected challan" : "Auto-generated on focus"} /></Field>
             </div>
             <div className="mt-0.5 grid grid-cols-1 items-center gap-x-2 gap-y-1 md:grid-cols-2 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(11.5rem,0.72fr)]">
               <Field label="Address" className="flex min-w-0 flex-row items-center gap-1.5 space-y-0 [&>span]:shrink-0 [&>span]:whitespace-nowrap"><div className="relative min-w-0 flex-1"><MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" /><input className="gp-input gp-input-icon-left" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} placeholder="Address" /></div></Field>
@@ -652,7 +663,7 @@ function PosPageInner() {
           </section>
 
           {cart.length > 0 && <div className="overflow-x-auto rounded-xl border border-line">
-            <table className="gp-table pos-quote-items">
+            <table className="gp-table pos-quote-items pos-quote-line-widths">
               <thead>
                 <tr>
                   <th>SL</th>
@@ -666,16 +677,22 @@ function PosPageInner() {
                 </tr>
               </thead>
               <tbody>{cart.map((i, index) => {
-                const lineTotal = Math.max(0, i.qty * i.sellPrice - i.lineDiscount);
+                const lineTotal = Math.max(0, i.qty * i.sellPrice - cartLineDiscount(i));
                 return (
                   <tr key={i._id}>
                     <td>{index + 1}</td>
                     <td className="min-w-0">
-                      <input className="gp-input w-full min-w-0" value={i.name} onChange={(e) => updateItem(i._id, { name: e.target.value })} />
+                      <textarea
+                        className="gp-input pos-quote-resizable w-full min-w-0"
+                        rows={1}
+                        value={i.name}
+                        onChange={(e) => updateItem(i._id, { name: e.target.value })}
+                        onKeyDown={(e) => { if (e.key === "Enter") e.stopPropagation(); }}
+                      />
                     </td>
                     <td className="min-w-0">
                       <textarea
-                        className="gp-input pos-quote-desc w-full min-w-0"
+                        className="gp-input pos-quote-desc pos-quote-resizable w-full min-w-0"
                         rows={1}
                         value={i.saleDescription}
                         onChange={(e) => updateItem(i._id, { saleDescription: e.target.value })}
@@ -689,7 +706,13 @@ function PosPageInner() {
                       <input type="number" min={0} className="gp-input w-full min-w-0" value={i.sellPrice} onChange={(e) => updateItem(i._id, { sellPrice: Math.max(0, Number(e.target.value)) })} />
                     </td>
                     <td>
-                      <input type="number" min={0} max={i.qty * i.sellPrice} className="gp-input w-full min-w-0" value={i.lineDiscount} onChange={(e) => updateItem(i._id, { lineDiscount: Math.max(0, Number(e.target.value)) })} />
+                      <div className="relative min-w-0">
+                        <input type="number" min={0} max={i.lineDiscountType === "percentage" ? 100 : i.qty * i.sellPrice} className="gp-input w-full min-w-0 !pr-7" value={i.lineDiscount} onChange={(e) => updateItem(i._id, { lineDiscount: Math.max(0, Number(e.target.value)) })} />
+                        <select className="absolute inset-y-0 right-0 z-10 w-7 cursor-pointer border-0 bg-transparent px-0 text-xs" value={i.lineDiscountType || "fixed"} onChange={(e) => updateItem(i._id, { lineDiscountType: e.target.value as "percentage" | "fixed" })}>
+                          <option value="percentage">%</option>
+                          <option value="fixed">৳</option>
+                        </select>
+                      </div>
                     </td>
                     <td className="gp-money font-bold">{formatBDT(lineTotal, locale)}</td>
                     <td>
@@ -750,7 +773,7 @@ function PosPageInner() {
             </section>
             <section className="rounded-xl border border-line bg-[#fbfdff] p-1.5">
               <h2 className="mb-1.5 flex items-center gap-2 text-sm font-bold"><Grid2X2 className="h-4 w-4 text-primary" />{isReturnEntry ? "Sell Return Summary" : isChallanEntry ? "Challan Summary" : isBillEntry ? "Bill Summary" : "Quotation Summary"}</h2>
-              <div className="space-y-1 text-sm"><div className="flex justify-between"><span>Subtotal</span><b className="gp-money">{formatBDT(subtotal, locale)}</b></div><div className="grid grid-cols-[1fr_150px] items-center gap-2"><span>Total Discount</span><div className="flex"><input type="number" min={0} className="gp-input rounded-r-none" value={discountValue} onChange={(e) => setDiscountValue(Math.max(0, Number(e.target.value)))} /><select className="gp-input w-16 rounded-l-none px-1" value={discountType} onChange={(e) => setDiscountType(e.target.value as "percentage" | "fixed")}><option value="percentage">%</option><option value="fixed">৳</option></select></div></div><div className="flex justify-between text-xs text-muted"><span>Including line discounts</span><span>{formatBDT(totalDiscount, locale)}</span></div><div className="flex justify-between rounded-lg border border-line bg-white p-1.5 text-lg"><b>Grand Total</b><b className="gp-money text-primary">{formatBDT(grandTotal, locale)}</b></div><div className="flex justify-between px-2 text-base"><b>Due Amount</b><b className="gp-money text-red-500">{formatBDT(due, locale)}</b></div></div>
+              <div className="space-y-1 text-sm"><div className="flex justify-between gap-3"><span>Subtotal</span><b className="gp-money min-w-[11rem] shrink-0 text-right">{formatBDT(subtotal, locale)}</b></div><div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-2"><span>Total Discount</span><div className="flex min-w-0 max-w-full"><input type="number" min={0} className="gp-input min-w-0 flex-1 rounded-r-none" value={discountValue} onChange={(e) => setDiscountValue(Math.max(0, Number(e.target.value)))} /><select className="gp-input !w-[2.65rem] !min-w-[2.65rem] !max-w-[2.65rem] shrink-0 grow-0 rounded-l-none px-1" value={discountType} onChange={(e) => setDiscountType(e.target.value as "percentage" | "fixed")}><option value="percentage">%</option><option value="fixed">৳</option></select></div></div><div className="flex justify-between text-xs text-muted"><span>Including line discounts</span><span>{formatBDT(totalDiscount, locale)}</span></div><div className="flex justify-between rounded-lg border border-line bg-white p-1.5 text-lg"><b>Grand Total</b><b className="gp-money text-primary">{formatBDT(grandTotal, locale)}</b></div><div className="flex justify-between px-2 text-base"><b>Due Amount</b><b className="gp-money text-red-500">{formatBDT(due, locale)}</b></div></div>
             </section>
             <div className="flex flex-col justify-between gap-2 md:col-span-2 lg:col-span-1">
               {isReturnEntry ? (

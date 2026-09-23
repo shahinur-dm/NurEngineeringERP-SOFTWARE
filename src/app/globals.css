@@ -1243,11 +1243,39 @@ h3,
   display: none;
 }
 
+.pos-quote .pos-quote-items .pos-quote-resizable {
+  display: block;
+  height: 28px;
+  min-height: 28px;
+  max-height: none;
+  resize: vertical;
+  overflow-x: hidden;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.25;
+  field-sizing: fixed;
+}
+
 .pos-quote .pos-quote-items th:nth-child(1),
 .pos-quote .pos-quote-items td:nth-child(1) {
   width: 2.1rem;
   text-align: center;
   padding-inline: 0.2rem;
+}
+
+.pos-quote .pos-quote-items.pos-quote-line-widths {
+  table-layout: fixed;
+}
+
+.pos-quote .pos-quote-items.pos-quote-line-widths th:nth-child(2),
+.pos-quote .pos-quote-items.pos-quote-line-widths td:nth-child(2) {
+  width: 16%;
+}
+
+.pos-quote .pos-quote-items.pos-quote-line-widths th:nth-child(3),
+.pos-quote .pos-quote-items.pos-quote-line-widths td:nth-child(3) {
+  width: 34%;
 }
 
 .pos-quote .pos-quote-items th:nth-child(4),
@@ -1260,10 +1288,34 @@ h3,
   white-space: nowrap;
 }
 
+.pos-quote .pos-quote-items.pos-quote-line-widths th:nth-child(4),
+.pos-quote .pos-quote-items.pos-quote-line-widths td:nth-child(4) {
+  width: 5.05rem;
+  min-width: 5.05rem;
+}
+
+.pos-quote .pos-quote-items.pos-quote-line-widths th:nth-child(5),
+.pos-quote .pos-quote-items.pos-quote-line-widths td:nth-child(5) {
+  width: 8.25rem;
+  min-width: 8.25rem;
+}
+
+.pos-quote .pos-quote-items.pos-quote-line-widths th:nth-child(6),
+.pos-quote .pos-quote-items.pos-quote-line-widths td:nth-child(6) {
+  width: 5.05rem;
+  min-width: 5.05rem;
+}
+
 .pos-quote .pos-quote-items th:nth-child(7),
 .pos-quote .pos-quote-items td:nth-child(7) {
   width: 6.25rem;
   white-space: nowrap;
+}
+
+.pos-quote .pos-quote-items.pos-quote-line-widths th:nth-child(7),
+.pos-quote .pos-quote-items.pos-quote-line-widths td:nth-child(7) {
+  width: 7.1rem;
+  min-width: 7.1rem;
 }
 
 .pos-quote .pos-quote-items th:nth-child(8),
