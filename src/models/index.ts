@@ -239,6 +239,7 @@ const SaleSchema = new Schema(
     poNo: String,
     poDate: Date,
     subject: String,
+    section: String,
     attention: String,
     documentBody: String,
     terms: String,

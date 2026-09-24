@@ -27,6 +27,8 @@ export type TradePdfSale = {
   poNo?: string;
   poDate?: Date | string;
   subject?: string;
+  section?: string;
+  attention?: string;
   documentBody?: string;
   terms?: string;
   customerName?: string;
@@ -85,6 +87,32 @@ function englishName(name?: string, fallback = "Md. Nurul Islam") {
 function wechatId(phone?: string) {
   const digits = String(phone || "").replace(/\D/g, "");
   return digits ? `nurul${digits.replace(/^880/, "")}` : "";
+}
+
+function resolveOfficeInfo(business?: TradePdfBusiness | null) {
+  const isDefaultOrSeedAddress =
+    !business?.address ||
+    /dhanmondi/i.test(business.address) ||
+    /house 12/i.test(business.address);
+
+  const officeLine1 = isDefaultOrSeedAddress
+    ? "House#43-44, Road-01 ,"
+    : business?.address || "House#43-44, Road-01 ,";
+  const officeLine2 = isDefaultOrSeedAddress ? "Block-B, Mirpur-1, Dhaka-1216" : "";
+
+  const isDefaultOrSeedEmail = !business?.email || /ditpos|pharma/i.test(business.email);
+  const email = isDefaultOrSeedEmail ? "ceo@nurengineeringbd.com" : business?.email || "ceo@nurengineeringbd.com";
+
+  const isDefaultOrSeedPhone = !business?.phone || /01700000000/i.test(business.phone);
+  const mobile = isDefaultOrSeedPhone ? "+8801713798987" : business?.phone || "+8801713798987";
+
+  const wechat = wechatId(mobile) || "nurul01713798987";
+
+  const footerAddress = isDefaultOrSeedAddress
+    ? "House #43-44, Road-1, Block-B, (Beside Shah Ali Thana) Mirpur-1, Dhaka-1216, Bangladesh."
+    : business?.address || "House #43-44, Road-1, Block-B, (Beside Shah Ali Thana) Mirpur-1, Dhaka-1216, Bangladesh.";
+
+  return { officeLine1, officeLine2, email, mobile, wechat, footerAddress };
 }
 
 async function loadImageDataUrl(url?: string): Promise<string | null> {
@@ -165,10 +193,12 @@ export async function buildTradePdf(opts: {
     const nameBottom = 16 + (nameLines.length - 1) * 6;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
+    const officeInfo = resolveOfficeInfo(business);
     const officeLines = [
-      business?.address ? `Office: ${business.address}` : "",
-      business?.email ? `Email: ${business.email}` : "",
-      business?.phone ? `Mobile: ${business.phone}` : "",
+      officeInfo.officeLine1 ? `Office: ${officeInfo.officeLine1}` : "",
+      officeInfo.officeLine2,
+      officeInfo.email ? `Email: ${officeInfo.email}` : "",
+      officeInfo.mobile ? `Mobile: ${officeInfo.mobile}` : "",
     ]
       .filter(Boolean)
       .flatMap((line) => doc.splitTextToSize(line, boxW - 4));
@@ -176,6 +206,10 @@ export async function buildTradePdf(opts: {
     const ruleY = Math.max(30, 10 + officeH, nameBottom + 12);
     headerBottom = ruleY + 4;
     if (!headerFooter) return;
+
+    // Draw header peach band from top of page
+    doc.setFillColor(250, 232, 216);
+    doc.rect(0, 0, pageW, ruleY, "F");
 
     if (logoData) {
       try {
@@ -208,7 +242,7 @@ export async function buildTradePdf(opts: {
     doc.setTextColor(20);
 
     doc.setFontSize(7);
-    const officeFill = kind === "quotation" ? [236, 236, 236] : [215, 238, 248];
+    const officeFill = [215, 238, 248];
     doc.setFillColor(officeFill[0], officeFill[1], officeFill[2]);
     doc.setDrawColor(51);
     doc.rect(officeLeft, 8, boxW, officeH, "FD");
@@ -220,10 +254,9 @@ export async function buildTradePdf(opts: {
 
     doc.setDrawColor(232, 137, 44);
     doc.setLineWidth(1.1);
-    doc.line(m, ruleY, pageW - m, ruleY);
-    doc.setDrawColor(0);
-    doc.setLineWidth(0.25);
-    doc.line(m, ruleY + 1.3, pageW - m, ruleY + 1.3);
+    doc.line(0, ruleY, pageW, ruleY);
+    doc.setFillColor(232, 137, 44);
+    doc.rect(pageW / 2 - 11, ruleY - 0.2, 22, 1.8, "F");
   }
 
   drawLetterhead();
@@ -299,12 +332,29 @@ export async function buildTradePdf(opts: {
       minCellHeight: 6,
     },
     columnStyles: {
-      0: { fontStyle: "bold", cellWidth: 26, fillColor: kind === "quotation" ? [236, 236, 236] : [207, 232, 245] },
+      0: { fontStyle: "bold", cellWidth: 26, fillColor: [207, 232, 245] },
       1: { cellWidth: 36 },
     },
     body: meta,
   });
   const metaBottom = lastTableY(doc, y + 28);
+
+  let attY = metaBottom + 3;
+  const attRight = pageW - m;
+  if (kind === "quotation") {
+    if (sale.attention) {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      doc.text(`Attention: ${sale.attention}`, attRight, attY, { align: "right" });
+      attY += 4.2;
+    }
+    if (sale.customerMobile) {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      doc.text(`Contact: ${sale.customerMobile}`, attRight, attY, { align: "right" });
+      attY += 4.2;
+    }
+  }
 
   const leftW = contentW - boxW - 6;
   const bandTop = y + 4;
@@ -331,7 +381,7 @@ export async function buildTradePdf(opts: {
     if (sale.customerAddress) writeBlock(sale.customerAddress, m, leftW, 9);
   }
 
-  y = Math.max(y + 2, metaBottom + 3);
+  y = Math.max(y + 2, metaBottom + 3, kind === "quotation" ? attY : 0);
 
   const subject = resolveDocumentSubject({
     stored: sale.subject,
@@ -339,9 +389,15 @@ export async function buildTradePdf(opts: {
     note: sale.note,
     items,
   });
-  if (subject) {
-    writeBlock(`Subject: ${subject}`, m, contentW, 9, "bold");
-    y += 2;
+  if (kind !== "quotation") {
+    if (sale.section) {
+      writeBlock(`Section: ${sale.section}`, m, contentW, 9, "bold");
+      y += 1.5;
+    }
+    if (subject) {
+      writeBlock(`Subject: ${subject}`, m, contentW, 9, "bold");
+      y += 1.5;
+    }
   }
 
   if (kind !== "quotation") {
@@ -358,16 +414,52 @@ export async function buildTradePdf(opts: {
     y = Math.max(y, metaBottom + 4);
   }
 
-  const bodyText = resolveDocumentBody(sale.documentBody);
-  if (bodyText.trim()) {
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    for (const para of bodyText.split(/\r?\n/)) {
-      const line = para.trim() ? para : " ";
-      writeBlock(line, m, contentW, 9);
-      y += para.trim() ? 1 : 0;
+  if (kind === "quotation") {
+    let bodyText = resolveDocumentBody(sale.documentBody);
+    const hasSectionInBody = /^Section\s*:/im.test(bodyText);
+    const hasSubjectInBody = /^Subject\s*:/im.test(bodyText);
+    const sec = sale.section || (!hasSectionInBody ? "Injection molding Section." : "");
+    const sub = subject || (!hasSubjectInBody ? "Quotation for Ejector part making and Seat cover making mould servicing of Injection molding machine." : "");
+
+    if (!hasSubjectInBody && sub) {
+      if (/^Dear Sir/im.test(bodyText)) {
+        bodyText = bodyText.replace(/^Dear Sir/im, `Subject: ${sub}\n\nDear Sir`);
+      } else {
+        bodyText = `Subject: ${sub}\n\n${bodyText}`;
+      }
     }
-    y += 2;
+    if (!hasSectionInBody && sec) {
+      if (/^Subject\s*:/im.test(bodyText)) {
+        bodyText = bodyText.replace(/^(Subject\s*:[^\r\n]*)/im, `Section: ${sec}\n\n$1`);
+      } else if (/^Dear Sir/im.test(bodyText)) {
+        bodyText = bodyText.replace(/^Dear Sir/im, `Section: ${sec}\n\nDear Sir`);
+      } else {
+        bodyText = `Section: ${sec}\n\n${bodyText}`;
+      }
+    }
+
+    if (bodyText.trim()) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      for (const para of bodyText.split(/\r?\n/)) {
+        const text = para.trim();
+        if (!text) {
+          y += 2;
+          continue;
+        }
+        if (/^Section\s*:\s*/i.test(text)) {
+          writeBlock(text, m, contentW, 9, "bold");
+          y += 1;
+        } else if (/^Subject\s*:\s*/i.test(text)) {
+          writeBlock(text, m, contentW, 9, "bold");
+          y += 1;
+        } else {
+          writeBlock(para, m, contentW, 9, "normal");
+          y += 1;
+        }
+      }
+      y += 2;
+    }
   }
 
   ensureSpace(10);
@@ -458,7 +550,7 @@ export async function buildTradePdf(opts: {
   y = lastTableY(doc, y) + 6;
 
   function drawTermsAtCursor() {
-    const entries = termEntries(sale.terms);
+    const entries = termEntries(sale.terms).filter((line) => !/Please sign back to us/i.test(line));
     if (!entries.length) return;
     ensureSpace(10);
     writeBlock("Terms & Conditions", m, contentW, 9, "bold");
@@ -488,10 +580,6 @@ export async function buildTradePdf(opts: {
 
   if (kind === "quotation") {
     drawTermsAtCursor();
-    if (termEntries(sale.terms).length) {
-      writeBlock("Please sign back to us if you confirm this P.I/Quotation.", m, contentW, 8);
-      y += 4;
-    }
   } else {
     if (termEntries(sale.terms).length) drawTermsAtCursor();
     const note =
@@ -507,11 +595,17 @@ export async function buildTradePdf(opts: {
     y += 16;
   }
 
-  const signH = 22;
-  if (y + signH > pageH - footerH - 4) newContentPage();
-  const signY = Math.max(y + 10, pageH - footerH - 22);
+  const signBackGap = 25.4; // 1 inch above Customer Signature
+  const signH = 18;
+  const totalSignH = signBackGap + signH + 6;
+  if (y + totalSignH > pageH - footerH - 4) newContentPage();
+  const signY = Math.max(y + signBackGap + 4, pageH - footerH - 20);
+  const signBackY = signY - signBackGap;
+
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
+  doc.setFontSize(8.5);
+  doc.text("Please sign back to us if you confirm this P.I / Quotation.", m, signBackY);
+
   doc.line(m, signY, m + 50, signY);
   doc.line(pageW - m - 55, signY, pageW - m, signY);
   doc.text(kind === "quotation" ? "(Customer Signature)" : "(Receiver Signature)", m, signY + 5);
@@ -523,7 +617,7 @@ export async function buildTradePdf(opts: {
   const propRole = doc.splitTextToSize(`Proprietor, ${bizName}`, 70);
   doc.text(propRole, pageW - m, signY + 5 + propLines.length * 4, { align: "right" });
 
-  const wechat = wechatId(business?.phone);
+  const officeInfo = resolveOfficeInfo(business);
   const pages = doc.getNumberOfPages();
   for (let p = 1; p <= pages; p++) {
     doc.setPage(p);
@@ -540,20 +634,20 @@ export async function buildTradePdf(opts: {
       }
       doc.setTextColor(20);
       if (headerFooter) {
-        doc.setFillColor(143, 201, 184);
+        doc.setFillColor(143, 201, 182);
         doc.rect(0, pageH - footerH, pageW, footerH, "F");
-        doc.setFontSize(7);
+        doc.setFontSize(7.5);
         doc.setTextColor(20);
-        doc.text(`Office Address : ${business?.address || ""}`, pageW / 2, pageH - 10.5, {
+        doc.text(`Office Address : ${officeInfo.footerAddress}`, pageW / 2, pageH - 10.5, {
           align: "center",
           maxWidth: pageW - 16,
         });
         doc.text(
           [
-            business?.phone ? `Mobile/WhatsApp: ${business.phone}` : "",
-            wechat ? `Wechat: ${wechat}` : "",
+            `Mobile/WhatsApp: ${officeInfo.mobile}`,
+            `Wechat: ${officeInfo.wechat}`,
             business?.website ? `Website: ${business.website}` : "",
-            business?.email ? `Email: ${business.email}` : "",
+            `Email: ${officeInfo.email}`,
           ]
             .filter(Boolean)
             .join("  ,  "),

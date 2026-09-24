@@ -71,11 +71,4 @@ export async function ensureSaleNumberIndexes() {
   saleIndexesReady = true;
 }
 
-export const DEFAULT_QUOTATION_TERMS = [
-  "Term of validity: 15 days.",
-  "Payment: 100% advance for order confirmation OR as per company policy.",
-  "Delivery area: Items delivered from stock area in Dhaka (customer's own arrangement).",
-  "Delivery Time: Ready stock item.",
-  "VAT, Tax etc.: Excluded.",
-  "Please sign back to us if you confirm this P.I / Quotation.",
-].join("\n");
+export { DEFAULT_QUOTATION_TERMS } from "@/lib/default-document-body";

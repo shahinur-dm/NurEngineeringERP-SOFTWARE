@@ -1,4 +1,4 @@
-import { Account, Expense, Purchase, Sale } from "@/models";
+import { Account, Contact, Expense, Purchase, Sale } from "@/models";
 import { calcDueAmount, roundMoney } from "@/lib/sale-finance";
 
 export const SALE_POSTED_STATUS = "final";
@@ -17,6 +17,8 @@ export type AccountsTransaction = {
   reference: string;
   type: AccountsTxType;
   party: string;
+  partyId?: string;
+  partyType?: "customer" | "supplier";
   description: string;
   amount: number;
   paidReceived: number;
@@ -79,11 +81,22 @@ export function buildAccountsBooks(input: {
   purchases: Record<string, unknown>[];
   expenses: Record<string, unknown>[];
   wallets: Record<string, unknown>[];
+  contacts?: Record<string, unknown>[];
 }) {
   const sales = input.sales;
   const purchases = input.purchases;
   const expenses = input.expenses;
   const wallets = input.wallets;
+  const contacts = input.contacts || [];
+
+  const contactByName = new Map<string, { id: string; type: "customer" | "supplier" | "both" }>();
+  for (const c of contacts) {
+    const id = String(c._id);
+    const type = (c.type as "customer" | "supplier" | "both") || "customer";
+    if (c.name) contactByName.set(String(c.name).trim().toLowerCase(), { id, type });
+    if (c.nameBn) contactByName.set(String(c.nameBn).trim().toLowerCase(), { id, type });
+    if (c.supplierName) contactByName.set(String(c.supplierName).trim().toLowerCase(), { id, type });
+  }
 
   let cashFlow = 0;
   let bankFlow = 0;
@@ -111,12 +124,21 @@ export function buildAccountsBooks(input: {
     bankFlow += split.bank;
     customerDue += due;
     totalIncome += grand;
+
+    const customerId = sale.customerId
+      ? String(sale.customerId)
+      : sale.customerName
+        ? contactByName.get(String(sale.customerName).trim().toLowerCase())?.id
+        : undefined;
+
     transactions.push({
       id: `sale:${String(sale._id)}`,
       date: new Date(String(sale.saleDate || sale.createdAt || Date.now())).toISOString(),
       reference: String(sale.invoiceNo || sale.salesOrderNo || sale.referenceNo || sale._id),
       type: "sale",
       party: String(sale.customerName || "Walk-in"),
+      partyId: customerId,
+      partyType: "customer",
       description: "Sale",
       amount: grand,
       paidReceived: paid,
@@ -134,6 +156,8 @@ export function buildAccountsBooks(input: {
         reference: String(p.reference || sale.invoiceNo || sale.referenceNo || ""),
         type: "customer_payment",
         party: String(sale.customerName || "Walk-in"),
+        partyId: customerId,
+        partyType: "customer",
         description: p.note || "Customer payment",
         amount: amt,
         paidReceived: amt,
@@ -156,12 +180,21 @@ export function buildAccountsBooks(input: {
     bankFlow -= split.bank;
     supplierDue += due;
     purchaseExpense += grand;
+
+    const supplierId = purchase.supplierId
+      ? String(purchase.supplierId)
+      : purchase.supplierName
+        ? contactByName.get(String(purchase.supplierName).trim().toLowerCase())?.id
+        : undefined;
+
     transactions.push({
       id: `purchase:${String(purchase._id)}`,
       date: new Date(String(purchase.purchaseDate || purchase.createdAt || Date.now())).toISOString(),
       reference: String(purchase.referenceNo || purchase._id),
       type: "purchase",
       party: String(purchase.supplierName || "Supplier"),
+      partyId: supplierId,
+      partyType: "supplier",
       description: "Purchase",
       amount: grand,
       paidReceived: paid,
@@ -179,6 +212,8 @@ export function buildAccountsBooks(input: {
         reference: String(p.reference || purchase.referenceNo || ""),
         type: "supplier_payment",
         party: String(purchase.supplierName || "Supplier"),
+        partyId: supplierId,
+        partyType: "supplier",
         description: p.note || "Supplier payment",
         amount: amt,
         paidReceived: amt,
@@ -243,16 +278,18 @@ export function buildAccountsBooks(input: {
 }
 
 export async function loadAccountsBooks() {
-  const [sales, purchases, expenses, wallets] = await Promise.all([
+  const [sales, purchases, expenses, wallets, contacts] = await Promise.all([
     Sale.find({ status: SALE_POSTED_STATUS }).lean(),
     Purchase.find({ status: { $in: [...PURCHASE_POSTED_STATUSES] } }).lean(),
     Expense.find({}).lean(),
     Account.find({ isActive: { $ne: false } }).lean(),
+    Contact.find({ isActive: { $ne: false } }).select("_id name nameBn supplierName type").lean(),
   ]);
   return buildAccountsBooks({
     sales: sales as Record<string, unknown>[],
     purchases: purchases as Record<string, unknown>[],
     expenses: expenses as Record<string, unknown>[],
     wallets: wallets as Record<string, unknown>[],
+    contacts: contacts as Record<string, unknown>[],
   });
 }

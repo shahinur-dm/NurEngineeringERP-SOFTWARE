@@ -1,26 +1,33 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 
-export function applySiteFavicon() {
+export function applySiteFavicon(customHref?: string) {
   if (typeof document === "undefined") return;
-  const href = `/api/favicon?t=${Date.now()}`;
-  const links = document.querySelectorAll<HTMLLinkElement>("link[rel='icon'], link[rel='shortcut icon']");
-  if (links.length) {
-    links.forEach((link) => {
+  const href = customHref || `/api/favicon?v=${Date.now()}`;
+  const head = document.head;
+  const existing = head.querySelectorAll<HTMLLinkElement>("link[rel*='icon']");
+  if (existing.length) {
+    existing.forEach((link) => {
       link.href = href;
     });
-    return;
+  } else {
+    const link = document.createElement("link");
+    link.rel = "icon";
+    link.href = href;
+    head.appendChild(link);
+    const shortcut = document.createElement("link");
+    shortcut.rel = "shortcut icon";
+    shortcut.href = href;
+    head.appendChild(shortcut);
   }
-  const link = document.createElement("link");
-  link.rel = "icon";
-  link.href = href;
-  document.head.appendChild(link);
 }
 
 export function SiteFavicon() {
+  const pathname = usePathname();
   useEffect(() => {
     applySiteFavicon();
-  }, []);
+  }, [pathname]);
   return null;
 }

@@ -18,6 +18,9 @@ type SaleDoc = {
   poNo?: string;
   poDate?: string;
   subject?: string;
+  section?: string;
+  attention?: string;
+  documentBody?: string;
   terms?: string;
   status: string;
   customerName?: string;

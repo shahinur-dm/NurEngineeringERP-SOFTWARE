@@ -76,10 +76,12 @@ export default function ContactStatementPage() {
     void load();
   }, [load]);
 
+  const isSupplier = contact?.type === "supplier" || contact?.type === "both";
+
   const title =
     locale === "bn"
-      ? `${contact ? (contact.nameBn || contact.name) : "…"} — গ্রাহক লেজার`
-      : `${contact ? contact.name : "…"} — Customer Ledger`;
+      ? `${contact ? (contact.nameBn || contact.name) : "…"} — ${isSupplier ? "সরবরাহকারী লেজার" : "গ্রাহক লেজার"}`
+      : `${contact ? contact.name : "…"} — ${isSupplier ? "Supplier Ledger" : "Customer Ledger"}`;
 
   const backHref =
     contact?.type === "employee"
@@ -98,8 +100,12 @@ export default function ContactStatementPage() {
           contact
             ? `${contact.mobile || ""} · ${contact.type}`
             : locale === "bn"
-              ? "গ্রাহক লেজার / লেনদেন ইতিহাস"
-              : "Customer ledger / transaction history"
+              ? isSupplier
+                ? "সরবরাহকারী লেজার / লেনদেন ইতিহাস"
+                : "গ্রাহক লেজার / লেনদেন ইতিহাস"
+              : isSupplier
+                ? "Supplier ledger / transaction history"
+                : "Customer ledger / transaction history"
         }
         actions={
           <div className="flex flex-wrap gap-2 no-print">

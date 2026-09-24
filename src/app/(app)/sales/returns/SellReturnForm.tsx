@@ -10,7 +10,7 @@ import {
 import { Field, Modal } from "@/components/ui";
 import { formatBDT } from "@/lib/utils";
 import { useDebouncedValue } from "@/lib/hooks";
-import { DEFAULT_DOCUMENT_BODY } from "@/lib/default-document-body";
+import { DEFAULT_DOCUMENT_BODY, DEFAULT_QUOTATION_TERMS } from "@/lib/default-document-body";
 
 type Product = {
   _id: string; name: string; nameBn?: string; sku: string; sellPrice: number;
@@ -85,13 +85,14 @@ export function SellReturnForm({ editId }: { editId?: string }) {
     ]).then(([m, c, cat, b, quotations]) => {
       setLocationId(String(m.locations?.[0]?._id || ""));
       setCustomers(c.data || []); setCategories(cat.data || []); setBrands(b.data || []);
-      setSavedTerms(
-        [...new Set<string>(
-          (quotations.data || []).flatMap((quotation: { terms?: string }) =>
-            String(quotation.terms || "").split("\n").map((line) => line.replace(/^[-•◆]\s*/, "").trim()).filter(Boolean),
-          ),
-        )],
+      const fromQuotes = (quotations.data || []).flatMap((quotation: { terms?: string }) =>
+        String(quotation.terms || "").split("\n").map((line) => line.replace(/^[-•◆]\s*/, "").trim()).filter(Boolean),
       );
+      const defaults = DEFAULT_QUOTATION_TERMS.split("\n").map((l) => l.trim()).filter(Boolean);
+      const combined = [...new Set<string>([...defaults, ...fromQuotes])].filter(
+        (line) => !/Please sign back to us/i.test(line),
+      );
+      setSavedTerms(combined);
     }).catch(() => setMessage("Failed to load catalogs"));
   }, []);
 
@@ -202,6 +203,23 @@ export function SellReturnForm({ editId }: { editId?: string }) {
   }
   function updateItem(id: string, patch: Partial<CartItem>) {
     setCart((old) => old.map((x) => x._id === id ? { ...x, ...patch } : x));
+  }
+  function addAllSavedTerms() {
+    setNote((current) => {
+      const existing = current
+        .split("\n")
+        .map((line) => line.replace(/^[-•◆]\s*/, "").trim())
+        .filter(Boolean);
+      const toAdd = savedTerms.filter(
+        (term) =>
+          !/Please sign back to us/i.test(term) &&
+          !existing.some((ex) => ex.toLowerCase() === term.toLowerCase()),
+      );
+      if (toAdd.length === 0) return current;
+      return current.trim()
+        ? `${current.replace(/\s+$/, "")}\n${toAdd.join("\n")}`
+        : toAdd.join("\n");
+    });
   }
 
   function applySale(sale: Record<string, unknown>, shipmentNo?: string) {
@@ -462,11 +480,24 @@ export function SellReturnForm({ editId }: { editId?: string }) {
                   <input className="gp-input gp-input-icon-left" list="sr-saved-terms" value={savedTermQuery} onChange={(e) => {
                     const value = e.target.value; setSavedTermQuery(value);
                     const selected = savedTerms.find((term) => term === value); if (!selected) return;
-                    setNote((current) => current.includes(selected) ? current : (current.trim() ? `${current}\n${selected}` : selected));
+                    setNote((current) => {
+                      const existing = current.split("\n").map((l) => l.replace(/^[-•◆]\s*/, "").trim()).filter(Boolean);
+                      if (existing.some((ex) => ex.toLowerCase() === selected.toLowerCase())) return current;
+                      return current.trim() ? `${current.replace(/\s+$/, "")}\n${selected}` : selected;
+                    });
                     setSavedTermQuery("");
                   }} placeholder="Search saved terms or write directly below..." />
                   <datalist id="sr-saved-terms">{savedTerms.map((term) => <option key={term} value={term} />)}</datalist>
                 </div>
+                <button
+                  type="button"
+                  className="gp-btn gp-btn-ghost shrink-0 text-xs font-semibold text-primary hover:bg-[var(--gp-primary-soft)]"
+                  onClick={addAllSavedTerms}
+                  title="Add all saved terms at once"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add All Terms
+                </button>
               </div>
               <textarea className="gp-input min-h-14 resize-y" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Enter notes, delivery instructions, or terms and conditions..." />
             </section>

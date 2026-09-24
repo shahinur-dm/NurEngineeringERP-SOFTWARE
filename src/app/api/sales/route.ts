@@ -243,6 +243,7 @@ export async function POST(req: NextRequest) {
       note: body.note,
       items,
     }),
+    section: body.section != null ? String(body.section) : "",
     attention: body.attention != null ? String(body.attention) : "",
     documentBody: body.documentBody != null ? String(body.documentBody) : DEFAULT_DOCUMENT_BODY,
     terms: status === "quotation" ? (body.terms ?? DEFAULT_QUOTATION_TERMS) : body.terms,

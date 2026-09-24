@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { formatBDT, formatDateBD } from "@/lib/utils";
@@ -11,6 +12,8 @@ type Row = {
   reference: string;
   type: string;
   party: string;
+  partyId?: string;
+  partyType?: "customer" | "supplier";
   description: string;
   amount: number;
   paidReceived: number;
@@ -99,7 +102,27 @@ export default function AccountReportPage() {
                   <td>{formatDateBD(r.date, locale)}</td>
                   <td className="font-semibold">{r.reference}</td>
                   <td>{(locale === "bn" ? TYPE_BN : TYPE_EN)[r.type] || r.type}</td>
-                  <td>{r.party || "—"}</td>
+                  <td>
+                    {r.partyId ? (
+                      <Link
+                        href={`/contacts/${r.partyId}/statement`}
+                        className="font-semibold text-primary hover:underline"
+                        title={
+                          locale === "bn"
+                            ? r.partyType === "supplier"
+                              ? "সরবরাহকারী লেজার দেখুন"
+                              : "গ্রাহক লেজার দেখুন"
+                            : r.partyType === "supplier"
+                              ? "View supplier ledger"
+                              : "View customer ledger"
+                        }
+                      >
+                        {r.party || "—"}
+                      </Link>
+                    ) : (
+                      r.party || "—"
+                    )}
+                  </td>
                   <td>{r.description}</td>
                   <td className="gp-money text-right">{formatBDT(r.amount, locale)}</td>
                   <td className="gp-money text-right">{formatBDT(r.paidReceived, locale)}</td>

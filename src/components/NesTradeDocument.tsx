@@ -29,6 +29,8 @@ export type TradeSale = {
   poNo?: string;
   poDate?: string;
   subject?: string;
+  section?: string;
+  attention?: string;
   documentBody?: string;
   terms?: string;
   status?: string;
@@ -107,6 +109,32 @@ function wechatId(phone?: string) {
   return digits ? `nurul${digits.replace(/^880/, "")}` : "";
 }
 
+function resolveOfficeInfo(business?: TradeBusiness | null) {
+  const isDefaultOrSeedAddress =
+    !business?.address ||
+    /dhanmondi/i.test(business.address) ||
+    /house 12/i.test(business.address);
+
+  const officeLine1 = isDefaultOrSeedAddress
+    ? "House#43-44, Road-01 ,"
+    : business?.address || "House#43-44, Road-01 ,";
+  const officeLine2 = isDefaultOrSeedAddress ? "Block-B, Mirpur-1, Dhaka-1216" : "";
+
+  const isDefaultOrSeedEmail = !business?.email || /ditpos|pharma/i.test(business.email);
+  const email = isDefaultOrSeedEmail ? "ceo@nurengineeringbd.com" : business?.email || "ceo@nurengineeringbd.com";
+
+  const isDefaultOrSeedPhone = !business?.phone || /01700000000/i.test(business.phone);
+  const mobile = isDefaultOrSeedPhone ? "+8801713798987" : business?.phone || "+8801713798987";
+
+  const wechat = wechatId(mobile) || "nurul01713798987";
+
+  const footerAddress = isDefaultOrSeedAddress
+    ? "House #43-44, Road-1, Block-B, (Beside Shah Ali Thana) Mirpur-1, Dhaka-1216, Bangladesh."
+    : business?.address || "House #43-44, Road-1, Block-B, (Beside Shah Ali Thana) Mirpur-1, Dhaka-1216, Bangladesh.";
+
+  return { officeLine1, officeLine2, email, mobile, wechat, footerAddress };
+}
+
 export function NesTradeDocument({
   kind,
   sale,
@@ -122,7 +150,7 @@ export function NesTradeDocument({
   showChrome?: boolean;
 }) {
   const bizName = companyLetterhead(business?.name);
-  const bizAddress = business?.address || "";
+  const officeInfo = resolveOfficeInfo(business);
   const items = (kind === "challan" && challan?.items?.length ? challan.items : sale.items) || [];
   const docDate = kind === "challan" ? challan?.shippedDate || sale.saleDate : sale.saleDate;
   const terms = (sale.terms || "")
@@ -169,10 +197,35 @@ export function NesTradeDocument({
     note: sale.note,
     items,
   });
-  const documentBody =
+  let documentBody =
     sale.documentBody === undefined || sale.documentBody === null
       ? DEFAULT_DOCUMENT_BODY
       : String(sale.documentBody);
+
+  if (kind === "quotation") {
+    const hasSectionInBody = /^Section\s*:/im.test(documentBody);
+    const hasSubjectInBody = /^Subject\s*:/im.test(documentBody);
+    const sec = sale.section || (!hasSectionInBody ? "Injection molding Section." : "");
+    const sub = subject || (!hasSubjectInBody ? "Quotation for Ejector part making and Seat cover making mould servicing of Injection molding machine." : "");
+
+    if (!hasSubjectInBody && sub) {
+      if (/^Dear Sir/im.test(documentBody)) {
+        documentBody = documentBody.replace(/^Dear Sir/im, `Subject: ${sub}\n\nDear Sir`);
+      } else {
+        documentBody = `Subject: ${sub}\n\n${documentBody}`;
+      }
+    }
+    if (!hasSectionInBody && sec) {
+      if (/^Subject\s*:/im.test(documentBody)) {
+        documentBody = documentBody.replace(/^(Subject\s*:[^\r\n]*)/im, `Section: ${sec}\n\n$1`);
+      } else if (/^Dear Sir/im.test(documentBody)) {
+        documentBody = documentBody.replace(/^Dear Sir/im, `Section: ${sec}\n\nDear Sir`);
+      } else {
+        documentBody = `Section: ${sec}\n\n${documentBody}`;
+      }
+    }
+  }
+
   const documentBodyParas = documentBody.split(/\r?\n/);
 
   return (
@@ -192,40 +245,37 @@ export function NesTradeDocument({
       ) : null}
 
       <header className="nes-head">
-        <div className="nes-logo">
-          {business?.logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={business.logoUrl} alt="" />
-          ) : (
-            <span className="nes-logo-mark">
-              NES
-              <small>NUR ENGINEERING SOLUTION</small>
-            </span>
-          )}
-        </div>
-        <div className="nes-brand">
-          <p className="nes-company">{bizName}</p>
-          <p className="nes-tagline">Machine, Spare parts and Technical Service Provider</p>
-        </div>
-        <div className="nes-office">
-          {bizAddress ? (
+        <div className="nes-head-inner">
+          <div className="nes-logo">
+            {business?.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={business.logoUrl} alt="" />
+            ) : (
+              <span className="nes-logo-mark">
+                NES
+                <small>NUR ENGINEERING SOLUTION</small>
+              </span>
+            )}
+          </div>
+          <div className="nes-brand">
+            <p className="nes-company">{bizName}</p>
+            <p className="nes-tagline">Machine, Spare parts and Technical Service Provider</p>
+          </div>
+          <div className="nes-office">
             <p>
-              <b>Office:</b> {bizAddress}
+              <b>Office:</b> {officeInfo.officeLine1}
             </p>
-          ) : null}
-          {business?.email ? (
+            {officeInfo.officeLine2 ? <p>{officeInfo.officeLine2}</p> : null}
             <p>
-              <b>Email:</b> <span className="nes-mail">{business.email}</span>
+              <b>Email:</b> <span className="nes-mail">{officeInfo.email}</span>
             </p>
-          ) : null}
-          {business?.phone ? (
             <p>
-              <b>Mobile:</b> {business.phone}
+              <b>Mobile:</b> {officeInfo.mobile}
             </p>
-          ) : null}
+          </div>
         </div>
+        <span className="nes-rule-notch" />
       </header>
-      <div className="nes-rule" />
 
       <div className="nes-body">
       {pageIdx === 0 ? (
@@ -261,21 +311,43 @@ export function NesTradeDocument({
               ) : null}
             </p>
           </div>
-          <table className="nes-idbox">
-            <tbody>
-              {metaRows.map((row) => (
-                <tr key={row.label}>
-                  <th>{row.label}:</th>
-                  <td>{row.value}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="nes-idbox-wrap">
+            <table className="nes-idbox">
+              <tbody>
+                {metaRows.map((row) => (
+                  <tr key={row.label}>
+                    <th>{row.label}:</th>
+                    <td>{row.value}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {sale.attention || sale.customerMobile ? (
+              <div className="nes-quote-contact">
+                {sale.attention ? (
+                  <p>
+                    <b>Attention:</b> {sale.attention}
+                  </p>
+                ) : null}
+                {sale.customerMobile ? (
+                  <p>
+                    <b>Contact:</b> {sale.customerMobile}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
         </div>
       )
       ) : null}
 
-      {pageIdx === 0 && subject ? (
+      {pageIdx === 0 && kind !== "quotation" && sale.section ? (
+        <p className="nes-section">
+          <b>Section:</b> {sale.section}
+        </p>
+      ) : null}
+
+      {pageIdx === 0 && kind !== "quotation" && subject ? (
         <p className="nes-subject">
           <b>Subject:</b> {subject}
         </p>
@@ -299,9 +371,25 @@ export function NesTradeDocument({
       ) : null}
         {documentBody.trim() ? (
         <div className="nes-intro">
-          {documentBodyParas.map((para, idx) => (
-            <p key={`body-${idx}`}>{para.trim() ? para : "\u00a0"}</p>
-          ))}
+          {documentBodyParas.map((para, idx) => {
+            const text = para.trim();
+            if (!text) return <p key={`body-${idx}`}>&nbsp;</p>;
+            if (/^Section\s*:\s*/i.test(text)) {
+              return (
+                <p key={`body-${idx}`} className="nes-section">
+                  <b>Section:</b> {text.replace(/^Section\s*:\s*/i, "")}
+                </p>
+              );
+            }
+            if (/^Subject\s*:\s*/i.test(text)) {
+              return (
+                <p key={`body-${idx}`} className="nes-subject">
+                  <b>Subject:</b> {text.replace(/^Subject\s*:\s*/i, "")}
+                </p>
+              );
+            }
+            return <p key={`body-${idx}`}>{para}</p>;
+          })}
         </div>
       ) : null}
         </>
@@ -408,14 +496,13 @@ export function NesTradeDocument({
           <p>
             <b>Terms &amp; Conditions</b>
           </p>
-          {terms.map((line) => (
-            <p key={line}>
-              <span className="nes-diamond">◆</span> {line.replace(/^[-•◆]\s*/, "")}
-            </p>
-          ))}
-          {kind === "quotation" ? (
-            <p>Please sign back to us if you confirm this P.I/Quotation.</p>
-          ) : null}
+          {terms
+            .filter((line) => !/Please sign back to us/i.test(line))
+            .map((line) => (
+              <p key={line}>
+                <span className="nes-diamond">◆</span> {line.replace(/^[-•◆]\s*/, "")}
+              </p>
+            ))}
         </div>
       ) : isLast && kind !== "quotation" ? (
         <p className="nes-note">
@@ -436,50 +523,41 @@ export function NesTradeDocument({
       </div>
 
       {isLast ? (
-      <div className="nes-signs">
-        <div>
-          <div className="nes-signline" />
-          <p>{kind === "quotation" ? "(Customer Signature)" : "(Receiver Signature)"}</p>
-        </div>
-        <div className="nes-sign-right">
-          <div className="nes-signline" />
-          <p>
-            <b>{signName}</b>
-            <br />
-            Proprietor, {bizName}
-          </p>
+      <div className="nes-sign-block">
+        <p className="nes-signback">
+          Please sign back to us if you confirm this P.I / Quotation.
+        </p>
+        <div className="nes-signs">
+          <div>
+            <div className="nes-signline" />
+            <p>{kind === "quotation" ? "(Customer Signature)" : "(Receiver Signature)"}</p>
+          </div>
+          <div className="nes-sign-right">
+            <div className="nes-signline" />
+            <p>
+              <b>{signName}</b>
+              <br />
+              Proprietor, {bizName}
+            </p>
+          </div>
         </div>
       </div>
       ) : null}
 
       <footer className="nes-foot">
         <p>
-          <b>Office Address :</b> {bizAddress || "—"}
+          <b>Office Address :</b> {officeInfo.footerAddress}
         </p>
         <p>
-          {business?.phone ? (
-            <>
-              <b>Mobile/WhatsApp:</b> {business.phone}
-            </>
-          ) : null}
-          {wechat ? (
-            <>
-              {" "}
-              , <b>Wechat:</b> {wechat}
-            </>
-          ) : null}
+          <b>Mobile/WhatsApp:</b> {officeInfo.mobile} , <b>Wechat:</b> {officeInfo.wechat}
           {business?.website ? (
             <>
               {" "}
               , <b>Website:</b> {business.website}
             </>
           ) : null}
-          {business?.email ? (
-            <>
-              {" "}
-              , <b>Email:</b> {business.email}
-            </>
-          ) : null}
+          {" "}
+          , <b>Email:</b> {officeInfo.email}
         </p>
       </footer>
     </article>

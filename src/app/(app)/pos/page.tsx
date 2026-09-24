@@ -11,7 +11,7 @@ import {
 import { Field, Modal } from "@/components/ui";
 import { formatBDT } from "@/lib/utils";
 import { useDebouncedValue } from "@/lib/hooks";
-import { DEFAULT_DOCUMENT_BODY, withQuotationCompanyName } from "@/lib/default-document-body";
+import { DEFAULT_DOCUMENT_BODY, DEFAULT_QUOTATION_TERMS, withQuotationCompanyName } from "@/lib/default-document-body";
 
 type Product = {
   _id: string; name: string; nameBn?: string; sku: string; sellPrice: number;
@@ -84,6 +84,8 @@ function PosPageInner() {
   const [page, setPage] = useState(1);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [note, setNote] = useState("");
+  const [subject, setSubject] = useState("");
+  const [section, setSection] = useState("");
   const [documentBody, setDocumentBody] = useState(DEFAULT_DOCUMENT_BODY);
   const [savedTerms, setSavedTerms] = useState<string[]>([]);
   const [savedTermQuery, setSavedTermQuery] = useState("");
@@ -112,16 +114,17 @@ function PosPageInner() {
     ]).then(([m, c, cat, b, quotations]) => {
       setLocationId(String(m.locations?.[0]?._id || ""));
       setCustomers(c.data || []); setCategories(cat.data || []); setBrands(b.data || []);
-      setSavedTerms(
-        [...new Set<string>(
-          (quotations.data || []).flatMap((quotation: { terms?: string }) =>
-            String(quotation.terms || "")
-              .split("\n")
-              .map((line) => line.replace(/^[-•◆]\s*/, "").trim())
-              .filter(Boolean),
-          ),
-        )],
+      const fromQuotes = (quotations.data || []).flatMap((quotation: { terms?: string }) =>
+        String(quotation.terms || "")
+          .split("\n")
+          .map((line) => line.replace(/^[-•◆]\s*/, "").trim())
+          .filter(Boolean),
       );
+      const defaults = DEFAULT_QUOTATION_TERMS.split("\n").map((l) => l.trim()).filter(Boolean);
+      const combined = [...new Set<string>([...defaults, ...fromQuotes])].filter(
+        (line) => !/Please sign back to us/i.test(line),
+      );
+      setSavedTerms(combined);
     }).catch(() => setMessage(t("common.error")));
   }, [t]);
 
@@ -215,12 +218,30 @@ function PosPageInner() {
   function reset() {
     setCart([]); setCustomerId(""); setCustomerQuery(""); setCustomerName("");
     setCustomerMobile(""); setCustomerAddress(""); setCustomerEmail(""); setAttention("");
+    setSubject(""); setSection("");
     setQuotationNo(""); setReferenceNo(""); setSourceQuotationId(""); setSourceSaleId(""); setSaleDate(today());
     setChallanQuery(""); setChallanHits([]); setChallanMenu(false);
     setNote(""); setDocumentBody(DEFAULT_DOCUMENT_BODY); setSavedTermQuery(""); setDiscountValue(0); setPayRows([payRow()]); setMessage("");
     setSearch(""); setBrandName(""); setCategoryId(""); setProductResultsOpen(false);
     quotationNumberPending.current = false; referenceNumberPending.current = false; reservedQuotationNo.current = "";
     setQuoteSearch(""); setQuoteHits([]); setQuoteMenu(false);
+  }
+  function addAllSavedTerms() {
+    setNote((current) => {
+      const existing = current
+        .split("\n")
+        .map((line) => line.replace(/^[-•◆]\s*/, "").trim())
+        .filter(Boolean);
+      const toAdd = savedTerms.filter(
+        (term) =>
+          !/Please sign back to us/i.test(term) &&
+          !existing.some((ex) => ex.toLowerCase() === term.toLowerCase()),
+      );
+      if (toAdd.length === 0) return current;
+      return current.trim()
+        ? `${current.replace(/\s+$/, "")}\n${toAdd.join("\n")}`
+        : toAdd.join("\n");
+    });
   }
   async function ensureDocumentNumber(kind: "quotation" | "reference" | "challan") {
     if (isReturnEntry) return;
@@ -255,9 +276,28 @@ function PosPageInner() {
     setCustomerAddress(String(quote.customerAddress || ""));
     setCustomerEmail(String(quote.customerEmail || ""));
     setAttention(String(quote.attention || ""));
+    setSubject(String(quote.subject || ""));
+    setSection(String(quote.section || ""));
     setSaleDate(String(quote.saleDate || "").slice(0, 10) || today());
     setNote(String(quote.terms || quote.note || ""));
-    setDocumentBody(quote.documentBody != null ? String(quote.documentBody) : DEFAULT_DOCUMENT_BODY);
+    let docBody = quote.documentBody != null ? String(quote.documentBody) : DEFAULT_DOCUMENT_BODY;
+    if (quote.subject && !/^Subject\s*:/im.test(docBody)) {
+      if (/^Dear Sir/im.test(docBody)) {
+        docBody = docBody.replace(/^Dear Sir/im, `Subject: ${quote.subject}\n\nDear Sir`);
+      } else {
+        docBody = `Subject: ${quote.subject}\n\n${docBody}`;
+      }
+    }
+    if (quote.section && !/^Section\s*:/im.test(docBody)) {
+      if (/^Subject\s*:/im.test(docBody)) {
+        docBody = docBody.replace(/^(Subject\s*:[^\r\n]*)/im, `Section: ${quote.section}\n\n$1`);
+      } else if (/^Dear Sir/im.test(docBody)) {
+        docBody = docBody.replace(/^Dear Sir/im, `Section: ${quote.section}\n\nDear Sir`);
+      } else {
+        docBody = `Section: ${quote.section}\n\n${docBody}`;
+      }
+    }
+    setDocumentBody(docBody);
     setSavedTermQuery("");
     const loaded = (Array.isArray(quote.items) ? quote.items : []).map((i: Record<string, unknown>, idx: number) => ({
       _id: String(i.productId || `${quote._id}-${i.sku || idx}`),
@@ -448,11 +488,16 @@ function PosPageInner() {
   async function save(status: "draft" | "quotation" | "final" | "suspended", usePayments = false) {
     if (!cart.length || !locationId) return setMessage("Location and order items are required");
     if (usePayments && paid > grandTotal + .009) return setMessage("Payment cannot exceed grand total");
-    setBusy(true); setMessage("");
+    const sectionMatch = documentBody.match(/^Section\s*:\s*(.+)$/im);
+    const subjectMatch = documentBody.match(/^Subject\s*:\s*(.+)$/im);
+    const resolvedSection = sectionMatch ? sectionMatch[1].trim() : (section || undefined);
+    const resolvedSubject = subjectMatch ? subjectMatch[1].trim() : (subject || undefined);
+
     const payload = {
       locationId, customerId: customerId || undefined,
       customerName: customerName.trim() || "Walk-in Customer", customerMobile,
       customerAddress, customerEmail, attention, saleDate, sourceQuotationId: status === "final" && !isChallanEntry ? sourceQuotationId || undefined : undefined,
+      subject: resolvedSubject, section: resolvedSection,
       status: isChallanEntry && status === "quotation" ? "final" : status,
       quotationNo: isChallanEntry ? undefined : quotationNo,
       challanNo: isChallanEntry ? quotationNo : undefined,
@@ -746,7 +791,7 @@ function PosPageInner() {
                           .split("\n")
                           .map((line) => line.replace(/^[-•◆]\s*/, "").trim())
                           .filter(Boolean);
-                        if (existing.includes(selected)) return current;
+                        if (existing.some((ex) => ex.toLowerCase() === selected.toLowerCase())) return current;
                         return current.trim() ? `${current.replace(/\s+$/, "")}\n${selected}` : selected;
                       });
                       setSavedTermQuery("");
@@ -757,6 +802,15 @@ function PosPageInner() {
                     {savedTerms.map((term) => <option key={term} value={term} />)}
                   </datalist>
                 </div>
+                <button
+                  type="button"
+                  className="gp-btn gp-btn-ghost shrink-0 text-xs font-semibold text-primary hover:bg-[var(--gp-primary-soft)]"
+                  onClick={addAllSavedTerms}
+                  title="Add all saved terms at once"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add All Terms
+                </button>
               </div>
               <textarea className="gp-input min-h-14 resize-y" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Enter notes, delivery instructions, or terms and conditions..." />
             </section>

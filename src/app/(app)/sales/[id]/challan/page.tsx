@@ -39,6 +39,9 @@ type SaleDoc = {
   poNo?: string;
   poDate?: string;
   subject?: string;
+  section?: string;
+  attention?: string;
+  documentBody?: string;
   status?: string;
   customerName?: string;
   customerMobile?: string;

@@ -71,6 +71,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
       "challanNo",
       "binNo",
       "subject",
+      "section",
       "attention",
       "documentBody",
       "terms",

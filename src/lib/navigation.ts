@@ -56,6 +56,7 @@ export const NAV_TREE: NavItem[] = [
     children: [
       { href: "/contacts/customers", labelKey: "nav.customers", moduleId: "customers" },
       { href: "/contacts/employees", labelKey: "nav.employees", moduleId: "employees" },
+      { href: "/contacts/suppliers", labelKey: "nav.suppliers", moduleId: "suppliers" },
     ],
   },
   {
@@ -106,7 +107,6 @@ export const NAV_TREE: NavItem[] = [
     children: [
       { href: "/stock/adjustments", labelKey: "nav.listAdjustments", moduleId: "stock-adjustments" },
       { href: "/stock/adjustments/add", labelKey: "nav.addAdjustment", moduleId: "stock-adjustments-add" },
-      { href: "/stock/cylinders", labelKey: "nav.cylinders", moduleId: "cylinders" },
     ],
   },
   {
@@ -135,22 +135,15 @@ export const NAV_TREE: NavItem[] = [
     children: [
       { href: "/reports/profit-loss", labelKey: "reports.profitLoss", moduleId: "report-profit-loss" },
       { href: "/reports/purchase-sell", labelKey: "reports.purchaseSell", moduleId: "report-purchase-sell" },
-      { href: "/reports/tax", labelKey: "reports.tax", moduleId: "report-tax" },
       { href: "/reports/customer-supplier", labelKey: "reports.customerSupplier", moduleId: "report-customer-supplier" },
-      { href: "/reports/customer-groups", labelKey: "reports.customerGroups", moduleId: "report-customer-groups" },
       { href: "/reports/stock", labelKey: "reports.stock", moduleId: "report-stock" },
       { href: "/reports/stock-ledger", labelKey: "reports.stockLedger", moduleId: "report-stock-ledger" },
       { href: "/reports/stock-adjustment", labelKey: "reports.stockAdjustment", moduleId: "report-stock-adjustment" },
-      { href: "/reports/trending", labelKey: "reports.trending", moduleId: "report-trending" },
-      { href: "/reports/items", labelKey: "reports.items", moduleId: "report-items" },
       { href: "/reports/product-purchase", labelKey: "reports.productPurchase", moduleId: "report-product-purchase" },
       { href: "/reports/product-sell", labelKey: "reports.productSell", moduleId: "report-product-sell" },
       { href: "/reports/purchase-payment", labelKey: "reports.purchasePayment", moduleId: "report-purchase-payment" },
       { href: "/reports/sell-payment", labelKey: "reports.sellPayment", moduleId: "report-sell-payment" },
       { href: "/reports/expense", labelKey: "reports.expense", moduleId: "report-expense" },
-      { href: "/reports/register", labelKey: "reports.register", moduleId: "report-register" },
-      { href: "/reports/sales-rep", labelKey: "reports.salesRep", moduleId: "report-sales-rep" },
-      { href: "/reports/service", labelKey: "reports.service", moduleId: "report-service" },
       { href: "/reports/activity-log", labelKey: "reports.activityLog", moduleId: "report-activity-log" },
     ],
   },

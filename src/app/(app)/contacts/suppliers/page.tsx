@@ -3,9 +3,10 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { Eye, FileText, Pencil, Plus, Search, Trash2 } from "lucide-react";
-import { EmptyState, Field, Modal } from "@/components/ui";
-import { formatBDT, formatDateBD } from "@/lib/utils";
+import { FileText, Pencil, Plus, Trash2 } from "lucide-react";
+import { EmptyState, Field, FilterBar, Modal, PageHeader } from "@/components/ui";
+import { formatBDT } from "@/lib/utils";
+import { useDebouncedValue } from "@/lib/hooks";
 import { displaySupplierLabel } from "@/lib/supplier-label";
 
 type Supplier = {
@@ -54,6 +55,7 @@ export default function SuppliersPage() {
   const locale = useLocale();
   const [rows, setRows] = useState<Supplier[]>([]);
   const [q, setQ] = useState("");
+  const debouncedQ = useDebouncedValue(q, 350);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Supplier | null>(null);
@@ -65,7 +67,7 @@ export default function SuppliersPage() {
     setLoading(true);
     try {
       const qs = new URLSearchParams({ type: "supplier", limit: "100" });
-      if (q.trim()) qs.set("q", q.trim());
+      if (debouncedQ.trim()) qs.set("q", debouncedQ.trim());
       const res = await fetch(`/api/contacts?${qs}`);
       const json = await res.json();
       if (!res.ok) throw new Error("load_failed");
@@ -75,10 +77,10 @@ export default function SuppliersPage() {
     } finally {
       setLoading(false);
     }
-  }, [q, t]);
+  }, [debouncedQ, t]);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   function openCreate() {
@@ -100,7 +102,7 @@ export default function SuppliersPage() {
         supplierName: doc.supplierName || doc.name || "",
         supplierContact: doc.supplierContact || doc.mobile || "",
         supplierEmail: doc.supplierEmail || doc.email || "",
-        location: doc.location || "",
+        location: doc.location || doc.address || "",
         supplierWhatsApp: doc.supplierWhatsApp || "",
         supplierWeChat: doc.supplierWeChat || "",
         supplierCurrencyName: doc.supplierCurrencyName || "",
@@ -127,9 +129,13 @@ export default function SuppliersPage() {
     setMessage("");
     const payload: Record<string, unknown> = {
       type: "supplier",
+      name: form.supplierName.trim(),
       supplierName: form.supplierName.trim(),
+      mobile: form.supplierContact.trim(),
       supplierContact: form.supplierContact.trim(),
+      email: form.supplierEmail.trim(),
       supplierEmail: form.supplierEmail.trim(),
+      address: form.location.trim(),
       location: form.location.trim(),
       supplierWhatsApp: form.supplierWhatsApp.trim(),
       supplierWeChat: form.supplierWeChat.trim(),
@@ -179,7 +185,6 @@ export default function SuppliersPage() {
     try {
       const res = await fetch(`/api/contacts/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("fail");
-      // Optimistic remove, then refresh
       setRows((prev) => prev.filter((r) => r._id !== id));
       await load();
       setMessage(locale === "bn" ? "সরবরাহকারী মুছে ফেলা হয়েছে" : "Supplier deleted");
@@ -192,98 +197,74 @@ export default function SuppliersPage() {
 
   return (
     <div>
-      <div className="mb-2 flex flex-col gap-2 border-b border-line pb-2 sm:flex-row sm:items-center">
-        <h1 className="gp-display text-2xl font-bold tracking-tight text-[var(--gp-ink)]">
-          {locale === "bn" ? "সরবরাহকারী" : "Suppliers"}
-        </h1>
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:ml-auto sm:max-w-xl">
-          <div className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
-            <input
-              className="gp-input gp-input-icon-left"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder={t("common.search")}
-            />
-          </div>
-          <button type="button" className="gp-btn gp-btn-primary shrink-0" onClick={openCreate}>
+      <PageHeader
+        title={locale === "bn" ? "সরবরাহকারী" : "Suppliers"}
+        subtitle={
+          locale === "bn"
+            ? "নামে ক্লিক করে সরবরাহকারী লেজার দেখুন"
+            : "Click a name to open the supplier ledger"
+        }
+        actions={
+          <button type="button" className="gp-btn gp-btn-primary" onClick={openCreate}>
             <Plus className="h-4 w-4" />
-            {locale === "bn" ? "নতুন সরবরাহকারী" : "Add New Supplier"}
+            {locale === "bn" ? "সরবরাহকারী যোগ করুন" : "Add Supplier"}
+          </button>
+        }
+      />
+
+      {message ? <p className="mb-3 text-sm text-danger">{message}</p> : null}
+
+      <FilterBar>
+        <Field label={t("common.search")}>
+          <input className="gp-input" value={q} onChange={(e) => setQ(e.target.value)} />
+        </Field>
+        <div className="flex items-end">
+          <button type="button" className="gp-btn gp-btn-primary w-full" onClick={load}>
+            {t("common.apply")}
           </button>
         </div>
-      </div>
-
-      {message ? (
-        <p className="mb-2 rounded-xl border border-line bg-[var(--gp-primary-soft)] px-3 py-2 text-sm font-semibold text-primary">
-          {message}
-        </p>
-      ) : null}
+      </FilterBar>
 
       {loading ? (
         <EmptyState message={t("app.loading")} />
       ) : rows.length === 0 ? (
         <EmptyState message={t("common.noData")} />
       ) : (
-        <div className="gp-table-wrap !overflow-x-auto lg:-ml-12 lg:w-[calc(100%+3rem)]">
-          <table className="gp-table w-full min-w-[800px] table-fixed [&_td]:py-2 [&_th]:py-2">
-            <colgroup>
-              <col className="w-[6%]" />
-              <col className="w-[12%]" />
-              <col className="w-[20%]" />
-              <col className="w-[16%]" />
-              <col className="w-[14%]" />
-              <col className="w-[14%]" />
-              <col className="w-[18%]" />
-            </colgroup>
+        <div className="gp-table-wrap !overflow-x-auto">
+          <table className="gp-table">
             <thead>
               <tr>
-                <th>SL</th>
-                <th>{t("common.date")}</th>
                 <th>{locale === "bn" ? "নাম" : "Name"}</th>
-                <th>{locale === "bn" ? "লোকেশন" : "Location"}</th>
                 <th>{locale === "bn" ? "মোবাইল" : "Mobile"}</th>
                 <th>{locale === "bn" ? "প্রদেয় (Payable)" : "Payable"}</th>
                 <th>{t("common.actions")}</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((s, index) => {
+              {rows.map((s) => {
                 const name = displaySupplierLabel(s, locale);
                 return (
                   <tr key={s._id}>
-                    <td>{index + 1}</td>
-                    <td className="whitespace-nowrap">
-                      {s.createdAt ? formatDateBD(s.createdAt, locale) : "—"}
-                    </td>
-                    <td className="min-w-0">
+                    <td>
                       <Link
                         href={`/contacts/${s._id}/statement`}
-                        className="block truncate font-semibold text-primary hover:underline"
-                        title={locale === "bn" ? "স্টেটমেন্ট দেখুন" : "View statement"}
+                        className="font-semibold text-primary hover:underline"
+                        title={locale === "bn" ? "সরবরাহকারী লেজার দেখুন" : "View supplier ledger"}
                       >
                         {name}
                       </Link>
                     </td>
-                    <td className="min-w-0 truncate" title={s.location || s.address || ""}>
-                      {s.location || s.address || "—"}
-                    </td>
-                    <td>{s.mobile || "—"}</td>
-                    <td className="gp-money whitespace-nowrap">{formatBDT(s.balance || 0, locale)}</td>
+                    <td>{s.mobile || s.supplierContact || "—"}</td>
+                    <td className="gp-money">{formatBDT(s.balance || 0, locale)}</td>
                     <td>
                       <div className="flex flex-wrap gap-1">
                         <Link
                           href={`/contacts/${s._id}/statement`}
-                          className="gp-btn gp-btn-ghost min-h-9 px-2.5"
-                          title={locale === "bn" ? "স্টেটমেন্ট" : "Statement"}
+                          className="gp-btn gp-btn-primary min-h-9 whitespace-nowrap px-2.5"
+                          title={locale === "bn" ? "সরবরাহকারী লেজার" : "Supplier Ledger"}
                         >
                           <FileText className="h-4 w-4" />
-                        </Link>
-                        <Link
-                          href={`/contacts/suppliers/${s._id}`}
-                          className="gp-btn gp-btn-ghost min-h-9 px-2.5"
-                          title={locale === "bn" ? "বিস্তারিত" : "Details"}
-                        >
-                          <Eye className="h-4 w-4" />
+                          <span>{locale === "bn" ? "সরবরাহকারী লেজার" : "Supplier Ledger"}</span>
                         </Link>
                         <button
                           type="button"
@@ -315,7 +296,7 @@ export default function SuppliersPage() {
 
       <Modal
         open={modalOpen}
-        title={editing ? t("common.edit") : t("common.add")}
+        title={editing ? t("common.edit") : (locale === "bn" ? "সরবরাহকারী যোগ করুন" : "Add Supplier")}
         fit
         onClose={() => {
           if (busy) return;
