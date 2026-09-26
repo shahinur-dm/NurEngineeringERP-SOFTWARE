@@ -46,6 +46,7 @@ type SaleDoc = {
   dueAmount: number;
   note?: string;
   soldByName?: string;
+  hasSignature?: boolean;
   saleDate: string;
 };
 

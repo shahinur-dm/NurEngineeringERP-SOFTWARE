@@ -93,6 +93,7 @@ export async function POST(_req: NextRequest, ctx: Ctx) {
           staffNote: existing.staffNote,
           soldBy: existing.soldBy,
           soldByName: existing.soldByName,
+          hasSignature: Boolean(existing.hasSignature),
           saleDate: new Date(),
           sourceQuotationId: existing._id,
         };

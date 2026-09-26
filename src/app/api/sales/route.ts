@@ -194,11 +194,13 @@ export async function POST(req: NextRequest) {
   let referenceNo: string;
   let quotationNo: string | undefined;
   let sourceQuotationId = body.sourceQuotationId || undefined;
+  let sourceQuote: { quotationNo?: string; referenceNo?: string; hasSignature?: boolean } | null = null;
   if (sourceQuotationId) {
     const source = await Sale.findById(sourceQuotationId).lean();
     if (!source || source.status !== "quotation") {
       return NextResponse.json({ error: "quotation_not_found" }, { status: 404 });
     }
+    sourceQuote = source;
     quotationNo = source.quotationNo;
     referenceNo = source.referenceNo || (await nextReferenceNo());
   } else if (status === "quotation") {
@@ -266,6 +268,7 @@ export async function POST(req: NextRequest) {
     staffNote: body.staffNote,
     soldBy: session.id,
     soldByName: session.name,
+    hasSignature: body.hasSignature !== undefined ? Boolean(body.hasSignature) : (sourceQuote?.hasSignature ?? false),
     saleDate: body.saleDate ? new Date(body.saleDate) : new Date(),
     sourceQuotationId,
   };

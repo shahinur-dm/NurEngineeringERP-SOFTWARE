@@ -271,6 +271,7 @@ const SaleSchema = new Schema(
     staffNote: String,
     soldBy: { type: Schema.Types.ObjectId, ref: "User" },
     soldByName: String,
+    hasSignature: { type: Boolean, default: false },
     saleDate: { type: Date, default: Date.now },
   },
   { timestamps: true },
@@ -1015,6 +1016,7 @@ try {
     Sale.schema.add({ sourceQuotationId: { type: Schema.Types.ObjectId, ref: "Sale" } });
   }
   if (!Sale.schema.path("poDate")) Sale.schema.add({ poDate: Date });
+  if (!Sale.schema.path("hasSignature")) Sale.schema.add({ hasSignature: Boolean });
   const invPath = Sale.schema.path("invoiceNo") as mongoose.SchemaType | undefined;
   if (invPath) {
     if (typeof invPath.required === "function") invPath.required(false);

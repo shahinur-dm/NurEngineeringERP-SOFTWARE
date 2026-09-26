@@ -4,6 +4,7 @@ import { amountInWords, formatDateBD } from "@/lib/utils";
 import { paymentStatusFromAmounts } from "@/lib/sale-finance";
 import { DEFAULT_DOCUMENT_BODY } from "@/lib/default-document-body";
 import { resolveDocumentSubject } from "@/lib/document-subject";
+import { getSignatureBuffer } from "@/lib/signature";
 
 type Kind = "bill" | "quotation" | "challan";
 
@@ -44,6 +45,7 @@ export type TradePdfSale = {
   dueAmount?: number;
   note?: string;
   soldByName?: string;
+  hasSignature?: boolean;
   saleDate?: Date | string;
 };
 
@@ -608,6 +610,16 @@ export async function buildTradePdf(opts: {
 
   doc.line(m, signY, m + 50, signY);
   doc.line(pageW - m - 55, signY, pageW - m, signY);
+  if (sale.hasSignature) {
+    try {
+      const sigBuf = getSignatureBuffer();
+      if (sigBuf) {
+        doc.addImage(sigBuf, "PNG", pageW - m - 46, signY - 17, 36, 17);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
   doc.text(kind === "quotation" ? "(Customer Signature)" : "(Receiver Signature)", m, signY + 5);
   doc.setFont("helvetica", "bold");
   const propName = englishName(sale.soldByName);

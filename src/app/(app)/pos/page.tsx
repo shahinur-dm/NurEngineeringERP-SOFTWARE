@@ -4,8 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "rea
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
+import clsx from "clsx";
 import {
-  CalendarDays, FileText, Grid2X2, ImageIcon, MapPin, PackagePlus, Plus,
+  CalendarDays, Check, FileText, Grid2X2, ImageIcon, MapPin, PackagePlus, Plus,
   Search, Trash2, Upload, UserPlus, Wallet, X,
 } from "lucide-react";
 import { Field, Modal } from "@/components/ui";
@@ -91,6 +92,7 @@ function PosPageInner() {
   const [savedTermQuery, setSavedTermQuery] = useState("");
   const [discountValue, setDiscountValue] = useState(0);
   const [discountType, setDiscountType] = useState<"percentage" | "fixed">("percentage");
+  const [hasSignature, setHasSignature] = useState(false);
   const [payRows, setPayRows] = useState<PayRow[]>([payRow()]);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -221,7 +223,7 @@ function PosPageInner() {
     setSubject(""); setSection("");
     setQuotationNo(""); setReferenceNo(""); setSourceQuotationId(""); setSourceSaleId(""); setSaleDate(today());
     setChallanQuery(""); setChallanHits([]); setChallanMenu(false);
-    setNote(""); setDocumentBody(DEFAULT_DOCUMENT_BODY); setSavedTermQuery(""); setDiscountValue(0); setPayRows([payRow()]); setMessage("");
+    setNote(""); setDocumentBody(DEFAULT_DOCUMENT_BODY); setSavedTermQuery(""); setDiscountValue(0); setHasSignature(false); setPayRows([payRow()]); setMessage("");
     setSearch(""); setBrandName(""); setCategoryId(""); setProductResultsOpen(false);
     quotationNumberPending.current = false; referenceNumberPending.current = false; reservedQuotationNo.current = "";
     setQuoteSearch(""); setQuoteHits([]); setQuoteMenu(false);
@@ -315,6 +317,7 @@ function PosPageInner() {
     setCart(loaded);
     setDiscountValue(Math.max(0, Number(quote.discount || 0) - loaded.reduce((s: number, i: CartItem) => s + cartLineDiscount(i), 0)));
     setDiscountType("fixed");
+    setHasSignature(Boolean(quote.hasSignature));
     const pays = Array.isArray(quote.payments) ? quote.payments : [];
     setPayRows(
       pays.length
@@ -502,6 +505,7 @@ function PosPageInner() {
       quotationNo: isChallanEntry ? undefined : quotationNo,
       challanNo: isChallanEntry ? quotationNo : undefined,
       referenceNo, note, terms: note, documentBody, discount: totalDiscount, tax: 0, shipping: 0,
+      hasSignature,
       items: cart.map((i) => ({
         productId: /^[a-f0-9]{24}$/i.test(String(i._id)) ? i._id : undefined, name: i.name, sku: i.sku, unit: i.unit || "Pcs", qty: i.qty,
         bonusQty: i.bonusQty, unitPrice: i.sellPrice, discount: cartLineDiscount(i),
@@ -822,7 +826,32 @@ function PosPageInner() {
 
           <div className="grid items-stretch gap-1.5 md:grid-cols-2 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)_minmax(10.75rem,0.38fr)]">
             <section className="rounded-xl border border-line p-1.5">
-              <button type="button" className="gp-btn gp-btn-ghost" onClick={() => setPayRows((old) => [...old, payRow()])}><Plus className="h-4 w-4" />Add Payment</button>
+              <div className="flex items-center justify-between">
+                <button type="button" className="gp-btn gp-btn-ghost" onClick={() => setPayRows((old) => [...old, payRow()])}><Plus className="h-4 w-4" />Add Payment</button>
+                <button
+                  type="button"
+                  className={clsx(
+                    "gp-btn text-xs font-semibold shrink-0 transition-colors",
+                    hasSignature
+                      ? "border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                      : "gp-btn-ghost text-primary hover:bg-[var(--gp-primary-soft)]",
+                  )}
+                  onClick={() => setHasSignature((v) => !v)}
+                  title={hasSignature ? "Signature attached to quotation. Click to remove." : "Click to attach signature to quotation"}
+                >
+                  {hasSignature ? (
+                    <>
+                      <Check className="h-3.5 w-3.5 text-emerald-600" />
+                      Signature Added
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="h-3.5 w-3.5" />
+                      Add Signature
+                    </>
+                  )}
+                </button>
+              </div>
               <div className="mt-1.5 space-y-1.5">{payRows.map((p) => <div key={p.id} className="grid grid-cols-[1fr_1fr_auto] gap-2"><select className="gp-input" value={p.method} onChange={(e) => setPayRows((old) => old.map((x) => x.id === p.id ? { ...x, method: e.target.value } : x))}>{METHODS.map((m) => <option key={m} value={m}>{m}</option>)}</select><input type="number" min={0} className="gp-input" value={p.amount || ""} placeholder="Amount" onChange={(e) => setPayRows((old) => old.map((x) => x.id === p.id ? { ...x, amount: Math.max(0, Number(e.target.value)) } : x))} /><button type="button" className="p-2 text-red-500" disabled={payRows.length === 1} onClick={() => setPayRows((old) => old.filter((x) => x.id !== p.id))}><X className="h-4 w-4" /></button></div>)}</div>
             </section>
             <section className="rounded-xl border border-line bg-[#fbfdff] p-1.5">

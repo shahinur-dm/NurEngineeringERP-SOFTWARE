@@ -56,7 +56,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   if (!existing) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
   const $set: Record<string, unknown> = {};
-  for (const key of ["customerName", "note", "staffNote", "status"]) {
+  for (const key of ["customerName", "note", "staffNote", "status", "hasSignature"]) {
     if (body[key] !== undefined) $set[key] = body[key];
   }
   if (existing.status === "quotation") {
@@ -75,6 +75,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
       "attention",
       "documentBody",
       "terms",
+      "hasSignature",
     ]) {
       if (body[key] !== undefined) $set[key] = body[key];
     }

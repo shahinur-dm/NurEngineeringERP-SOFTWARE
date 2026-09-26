@@ -52,6 +52,7 @@ type Quote = {
   grandTotal: number;
   saleDate: string;
   status: string;
+  hasSignature?: boolean;
 };
 
 export default function QuotationsPage() {
@@ -148,6 +149,7 @@ export default function QuotationsPage() {
       note: full.note || "",
       terms: full.terms || "",
       documentBody: full.documentBody || "",
+      hasSignature: full.hasSignature ? "true" : "false",
     });
   }
 
@@ -182,6 +184,7 @@ export default function QuotationsPage() {
           note: editForm.note,
           terms: editForm.terms,
           documentBody: editForm.documentBody,
+          hasSignature: editForm.hasSignature !== undefined ? editForm.hasSignature === "true" : Boolean(editing.hasSignature),
           items: editItems.map((it) => ({
             productId: it.productId,
             name: it.name,

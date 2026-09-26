@@ -4,6 +4,7 @@ import { paymentStatusFromAmounts } from "@/lib/sale-finance";
 import { amountInWords, formatDateBD } from "@/lib/utils";
 import { DEFAULT_DOCUMENT_BODY } from "@/lib/default-document-body";
 import { resolveDocumentSubject } from "@/lib/document-subject";
+import { SIGNATURE_IMAGE_SRC } from "@/lib/signature";
 
 export type TradeDocKind = "bill" | "quotation" | "challan";
 
@@ -47,6 +48,7 @@ export type TradeSale = {
   dueAmount?: number;
   note?: string;
   soldByName?: string;
+  hasSignature?: boolean;
   saleDate?: string;
 };
 
@@ -533,6 +535,13 @@ export function NesTradeDocument({
             <p>{kind === "quotation" ? "(Customer Signature)" : "(Receiver Signature)"}</p>
           </div>
           <div className="nes-sign-right">
+            {sale?.hasSignature ? (
+              <img
+                src={SIGNATURE_IMAGE_SRC}
+                alt="Signature"
+                style={{ height: "42px", width: "auto", marginBottom: "-8px", marginLeft: "auto", display: "block" }}
+              />
+            ) : null}
             <div className="nes-signline" />
             <p>
               <b>{signName}</b>

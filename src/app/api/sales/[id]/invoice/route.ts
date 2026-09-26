@@ -24,6 +24,13 @@ export async function GET(
   const business = await Business.findOne().lean();
   if (!sale) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
+  if (!sale.hasSignature && sale.sourceQuotationId) {
+    const srcQuote = await Sale.findById(sale.sourceQuotationId).select("hasSignature").lean();
+    if (srcQuote?.hasSignature) {
+      sale.hasSignature = true;
+    }
+  }
+
   const bizName = locale === "bn" && business?.nameBn ? business.nameBn : business?.name || "Nur Engineering ERP";
   const bizAddress =
     locale === "bn" && business?.addressBn ? business.addressBn : business?.address || "";
