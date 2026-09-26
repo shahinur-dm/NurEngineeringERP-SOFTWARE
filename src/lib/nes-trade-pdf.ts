@@ -1,10 +1,11 @@
+import fs from "fs";
+import path from "path";
 import { GState, jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { amountInWords, formatDateBD } from "@/lib/utils";
 import { paymentStatusFromAmounts } from "@/lib/sale-finance";
 import { DEFAULT_DOCUMENT_BODY } from "@/lib/default-document-body";
 import { resolveDocumentSubject } from "@/lib/document-subject";
-import { getSignatureBuffer } from "@/lib/signature";
 
 type Kind = "bill" | "quotation" | "challan";
 
@@ -149,6 +150,21 @@ function termEntries(terms?: string) {
 function resolveDocumentBody(documentBody?: string) {
   if (documentBody === undefined || documentBody === null) return DEFAULT_DOCUMENT_BODY;
   return String(documentBody);
+}
+
+let _signatureBuffer: Buffer | null = null;
+function getSignatureBuffer(): Buffer | null {
+  if (_signatureBuffer) return _signatureBuffer;
+  try {
+    const filePath = path.join(process.cwd(), "public", "signature.png");
+    if (fs.existsSync(filePath)) {
+      _signatureBuffer = fs.readFileSync(filePath);
+      return _signatureBuffer;
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
 }
 
 function lastTableY(doc: jsPDF, fallback: number) {
