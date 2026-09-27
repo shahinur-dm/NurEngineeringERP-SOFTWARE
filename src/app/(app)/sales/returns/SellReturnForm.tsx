@@ -1,11 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import {
   CalendarDays, FileText, Grid2X2, ImageIcon, MapPin, PackagePlus, Plus,
-  Search, Trash2, UserPlus, X,
+  Search, Trash2, Upload, UserPlus, X,
 } from "lucide-react";
 import { Field, Modal } from "@/components/ui";
 import { formatBDT } from "@/lib/utils";
@@ -19,12 +20,25 @@ type Product = {
 };
 type Customer = { _id: string; name: string; nameBn?: string; mobile?: string; address?: string; email?: string };
 type Named = { _id: string; name: string; nameBn?: string };
-type CartItem = Product & { qty: number; saleDescription: string; lineDiscount: number };
+type CartItem = Product & {
+  qty: number;
+  saleDescription: string;
+  lineDiscount: number;
+  lineDiscountType?: "percentage" | "fixed";
+};
 type PayRow = { id: string; method: string; amount: number };
 type ChallanHit = {
   _id: string; shipmentNo?: string; saleId?: string; customerName?: string;
   invoiceNo?: string; referenceNo?: string; items?: { name?: string; sku?: string; qty?: number; description?: string }[];
 };
+
+function cartLineDiscount(i: CartItem) {
+  const base = i.qty * i.sellPrice;
+  const raw = i.lineDiscountType === "percentage"
+    ? (base * Math.min(100, Number(i.lineDiscount) || 0)) / 100
+    : Number(i.lineDiscount) || 0;
+  return Math.min(base, Math.max(0, raw));
+}
 
 const METHODS = ["cash", "card", "bank", "bkash", "nagad", "rocket", "cheque", "credit"] as const;
 const today = () => new Date().toISOString().slice(0, 10);
@@ -127,6 +141,7 @@ export function SellReturnForm({ editId }: { editId?: string }) {
           qty: Number(i.qty || 1),
           saleDescription: String(i.description || ""),
           lineDiscount: Number(i.discount || 0),
+          lineDiscountType: "fixed",
         })));
         setDiscountValue(Number(row.discount || 0));
         setDiscountType("fixed");
@@ -175,11 +190,11 @@ export function SellReturnForm({ editId }: { editId?: string }) {
   ).slice(0, 8);
 
   const subtotal = cart.reduce((sum, i) => sum + i.qty * i.sellPrice, 0);
-  const lineDiscount = cart.reduce((sum, i) => sum + Math.min(i.lineDiscount, i.qty * i.sellPrice), 0);
+  const lineDiscount = cart.reduce((sum, i) => sum + cartLineDiscount(i), 0);
   const discountBase = Math.max(0, subtotal - lineDiscount);
   const orderDiscount = Math.min(
     discountBase,
-    discountType === "percentage" ? discountBase * Math.min(100, discountValue) / 100 : discountValue,
+    discountType === "percentage" ? (discountBase * Math.min(100, discountValue)) / 100 : discountValue,
   );
   const totalDiscount = lineDiscount + orderDiscount;
   const grandTotal = Math.max(0, subtotal - totalDiscount);
@@ -197,7 +212,7 @@ export function SellReturnForm({ editId }: { editId?: string }) {
       const found = old.find((x) => x._id === p._id);
       return found
         ? old.map((x) => x._id === p._id ? { ...x, qty: x.qty + 1 } : x)
-        : [...old, { ...p, qty: 1, saleDescription: p.description || "", lineDiscount: 0 }];
+        : [...old, { ...p, qty: 1, saleDescription: p.description || "", lineDiscount: 0, lineDiscountType: "fixed" }];
     });
     setProductResultsOpen(false);
   }
@@ -247,6 +262,7 @@ export function SellReturnForm({ editId }: { editId?: string }) {
       qty: Number(i.qty || 1),
       saleDescription: String(i.description || ""),
       lineDiscount: Number(i.discount || 0),
+      lineDiscountType: "fixed",
     })));
     setDiscountValue(Number(sale.discount || 0));
     setDiscountType("fixed");
@@ -293,6 +309,7 @@ export function SellReturnForm({ editId }: { editId?: string }) {
         qty: Number(i.qty || 1),
         saleDescription: i.description || "",
         lineDiscount: 0,
+        lineDiscountType: "fixed",
       })));
       setMessage(`Loaded challan ${hit.shipmentNo}`);
     } catch { setMessage("Failed to load challan"); }
@@ -312,10 +329,10 @@ export function SellReturnForm({ editId }: { editId?: string }) {
       status: "Returned",
       payments: payRows.filter((p) => p.amount > 0).map(({ method, amount }) => ({ method, amount })),
       items: cart.map((i) => ({
-        productId: i._id.startsWith("ship-") || i._id.startsWith("ret-") ? undefined : i._id,
+        productId: /^[a-f0-9]{24}$/i.test(String(i._id)) ? i._id : undefined,
         name: i.name, sku: i.sku, description: i.saleDescription, qty: i.qty,
-        unitPrice: i.sellPrice, discount: Math.min(i.lineDiscount, i.qty * i.sellPrice),
-        lineTotal: Math.max(0, i.qty * i.sellPrice - i.lineDiscount),
+        unitPrice: i.sellPrice, discount: cartLineDiscount(i),
+        lineTotal: Math.max(0, i.qty * i.sellPrice - cartLineDiscount(i)),
       })),
     };
     try {
@@ -346,7 +363,7 @@ export function SellReturnForm({ editId }: { editId?: string }) {
         <header className="flex flex-wrap items-center gap-2 border-b border-line px-3 py-1.5">
           <div className="flex min-w-0 flex-1 items-center gap-2 text-xl font-bold text-[var(--gp-ink)]">
             <span className="rounded-lg bg-[var(--gp-primary)] p-1.5 text-white"><FileText className="h-5 w-5" /></span>
-            Challan
+            Sales Return
             <div className="relative min-w-0 flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
               <input
@@ -377,6 +394,7 @@ export function SellReturnForm({ editId }: { editId?: string }) {
             setNote(""); setDocumentBody(DEFAULT_DOCUMENT_BODY); setDiscountValue(0); setPayRows([payRow()]);
             setMessage(""); setSearch(""); setBrandName(""); setCategoryId(""); setProductResultsOpen(false);
           }}><Plus className="h-4 w-4" />New Order</button>
+          <Link className="gp-btn gp-btn-ghost" href="/contacts/import"><Upload className="h-4 w-4" />Import Customer</Link>
         </header>
 
         <div className="space-y-1.5 p-1.5">
@@ -428,22 +446,28 @@ export function SellReturnForm({ editId }: { editId?: string }) {
             </div>
             {productResultsOpen && (loading && !visible.length ? <p className="py-6 text-center text-muted">Loading products...</p> : (
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                {visible.map((p) => (
-                  <button key={p._id} type="button" onClick={() => addProduct(p)} className="group rounded-xl border border-line bg-white p-2 text-left transition hover:-translate-y-0.5 hover:border-[var(--gp-primary)] hover:shadow-md">
-                    <div className="flex min-h-28 items-stretch gap-2">
-                      <div className="flex w-1/2 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-50">
-                        {p.imageUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={p.imageUrl} alt={p.name} className="aspect-square h-full max-h-32 w-full object-contain" />
-                        ) : <ImageIcon className="h-8 w-8 text-slate-300" />}
+                {visible.map((p) => {
+                  const stock = Number(p.locationQty || 0);
+                  return (
+                    <button key={p._id} type="button" onClick={() => addProduct(p)} className="group rounded-xl border border-line bg-white p-2 text-left transition hover:-translate-y-0.5 hover:border-[var(--gp-primary)] hover:shadow-md">
+                      <div className="flex min-h-28 items-stretch gap-2">
+                        <div className="flex w-1/2 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-50">
+                          {p.imageUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={p.imageUrl} alt={p.name} className="aspect-square h-full max-h-32 w-full object-contain" />
+                          ) : <ImageIcon className="h-8 w-8 text-slate-300" />}
+                        </div>
+                        <div className="flex min-w-0 w-1/2 flex-col justify-center py-1">
+                          <p className="line-clamp-2 font-semibold leading-snug">{locale === "bn" && p.nameBn ? p.nameBn : p.name}</p>
+                          <p className="gp-money mt-1.5 font-bold text-primary">{formatBDT(p.sellPrice, locale)}</p>
+                          <p className="mt-1 text-xs text-muted">Stock: <span className={stock > 0 ? "font-semibold text-emerald-600" : "font-semibold text-red-500"}>{stock}</span></p>
+                          <p className="mt-1 truncate text-xs text-muted" title={p.brand || ""}>Brand: {p.brand || "—"}</p>
+                          <p className="mt-1 truncate text-[0.7rem] text-muted">SKU: {p.sku}</p>
+                        </div>
                       </div>
-                      <div className="flex min-w-0 w-1/2 flex-col justify-center py-1">
-                        <p className="line-clamp-2 font-semibold leading-snug">{locale === "bn" && p.nameBn ? p.nameBn : p.name}</p>
-                        <p className="gp-money mt-1.5 font-bold text-primary">{formatBDT(p.sellPrice, locale)}</p>
-                      </div>
-                    </div>
-                  </button>
-                ))}
+                    </button>
+                  );
+                })}
               </div>
             ))}
             {productResultsOpen && pages > 1 && <div className="mt-2 flex items-center justify-center gap-2"><button type="button" className="gp-btn gp-btn-ghost" disabled={page === 1} onClick={() => setPage((x) => x - 1)}>Previous</button><span className="text-sm text-muted">Page {page} of {pages}</span><button type="button" className="gp-btn gp-btn-ghost" disabled={page === pages} onClick={() => setPage((x) => x + 1)}>Next</button></div>}
@@ -451,18 +475,49 @@ export function SellReturnForm({ editId }: { editId?: string }) {
 
           {cart.length > 0 && <div className="overflow-x-auto rounded-xl border border-line">
             <table className="gp-table pos-quote-items">
-              <thead><tr><th>SL</th><th>SKU</th><th>Name</th><th>Description</th><th>QTY</th><th>Price</th><th>Discount</th><th>Total</th><th /></tr></thead>
+              <thead>
+                <tr>
+                  <th>SL</th>
+                  <th>SKU</th>
+                  <th>Name</th>
+                  <th>Description</th>
+                  <th>QTY</th>
+                  <th>Price</th>
+                  <th>Discount</th>
+                  <th>Total</th>
+                  <th />
+                </tr>
+              </thead>
               <tbody>{cart.map((i, index) => {
-                const lineTotal = Math.max(0, i.qty * i.sellPrice - i.lineDiscount);
+                const lineTotal = Math.max(0, i.qty * i.sellPrice - cartLineDiscount(i));
                 return (
                   <tr key={`${i._id}-${index}`}>
                     <td>{index + 1}</td>
                     <td className="min-w-0"><input className="gp-input w-full min-w-0" value={i.sku} onChange={(e) => updateItem(i._id, { sku: e.target.value })} /></td>
-                    <td className="min-w-0"><input className="gp-input w-full min-w-0" value={i.name} onChange={(e) => updateItem(i._id, { name: e.target.value })} /></td>
-                    <td className="min-w-0"><textarea className="gp-input pos-quote-desc w-full min-w-0" rows={1} value={i.saleDescription} onChange={(e) => updateItem(i._id, { saleDescription: e.target.value })} /></td>
+                    <td className="min-w-0"><textarea className="gp-input pos-quote-resizable w-full min-w-0" rows={1} value={i.name} onChange={(e) => updateItem(i._id, { name: e.target.value })} onKeyDown={(e) => { if (e.key === "Enter") e.stopPropagation(); }} /></td>
+                    <td className="min-w-0"><textarea className="gp-input pos-quote-desc pos-quote-resizable w-full min-w-0" rows={1} value={i.saleDescription} onChange={(e) => updateItem(i._id, { saleDescription: e.target.value })} onKeyDown={(e) => { if (e.key === "Enter") e.stopPropagation(); }} /></td>
                     <td><input type="number" min={1} className="gp-input w-full min-w-0" value={i.qty} onChange={(e) => updateItem(i._id, { qty: Math.max(1, Number(e.target.value) || 1) })} /></td>
                     <td><input type="number" min={0} className="gp-input w-full min-w-0" value={i.sellPrice} onChange={(e) => updateItem(i._id, { sellPrice: Math.max(0, Number(e.target.value)) })} /></td>
-                    <td><input type="number" min={0} className="gp-input w-full min-w-0" value={i.lineDiscount} onChange={(e) => updateItem(i._id, { lineDiscount: Math.max(0, Number(e.target.value)) })} /></td>
+                    <td>
+                      <div className="relative min-w-0">
+                        <input
+                          type="number"
+                          min={0}
+                          max={i.lineDiscountType === "percentage" ? 100 : i.qty * i.sellPrice}
+                          className="gp-input w-full min-w-0 !pr-7"
+                          value={i.lineDiscount}
+                          onChange={(e) => updateItem(i._id, { lineDiscount: Math.max(0, Number(e.target.value)) })}
+                        />
+                        <select
+                          className="absolute inset-y-0 right-0 z-10 w-7 cursor-pointer border-0 bg-transparent px-0 text-xs"
+                          value={i.lineDiscountType || "fixed"}
+                          onChange={(e) => updateItem(i._id, { lineDiscountType: e.target.value as "percentage" | "fixed" })}
+                        >
+                          <option value="percentage">%</option>
+                          <option value="fixed">৳</option>
+                        </select>
+                      </div>
+                    </td>
                     <td className="gp-money font-bold">{formatBDT(lineTotal, locale)}</td>
                     <td><button type="button" className="p-1 text-red-500" onClick={() => setCart((old) => old.filter((x) => x._id !== i._id))}><Trash2 className="h-4 w-4" /></button></td>
                   </tr>
@@ -515,15 +570,15 @@ export function SellReturnForm({ editId }: { editId?: string }) {
             <section className="rounded-xl border border-line bg-[#fbfdff] p-1.5">
               <h2 className="mb-1.5 flex items-center gap-2 text-sm font-bold"><Grid2X2 className="h-4 w-4 text-primary" />Sell Return Summary</h2>
               <div className="space-y-1 text-sm">
-                <div className="flex justify-between"><span>Subtotal</span><b className="gp-money">{formatBDT(subtotal, locale)}</b></div>
-                <div className="grid grid-cols-[1fr_150px] items-center gap-2"><span>Total Discount</span><div className="flex"><input type="number" min={0} className="gp-input rounded-r-none" value={discountValue} onChange={(e) => setDiscountValue(Math.max(0, Number(e.target.value)))} /><select className="gp-input w-16 rounded-l-none px-1" value={discountType} onChange={(e) => setDiscountType(e.target.value as "percentage" | "fixed")}><option value="percentage">%</option><option value="fixed">৳</option></select></div></div>
+                <div className="flex justify-between gap-3"><span>Subtotal</span><b className="gp-money min-w-[11rem] shrink-0 text-right">{formatBDT(subtotal, locale)}</b></div>
+                <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-2"><span>Total Discount</span><div className="flex min-w-0 max-w-full"><input type="number" min={0} className="gp-input min-w-0 flex-1 rounded-r-none" value={discountValue} onChange={(e) => setDiscountValue(Math.max(0, Number(e.target.value)))} /><select className="gp-input !w-[2.65rem] !min-w-[2.65rem] !max-w-[2.65rem] shrink-0 grow-0 rounded-l-none px-1" value={discountType} onChange={(e) => setDiscountType(e.target.value as "percentage" | "fixed")}><option value="percentage">%</option><option value="fixed">৳</option></select></div></div>
                 <div className="flex justify-between text-xs text-muted"><span>Including line discounts</span><span>{formatBDT(totalDiscount, locale)}</span></div>
                 <div className="flex justify-between rounded-lg border border-line bg-white p-1.5 text-lg"><b>Grand Total</b><b className="gp-money text-primary">{formatBDT(grandTotal, locale)}</b></div>
                 <div className="flex justify-between px-2 text-base"><b>Due Amount</b><b className="gp-money text-red-500">{formatBDT(due, locale)}</b></div>
               </div>
             </section>
             <div className="flex flex-col justify-center gap-2 md:col-span-2 lg:col-span-1">
-              <button type="button" className="gp-btn gp-btn-primary w-full" disabled={busy || !cart.length} onClick={() => void save()}>{busy ? "Saving..." : "Save Sell Return"}</button>
+              <button type="button" className="gp-btn gp-btn-primary w-full" disabled={busy || !cart.length} onClick={() => void save()}>{busy ? "Saving..." : "Save Sales Return"}</button>
             </div>
           </div>
         </div>
