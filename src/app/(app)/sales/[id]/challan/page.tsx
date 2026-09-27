@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -97,9 +97,11 @@ export default function DeliveryChallanPage() {
     if (id) void load();
   }, [id, t]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    setShowChrome(new URLSearchParams(window.location.search).get("hf") !== "0");
+  const handlePrint = useCallback((hf: boolean) => {
+    setShowChrome(hf);
+    setTimeout(() => {
+      window.print();
+    }, 60);
   }, []);
 
   async function loadQuotationChallan() {
@@ -122,11 +124,30 @@ export default function DeliveryChallanPage() {
   }
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hfParam = new URLSearchParams(window.location.search).get("hf");
+    if (hfParam === "0") {
+      setShowChrome(false);
+    }
+    const onTrigger = (e: Event) => {
+      const customEvent = e as CustomEvent<{ hf?: boolean }>;
+      const hf = customEvent.detail?.hf !== false;
+      handlePrint(hf);
+    };
+    window.addEventListener("nes-print-trigger", onTrigger);
+    return () => window.removeEventListener("nes-print-trigger", onTrigger);
+  }, [handlePrint]);
+
+  useEffect(() => {
     if (loading || !challan || !sale) return;
     if (typeof window === "undefined") return;
-    if (new URLSearchParams(window.location.search).get("print") !== "1") return;
-    const timer = window.setTimeout(() => window.print(), 400);
-    return () => window.clearTimeout(timer);
+    if (new URLSearchParams(window.location.search).get("print") === "1") {
+      const hfParam = new URLSearchParams(window.location.search).get("hf");
+      const hf = hfParam !== "0";
+      setShowChrome(hf);
+      const timer = window.setTimeout(() => window.print(), 300);
+      return () => window.clearTimeout(timer);
+    }
   }, [loading, challan, sale]);
 
   if (loading) {
@@ -164,7 +185,7 @@ export default function DeliveryChallanPage() {
           </div>
         </div>
         <div className="flex flex-wrap gap-1.5">
-          <DocumentExportBar printBase={`/sales/${sale._id}/challan`} pdfHref={pdfHref} />
+          <DocumentExportBar printBase={`/sales/${sale._id}/challan`} pdfHref={pdfHref} onPrint={handlePrint} />
           <InvoiceActions saleId={sale._id} saleStatus={sale.status} hidePrintPdf />
         </div>
       </div>

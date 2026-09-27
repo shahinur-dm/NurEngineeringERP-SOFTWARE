@@ -96,17 +96,38 @@ export default function QuotationViewPage() {
     if (id) void load();
   }, [id, load]);
 
+  const handlePrint = useCallback((hf: boolean) => {
+    setShowChrome(hf);
+    setTimeout(() => {
+      window.print();
+    }, 60);
+  }, []);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
-    setShowChrome(new URLSearchParams(window.location.search).get("hf") !== "0");
-  }, []);
+    const hfParam = new URLSearchParams(window.location.search).get("hf");
+    if (hfParam === "0") {
+      setShowChrome(false);
+    }
+    const onTrigger = (e: Event) => {
+      const customEvent = e as CustomEvent<{ hf?: boolean }>;
+      const hf = customEvent.detail?.hf !== false;
+      handlePrint(hf);
+    };
+    window.addEventListener("nes-print-trigger", onTrigger);
+    return () => window.removeEventListener("nes-print-trigger", onTrigger);
+  }, [handlePrint]);
 
   useEffect(() => {
     if (loading || !sale) return;
     if (typeof window === "undefined") return;
-    if (new URLSearchParams(window.location.search).get("print") !== "1") return;
-    const timer = window.setTimeout(() => window.print(), 400);
-    return () => window.clearTimeout(timer);
+    if (new URLSearchParams(window.location.search).get("print") === "1") {
+      const hfParam = new URLSearchParams(window.location.search).get("hf");
+      const hf = hfParam !== "0";
+      setShowChrome(hf);
+      const timer = window.setTimeout(() => window.print(), 300);
+      return () => window.clearTimeout(timer);
+    }
   }, [loading, sale]);
 
   async function convertToOrder() {
@@ -159,7 +180,7 @@ export default function QuotationViewPage() {
           </div>
         </div>
         <div className="flex flex-wrap gap-1.5">
-          <DocumentExportBar printBase={`/sales/${sale._id}/quotation`} pdfHref={pdfHref} />
+          <DocumentExportBar printBase={`/sales/${sale._id}/quotation`} pdfHref={pdfHref} onPrint={handlePrint} />
           <Link href={`/sales/${sale._id}/challan`} className="gp-btn gp-btn-ghost min-h-10 px-3">
             <Truck className="h-4 w-4" />
             {t("invoice.deliveryChallan")}

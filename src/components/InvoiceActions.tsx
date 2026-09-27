@@ -30,22 +30,37 @@ export function PaymentStatusBadge({
 export function DocumentExportBar({
   printBase,
   pdfHref,
+  onPrint,
 }: {
-  printBase: string;
+  printBase?: string;
   pdfHref: string;
+  onPrint?: (headerFooter: boolean) => void;
 }) {
   function withQuery(url: string, extra: string) {
     return url.includes("?") ? `${url}&${extra}` : `${url}?${extra}`;
   }
   const btn = "gp-btn gp-btn-ghost min-h-10 px-3 text-sm";
+
+  const handlePrint = (headerFooter: boolean) => {
+    if (onPrint) {
+      onPrint(headerFooter);
+      return;
+    }
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("nes-print-trigger", { detail: { hf: headerFooter } }),
+      );
+    }
+  };
+
   return (
     <>
-      <Link href={withQuery(printBase, "print=1")} className={btn}>
+      <button type="button" onClick={() => handlePrint(true)} className={btn}>
         Print with Header & Footer
-      </Link>
-      <Link href={withQuery(printBase, "print=1&hf=0")} className={btn}>
+      </button>
+      <button type="button" onClick={() => handlePrint(false)} className={btn}>
         Print without Header & Footer
-      </Link>
+      </button>
       <a href={pdfHref} target="_blank" rel="noreferrer" className={btn}>
         PDF with Header & Footer
       </a>

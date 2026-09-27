@@ -743,6 +743,28 @@ h3,
     print-color-adjust: exact !important;
   }
 
+  .nes-no-chrome .nes-head,
+  .nes-no-chrome .nes-rule {
+    background: transparent !important;
+    border-color: transparent !important;
+    border-bottom: none !important;
+    visibility: hidden !important;
+  }
+
+  .nes-no-chrome .nes-rule-notch {
+    visibility: hidden !important;
+    background: transparent !important;
+  }
+
+  .nes-no-chrome .nes-foot {
+    background: transparent !important;
+    visibility: hidden !important;
+  }
+
+  .nes-no-chrome .nes-watermark {
+    display: none !important;
+  }
+
   .nes-sheet:last-of-type {
     page-break-after: auto;
   }
