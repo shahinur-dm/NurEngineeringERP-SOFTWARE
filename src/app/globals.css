@@ -1143,8 +1143,29 @@ h3,
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 24px;
-  min-height: 72px;
   flex-shrink: 0;
+}
+
+.nes-sign-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.nes-sign-space {
+  height: 42px;
+  display: flex;
+  align-items: flex-end;
+}
+
+.nes-sign-right .nes-sign-space {
+  justify-content: flex-end;
+}
+
+.nes-sign-img {
+  height: 42px;
+  width: auto;
+  margin-bottom: -4px;
+  display: block;
 }
 
 .nes-signline {
@@ -1159,6 +1180,12 @@ h3,
 
 .nes-sign-right .nes-signline {
   margin-left: auto;
+}
+
+.nes-sign-label {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.35;
 }
 
 .nes-intro p {

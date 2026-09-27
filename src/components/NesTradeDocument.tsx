@@ -206,17 +206,8 @@ export function NesTradeDocument({
 
   if (kind === "quotation") {
     const hasSectionInBody = /^Section\s*:/im.test(documentBody);
-    const hasSubjectInBody = /^Subject\s*:/im.test(documentBody);
     const sec = sale.section || (!hasSectionInBody ? "Injection molding Section." : "");
-    const sub = subject || (!hasSubjectInBody ? "Quotation for Ejector part making and Seat cover making mould servicing of Injection molding machine." : "");
 
-    if (!hasSubjectInBody && sub) {
-      if (/^Dear Sir/im.test(documentBody)) {
-        documentBody = documentBody.replace(/^Dear Sir/im, `Subject: ${sub}\n\nDear Sir`);
-      } else {
-        documentBody = `Subject: ${sub}\n\n${documentBody}`;
-      }
-    }
     if (!hasSectionInBody && sec) {
       if (/^Subject\s*:/im.test(documentBody)) {
         documentBody = documentBody.replace(/^(Subject\s*:[^\r\n]*)/im, `Section: ${sec}\n\n$1`);
@@ -373,25 +364,30 @@ export function NesTradeDocument({
       ) : null}
         {documentBody.trim() ? (
         <div className="nes-intro">
-          {documentBodyParas.map((para, idx) => {
-            const text = para.trim();
-            if (!text) return <p key={`body-${idx}`}>&nbsp;</p>;
-            if (/^Section\s*:\s*/i.test(text)) {
-              return (
-                <p key={`body-${idx}`} className="nes-section">
-                  <b>Section:</b> {text.replace(/^Section\s*:\s*/i, "")}
-                </p>
-              );
-            }
-            if (/^Subject\s*:\s*/i.test(text)) {
-              return (
-                <p key={`body-${idx}`} className="nes-subject">
-                  <b>Subject:</b> {text.replace(/^Subject\s*:\s*/i, "")}
-                </p>
-              );
-            }
-            return <p key={`body-${idx}`}>{para}</p>;
-          })}
+          {documentBodyParas
+            .map((para) => para.trim())
+            .filter(Boolean)
+            .map((text, idx) => {
+              if (/^Section\s*:\s*/i.test(text)) {
+                const secVal = text.replace(/^Section\s*:\s*/i, "").trim();
+                if (!secVal) return null;
+                return (
+                  <p key={`body-${idx}`} className="nes-section">
+                    <b>Section:</b> {secVal}
+                  </p>
+                );
+              }
+              if (/^Subject\s*:\s*/i.test(text)) {
+                const subVal = text.replace(/^Subject\s*:\s*/i, "").trim();
+                if (!subVal) return null;
+                return (
+                  <p key={`body-${idx}`} className="nes-subject">
+                    <b>Subject:</b> {subVal}
+                  </p>
+                );
+              }
+              return <p key={`body-${idx}`}>{text}</p>;
+            })}
         </div>
       ) : null}
         </>
@@ -456,7 +452,44 @@ export function NesTradeDocument({
               <td className="c-total">{taka(sale.shipping)}</td>
             </tr>
           ) : null}
-          {isLast && kind !== "challan" ? (
+          {isLast && kind === "quotation" && Number(sale.discount || 0) > 0 ? (
+            <>
+              <tr>
+                <td colSpan={5} className="nes-total-lab">
+                  Total Price
+                </td>
+                <td className="c-total">
+                  {taka(
+                    sale.subtotal ||
+                      items.reduce(
+                        (a, i) =>
+                          a +
+                          Number(
+                            i.lineTotal != null
+                              ? i.lineTotal
+                              : (i.qty || 0) * (i.unitPrice || 0),
+                          ),
+                        0,
+                      ),
+                  )}
+                </td>
+              </tr>
+              <tr>
+                <td colSpan={5} className="nes-total-lab">
+                  Discount
+                </td>
+                <td className="c-total">-{taka(sale.discount)}</td>
+              </tr>
+              <tr>
+                <td colSpan={5} className="nes-total-lab">
+                  Subtotal
+                </td>
+                <td className="c-total">
+                  <b>{taka(sale.grandTotal)}</b>
+                </td>
+              </tr>
+            </>
+          ) : isLast && kind !== "challan" ? (
             <tr>
               <td colSpan={5} className="nes-total-lab">
                 {kind === "quotation" ? "Total Price =" : "Total Bill ="}
@@ -530,20 +563,23 @@ export function NesTradeDocument({
           Please sign back to us if you confirm this P.I / Quotation.
         </p>
         <div className="nes-signs">
-          <div>
+          <div className="nes-sign-col">
+            <div className="nes-sign-space" />
             <div className="nes-signline" />
-            <p>{kind === "quotation" ? "(Customer Signature)" : "(Receiver Signature)"}</p>
+            <p className="nes-sign-label">{kind === "quotation" ? "(Customer Signature)" : "(Receiver Signature)"}</p>
           </div>
-          <div className="nes-sign-right">
-            {sale?.hasSignature ? (
-              <img
-                src={SIGNATURE_IMAGE_SRC}
-                alt="Signature"
-                style={{ height: "42px", width: "auto", marginBottom: "-8px", marginLeft: "auto", display: "block" }}
-              />
-            ) : null}
+          <div className="nes-sign-col nes-sign-right">
+            <div className="nes-sign-space">
+              {sale?.hasSignature ? (
+                <img
+                  src={SIGNATURE_IMAGE_SRC}
+                  alt="Signature"
+                  className="nes-sign-img"
+                />
+              ) : null}
+            </div>
             <div className="nes-signline" />
-            <p>
+            <p className="nes-sign-label">
               <b>{signName}</b>
               <br />
               Proprietor, {bizName}

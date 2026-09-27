@@ -435,17 +435,8 @@ export async function buildTradePdf(opts: {
   if (kind === "quotation") {
     let bodyText = resolveDocumentBody(sale.documentBody);
     const hasSectionInBody = /^Section\s*:/im.test(bodyText);
-    const hasSubjectInBody = /^Subject\s*:/im.test(bodyText);
     const sec = sale.section || (!hasSectionInBody ? "Injection molding Section." : "");
-    const sub = subject || (!hasSubjectInBody ? "Quotation for Ejector part making and Seat cover making mould servicing of Injection molding machine." : "");
 
-    if (!hasSubjectInBody && sub) {
-      if (/^Dear Sir/im.test(bodyText)) {
-        bodyText = bodyText.replace(/^Dear Sir/im, `Subject: ${sub}\n\nDear Sir`);
-      } else {
-        bodyText = `Subject: ${sub}\n\n${bodyText}`;
-      }
-    }
     if (!hasSectionInBody && sec) {
       if (/^Subject\s*:/im.test(bodyText)) {
         bodyText = bodyText.replace(/^(Subject\s*:[^\r\n]*)/im, `Section: ${sec}\n\n$1`);
@@ -462,21 +453,24 @@ export async function buildTradePdf(opts: {
       for (const para of bodyText.split(/\r?\n/)) {
         const text = para.trim();
         if (!text) {
-          y += 2;
           continue;
         }
         if (/^Section\s*:\s*/i.test(text)) {
-          writeBlock(text, m, contentW, 9, "bold");
-          y += 1;
+          const secVal = text.replace(/^Section\s*:\s*/i, "").trim();
+          if (!secVal) continue;
+          writeBlock(`Section: ${secVal}`, m, contentW, 9, "bold");
+          y += 1.5;
         } else if (/^Subject\s*:\s*/i.test(text)) {
-          writeBlock(text, m, contentW, 9, "bold");
-          y += 1;
+          const subVal = text.replace(/^Subject\s*:\s*/i, "").trim();
+          if (!subVal) continue;
+          writeBlock(`Subject: ${subVal}`, m, contentW, 9, "bold");
+          y += 1.5;
         } else {
-          writeBlock(para, m, contentW, 9, "normal");
-          y += 1;
+          writeBlock(text, m, contentW, 9, "normal");
+          y += 1.5;
         }
       }
-      y += 2;
+      y += 1.5;
     }
   }
 
@@ -509,9 +503,26 @@ export async function buildTradePdf(opts: {
     if (Number(sale.discount || 0)) totalRows.push(["", "", "", "", "Discount", taka(sale.discount)]);
     if (Number(sale.tax || 0)) totalRows.push(["", "", "", "", "Tax", taka(sale.tax)]);
     if (Number(sale.shipping || 0)) totalRows.push(["", "", "", "", "Shipping", taka(sale.shipping)]);
-  }
-  if (kind !== "challan") {
-    totalRows.push(["", "", "", "", kind === "quotation" ? "Total Price =" : "Total Bill =", taka(sale.grandTotal)]);
+    totalRows.push(["", "", "", "", "Total Bill =", taka(sale.grandTotal)]);
+  } else if (kind === "quotation") {
+    const discountVal = Number(sale.discount || 0);
+    if (discountVal > 0) {
+      const itemTotal =
+        sale.subtotal ||
+        items.reduce(
+          (a, i) =>
+            a +
+            Number(
+              i.lineTotal != null ? i.lineTotal : (i.qty || 0) * (i.unitPrice || 0),
+            ),
+          0,
+        );
+      totalRows.push(["", "", "", "", "Total Price", taka(itemTotal)]);
+      totalRows.push(["", "", "", "", "Discount", `-${taka(discountVal)}`]);
+      totalRows.push(["", "", "", "", "Subtotal", taka(sale.grandTotal)]);
+    } else {
+      totalRows.push(["", "", "", "", "Total Price =", taka(sale.grandTotal)]);
+    }
   } else {
     const qtyTotal = items.reduce((a, i) => a + Number(i.qty || 0), 0);
     totalRows.push(["", "", "Total =", String(qtyTotal), ""]);
