@@ -4,8 +4,8 @@
  */
 
 export const DEMO_ADMIN = {
-  email: "admin@ditpharma.bd",
-  password: "admin123",
+  email: "admin@nurengineering.com",
+  password: "admin123456",
   name: "সিস্টেম অ্যাডমিন",
   phone: "01700000000",
 };
@@ -13,6 +13,8 @@ export const DEMO_ADMIN = {
 /** Legacy + username aliases that must still unlock the demo admin. */
 export const DEMO_ADMIN_ALIASES = [
   DEMO_ADMIN.email,
+  "admin@nurengineeringbd.com",
+  "admin@ditpharma.bd",
   "admin@greenpharma.bd",
   "admin@nureng.bd",
   "admin@nurengineering.bd",

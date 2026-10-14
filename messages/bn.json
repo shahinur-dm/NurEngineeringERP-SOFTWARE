@@ -117,8 +117,7 @@
     "login": "প্রবেশ করুন",
     "loggingIn": "প্রবেশ হচ্ছে...",
     "invalid": "ইমেইল বা পাসওয়ার্ড ভুল",
-    "dbError": "ডাটাবেস কানেক্ট হয়নি। MongoDB Atlas কানেকশন চেক করুন।",
-    "demoHint": "ডেমো: admin@ditpharma.bd / admin123"
+    "dbError": "ডাটাবেস কানেক্ট হয়নি। MongoDB Atlas কানেকশন চেক করুন।"
   },
   "dashboard": {
     "title": "ড্যাশবোর্ড",

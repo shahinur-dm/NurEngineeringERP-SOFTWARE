@@ -15,6 +15,8 @@ export function isDemoAdminIdentity(email: string) {
 }
 
 export async function findDemoAdmin() {
+  const primary = await User.findOne({ email: DEMO_ADMIN.email });
+  if (primary) return primary;
   return User.findOne({ email: { $in: DEMO_EMAILS } });
 }
 

@@ -54,14 +54,6 @@ export default function LoginPage() {
     void signIn(email, password);
   }
 
-  function fillDemo() {
-    const demoEmail = "admin@ditpharma.bd";
-    const demoPassword = "admin123";
-    setEmail(demoEmail);
-    setPassword(demoPassword);
-    void signIn(demoEmail, demoPassword);
-  }
-
   const features = [
     {
       icon: CircuitBoard,
@@ -198,16 +190,6 @@ export default function LoginPage() {
             <button type="submit" disabled={loading} className="gp-btn gp-btn-primary w-full text-base">
               {loading ? t("auth.loggingIn") : t("auth.login")}
               {!loading ? <ArrowRight className="h-4 w-4" /> : null}
-            </button>
-            <button
-              type="button"
-              onClick={fillDemo}
-              className="w-full rounded-xl border border-line bg-[#f8fafc] px-4 py-3 text-left"
-            >
-              <p className="text-[0.65rem] font-bold uppercase tracking-[0.08em] text-muted">
-                {locale === "bn" ? "ডেমো লগইন" : "Quick demo login"}
-              </p>
-              <p className="mt-1 text-sm text-[var(--gp-ink)]">{t("auth.demoHint")}</p>
             </button>
           </div>
         </form>
