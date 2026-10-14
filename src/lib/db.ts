@@ -21,10 +21,12 @@ const cached: MongooseCache = global.mongooseCache ?? {
 
 global.mongooseCache = cached;
 
+const DEFAULT_MONGO_URI =
+  "mongodb+srv://nextgen:nextgen2026@cluster0.qbunbkx.mongodb.net/NurEngErp?appName=Cluster0";
+
 async function resolveMongoUri() {
-  const configured = process.env.MONGODB_URI?.trim();
+  const configured = (process.env.MONGODB_URI || DEFAULT_MONGO_URI).trim();
   const useMemory =
-    !configured ||
     configured === "memory" ||
     process.env.USE_MEMORY_MONGO === "1";
 
